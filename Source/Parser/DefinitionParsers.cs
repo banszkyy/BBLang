@@ -29,6 +29,12 @@ public sealed partial class Parser
                 possibleType = _possibleTypePointer.To;
                 possibleName = _possibleTypePointer.Operator;
             }
+            else if (OverloadableOperators.Contains("&") &&
+                possibleType is TypeInstanceReference _possibleTypeReference)
+            {
+                possibleType = _possibleTypeReference.To;
+                possibleName = _possibleTypeReference.Operator;
+            }
             else
             {
                 int callOperatorParseStart = CurrentTokenIndex;

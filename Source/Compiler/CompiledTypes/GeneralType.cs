@@ -106,6 +106,11 @@ public abstract class GeneralType :
             return TryGetTypeParameters(definedPointerType.To, passedPointerType.To, typeParameters);
         }
 
+        if (defined.Is(out ReferenceType? definedReferenceType) && passed.Is(out ReferenceType? passedReferenceType))
+        {
+            return TryGetTypeParameters(definedReferenceType.To, passedReferenceType.To, typeParameters);
+        }
+
         if (defined.Is(out FunctionType? definedFunctionType) && passed.Is(out FunctionType? passedFunctionType))
         {
             if (definedFunctionType.Parameters.Length != passedFunctionType.Parameters.Length) return false;
@@ -152,6 +157,7 @@ public abstract class GeneralType :
             case GenericType: return false;
             case BuiltinType: return true;
             case PointerType pointerType: return pointerType.To.AllGenericsDefined();
+            case ReferenceType pointerType: return pointerType.To.AllGenericsDefined();
             case ArrayType arrayType: return arrayType.Of.AllGenericsDefined();
 
             case FunctionType functionType:
@@ -194,6 +200,9 @@ public abstract class GeneralType :
             case PointerType pointerType:
                 return new PointerType(InsertTypeParameters(pointerType.To, typeArguments));
 
+            case ReferenceType referenceType:
+                return new ReferenceType(InsertTypeParameters(referenceType.To, typeArguments));
+
             case ArrayType arrayType:
                 return new ArrayType(InsertTypeParameters(arrayType.Of, typeArguments), arrayType.Length);
 
@@ -224,7 +233,7 @@ public abstract class GeneralType :
             case BuiltinType:
                 return type;
 
-            case AliasType: // TODO
+            case AliasType: // t
                 return type;
 
             case FunctionType functionType:
@@ -243,12 +252,22 @@ public abstract class GeneralType :
         switch (type, source.FinalValue)
         {
             case (ArrayType a, ArrayType b):
+            {
                 if (!a.Length.HasValue && b.Length.HasValue) return new ArrayType(a.Of, b.Length.Value);
                 break;
+            }
             case (PointerType a, PointerType b):
+            {
                 GeneralType? to = InsertConstants(a.To, b.To);
                 if (to is not null) return new PointerType(to);
                 break;
+            }
+            case (ReferenceType a, ReferenceType b):
+            {
+                GeneralType? to = InsertConstants(a.To, b.To);
+                if (to is not null) return new ReferenceType(to);
+                break;
+            }
             default:
                 break;
         }

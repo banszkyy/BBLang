@@ -158,6 +158,9 @@ public static partial class StatementWalker
             case TypeInstancePointer v:
                 foreach (Statement w in Visit(v.To, callback)) yield return w;
                 break;
+            case TypeInstanceReference v:
+                foreach (Statement w in Visit(v.To, callback)) yield return w;
+                break;
             case TypeInstanceSimple:
                 break;
             case TypeInstanceStackArray v:

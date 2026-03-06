@@ -150,7 +150,7 @@ public sealed class Configuration
         }
     }
 
-    public static void Parse(IReadOnlyCollection<(Uri Uri, string Content)> configurations, DeclarationParser parser, DiagnosticsCollection diagnostics)
+    public static void Parse(IEnumerable<(Uri Uri, string Content)> configurations, DeclarationParser parser, DiagnosticsCollection diagnostics)
     {
         foreach ((Uri uri, string content) in configurations)
         {
@@ -158,7 +158,7 @@ public sealed class Configuration
         }
     }
 
-    public static Configuration Parse(IReadOnlyCollection<(Uri Uri, string Content)> configurations, DiagnosticsCollection diagnostics)
+    public static Configuration Parse(IEnumerable<(Uri Uri, string Content)> configurations, DiagnosticsCollection diagnostics)
     {
         Parser parser = new(diagnostics);
         Parse(configurations, parser.Parse, diagnostics);

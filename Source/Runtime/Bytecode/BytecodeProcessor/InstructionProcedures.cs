@@ -696,7 +696,7 @@ public ref partial struct ProcessorState
 
             if ((scopedExternalFunction.Flags & ExternalFunctionScopedSyncFlags.MSILPointerMarshal) != default)
             {
-                // TODO: Unity burst compatibility
+                // todo: Unity burst compatibility
                 if (scope != 0) throw new RuntimeException("Invalid MSIL marshal function (the scope must be null)");
                 scope = (nint)Unsafe.AsPointer(ref Memory[0]);
             }
@@ -739,7 +739,7 @@ public ref partial struct ProcessorState
 
                 if (true || (scopedExternalFunction.Flags & ExternalFunctionScopedSyncFlags.MSILPointerMarshal) != default)
                 {
-                    // TODO: Unity burst compatibility
+                    // todo: Unity burst compatibility
                     if (scope != 0) throw new RuntimeException("Invalid MSIL marshal function (the scope must be null)");
                     scope = (nint)Unsafe.AsPointer(ref MemoryMarshal.GetReference(Memory));
                 }

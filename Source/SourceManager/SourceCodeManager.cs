@@ -458,7 +458,7 @@ public class SourceCodeManager
                 found = parsedFile;
                 break;
             }
-            if (!found.HasValue) continue; // FIXME: is this correct?
+            if (!found.HasValue) continue; // fixme: is this correct?
             sortedParsedFiles.Add(found.Value);
         }
 

@@ -244,7 +244,7 @@ public sealed partial class Parser
             return false;
         }
 
-        if (!ExpectAnyExpression(out Expression? expression))
+        if (!ExpectArgument(out ArgumentExpression? indexArgument, ArgumentModifiers))
         {
             savepoint.Restore();
             return false;
@@ -252,12 +252,11 @@ public sealed partial class Parser
 
         if (!ExpectOperator("]", out Token? bracketEnd))
         {
-            bracketEnd = new MissingToken(TokenType.Operator, expression.Position.After(), "]");
+            bracketEnd = new MissingToken(TokenType.Operator, indexArgument.Position.After(), "]");
             Diagnostics.Add(DiagnosticAt.Error("Expected `]`", bracketEnd, File, false));
         }
 
-        // fixme
-        statement = new IndexCallExpression(prevStatement, ArgumentExpression.Wrap(expression), new TokenPair(bracketStart, bracketEnd), File);
+        statement = new IndexCallExpression(prevStatement, indexArgument, new TokenPair(bracketStart, bracketEnd), File);
         return true;
     }
 

@@ -853,6 +853,16 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             baseAddress = new AddressRuntimePointer(indexCall.Base);
         }
+        else if (prevType.Is(out ReferenceType? prevReferenceType))
+        {
+            if (!prevReferenceType.To.Is(out array))
+            {
+                error = new PossibleDiagnostic($"Multiple dereference is not supported at the moment", indexCall.Base);
+                return false;
+            }
+
+            baseAddress = new AddressRuntimePointer(indexCall.Base);
+        }
         else if (!prevType.Is(out array))
         {
             error = new PossibleDiagnostic($"Can't index a non-array type", indexCall.Base);
@@ -888,13 +898,28 @@ public partial class CodeGeneratorForMain : CodeGenerator
         GeneralType prevType = value.Object.Type;
         Address? baseAddress = null;
 
-        while (prevType.Is(out PointerType? pointerType))
+        while (true)
         {
-            prevType = pointerType.To;
-            baseAddress =
-                baseAddress is null
-                ? new AddressRuntimePointer(value.Object)
-                : new AddressPointer(baseAddress);
+            if (prevType.Is(out PointerType? pointerType))
+            {
+                prevType = pointerType.To;
+                baseAddress =
+                    baseAddress is null
+                    ? new AddressRuntimePointer(value.Object)
+                    : new AddressPointer(baseAddress);
+            }
+            else if (prevType.Is(out ReferenceType? referenceType))
+            {
+                prevType = referenceType.To;
+                baseAddress =
+                    baseAddress is null
+                    ? new AddressRuntimePointer(value.Object)
+                    : new AddressPointer(baseAddress);
+            }
+            else
+            {
+                break;
+            }
         }
 
         if (!prevType.Is(out StructType? @struct))
@@ -933,6 +958,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
         if (functionCall.Type.Is<PointerType>())
         { return functionCall; }
 
+        if (functionCall.Type.Is<ReferenceType>())
+        { return functionCall; }
+
         return null;
     }
     CompiledExpression? NeedDerefernce(CompiledElementAccess indexCall)
@@ -940,11 +968,17 @@ public partial class CodeGeneratorForMain : CodeGenerator
         if (indexCall.Base.Type.Is<PointerType>())
         { return indexCall.Base; }
 
+        if (indexCall.Base.Type.Is<ReferenceType>())
+        { return indexCall.Base; }
+
         return NeedDerefernce(indexCall.Base);
     }
     CompiledExpression? NeedDerefernce(CompiledFieldAccess field)
     {
         if (field.Object.Type.Is<PointerType>())
+        { return field.Object; }
+
+        if (field.Object.Type.Is<ReferenceType>())
         { return field.Object; }
 
         return NeedDerefernce(field.Object);

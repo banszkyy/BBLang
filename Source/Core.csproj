@@ -12,9 +12,11 @@
     <IntermediateOutputPath Condition=" '$(PlatformName)' == 'AnyCPU' ">../obj/$(Configuration)/</IntermediateOutputPath>
     <IntermediateOutputPath Condition=" '$(PlatformName)' != 'AnyCPU' ">../obj/$(PlatformName)/$(Configuration)/</IntermediateOutputPath>
   </PropertyGroup>
+
   <PropertyGroup Condition="'$(ForLanguageServer)' == 'true'">
     <DefineConstants>$(DefineConstants);LANGUAGE_SERVER</DefineConstants>
   </PropertyGroup>
+
   <PropertyGroup Condition="'$(ForTesting)' == 'true'">
     <DefineConstants>$(DefineConstants);TESTING</DefineConstants>
   </PropertyGroup>

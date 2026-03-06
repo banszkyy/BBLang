@@ -146,6 +146,8 @@ public static partial class StatementWalker
                 return true;
             case CompiledPointerTypeExpression v:
                 return Visit(v.To, callback);
+            case CompiledReferenceTypeExpression v:
+                return Visit(v.To, callback);
             case CompiledStructTypeExpression v:
                 foreach (KeyValuePair<string, CompiledTypeExpression> i in v.TypeArguments) if (!Visit(i.Value, callback)) return false;
                 return true;

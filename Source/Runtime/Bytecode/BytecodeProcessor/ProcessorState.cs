@@ -190,34 +190,64 @@ public ref partial struct ProcessorState
         }
     }
 
+    public readonly RuntimeException? GetRuntimeException(CompiledDebugInformation debugInformation = default) => Signal switch
+    {
+        Signal.PointerOutOfRange => new RuntimeException($"Pointer out of range ({Crash})")
+        {
+            Context = GetContext(),
+            DebugInformation = debugInformation,
+        },
+        Signal.StackOverflow => new RuntimeException($"Stack overflow")
+        {
+            Context = GetContext(),
+            DebugInformation = debugInformation,
+        },
+        Signal.UndefinedExternalFunction => new RuntimeException($"Undefined external function {Crash}")
+        {
+            Context = GetContext(),
+            DebugInformation = debugInformation,
+        },
+        Signal.UserCrash => new UserException(HeapUtils.GetString(Memory, Crash) ?? string.Empty)
+        {
+            Context = GetContext(),
+            DebugInformation = debugInformation,
+        },
+        _ => null,
+    };
+
     public readonly void ThrowIfCrashed(CompiledDebugInformation debugInformation = default)
     {
-        switch (Signal)
+        RuntimeException? ex = GetRuntimeException(debugInformation);
+        if (ex is not null) throw ex;
+    }
+
+    public readonly struct HeapObject
+    {
+        public readonly bool IsAllocated;
+        public readonly int Pointer;
+        public readonly int Size;
+
+        public HeapObject(bool isAllocated, int pointer, int size)
         {
-            case Signal.PointerOutOfRange:
-                throw new RuntimeException($"Pointer out of range ({Crash})")
-                {
-                    Context = GetContext(),
-                    DebugInformation = debugInformation,
-                };
-            case Signal.StackOverflow:
-                throw new RuntimeException($"Stack overflow")
-                {
-                    Context = GetContext(),
-                    DebugInformation = debugInformation,
-                };
-            case Signal.UndefinedExternalFunction:
-                throw new RuntimeException($"Undefined external function {Crash}")
-                {
-                    Context = GetContext(),
-                    DebugInformation = debugInformation,
-                };
-            case Signal.UserCrash:
-                throw new UserException(HeapUtils.GetString(Memory, Crash) ?? string.Empty)
-                {
-                    Context = GetContext(),
-                    DebugInformation = debugInformation,
-                };
+            IsAllocated = isAllocated;
+            Pointer = pointer;
+            Size = size;
+        }
+    }
+
+    public readonly void HeapObjects(List<HeapObject> result)
+    {
+        const uint StatusFlag = 0x80000000;
+        const uint SizeMask = 0x7fffffff;
+        int i = 0;
+        while (i < 512)
+        {
+            int size = (int)(Memory.Get<uint>(i) & SizeMask);
+            bool isAllocated = (Memory.Get<uint>(i) & StatusFlag) != 0;
+            int pointer = i + sizeof(uint);
+            result.Add(new(isAllocated, pointer, size));
+
+            i += size + sizeof(uint);
         }
     }
 
@@ -404,7 +434,7 @@ public ref partial struct ProcessorState
         InstructionOperandType.PointerEDX32 => GetData<int>(Registers.EDX + operand.Int).I32(),
         InstructionOperandType.PointerEDX64 => throw new NotImplementedException(),
 
-        // FIXME: Same
+        // fixme: Same
         InstructionOperandType.PointerRAX8 => GetData<byte>(Registers.EAX + operand.Int).I32(),
         InstructionOperandType.PointerRAX16 => GetData<short>(Registers.EAX + operand.Int).I32(),
         InstructionOperandType.PointerRAX32 => GetData<int>(Registers.EAX + operand.Int).I32(),
@@ -484,7 +514,7 @@ public ref partial struct ProcessorState
             case InstructionOperandType.PointerEDX32: SetData<int>(Registers.EDX + operand.Int, value.I32()); break;
             case InstructionOperandType.PointerEDX64: throw new NotImplementedException();
 
-            // FIXME: Same
+            // fixme: Same
             case InstructionOperandType.PointerRAX8: SetData<byte>(Registers.EAX + operand.Int, value.U8()); break;
             case InstructionOperandType.PointerRAX16: SetData<ushort>(Registers.EAX + operand.Int, value.U16()); break;
             case InstructionOperandType.PointerRAX32: SetData<int>(Registers.EAX + operand.Int, value.I32()); break;

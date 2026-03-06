@@ -2,6 +2,7 @@ using System.Reflection;
 
 namespace LanguageCore.IL.Reflection;
 
+[RequiresUnreferencedCode("Trimming changes metadata tokens")]
 public class ModuleScopeTokenResolver : ITokenResolver
 {
     readonly Module m_module;
@@ -16,14 +17,9 @@ public class ModuleScopeTokenResolver : ITokenResolver
     }
 
     public MethodBase? AsMethod(int token) => m_module.ResolveMethod(token, m_typeContext, m_methodContext);
-
     public FieldInfo? AsField(int token) => m_module.ResolveField(token, m_typeContext, m_methodContext);
-
     public Type? AsType(int token) => m_module.ResolveType(token, m_typeContext, m_methodContext);
-
     public MemberInfo? AsMember(int token) => m_module.ResolveMember(token, m_typeContext, m_methodContext);
-
     public string? AsString(int token) => m_module.ResolveString(token);
-
     public byte[]? AsSignature(int token) => m_module.ResolveSignature(token);
 }

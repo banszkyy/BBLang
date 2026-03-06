@@ -11,6 +11,8 @@ public readonly struct Position :
 
     public Position this[Range range] => Slice(range);
 
+    public bool IsValid => this != default && this != UnknownPosition;
+
     public Position(Range<SinglePosition> range, Range<int> absoluteRange)
     {
         Range = range;

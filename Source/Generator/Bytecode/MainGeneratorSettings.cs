@@ -14,6 +14,7 @@ public enum GeneratorOptimizationSettings : uint
     IndexerFetchSkip = 4,
     TrimReturnBreak = 8,
     CrashStringOnStack = 16,
+    ConditionTrimming = 32,
 }
 
 [ExcludeFromCodeCoverage]

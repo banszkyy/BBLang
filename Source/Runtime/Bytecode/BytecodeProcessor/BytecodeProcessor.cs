@@ -47,7 +47,7 @@ public class BytecodeProcessor
         ScopedExternalFunctions = !scopedExternalFunctions.IsDefaultOrEmpty ? scopedExternalFunctions : ImmutableArray<ExternalFunctionScopedSync>.Empty;
     }
 
-    public unsafe ProcessorState GetState() => new(
+    public ProcessorState GetState() => new(
         Settings,
         Registers,
         Memory,
@@ -61,19 +61,19 @@ public class BytecodeProcessor
         HotFunctions = HotFunctions,
     };
 
-    public unsafe bool Tick()
+    public bool Tick()
     {
         ProcessorState state = GetState();
         return Tick(ref state);
     }
 
-    public unsafe void RunUntilCompletion()
+    public void RunUntilCompletion()
     {
         ProcessorState state = GetState();
         RunUntilCompletion(ref state);
     }
 
-    public unsafe void RunUntilCompletion(ref ProcessorState state)
+    public void RunUntilCompletion(ref ProcessorState state)
     {
         try
         {
@@ -102,7 +102,7 @@ public class BytecodeProcessor
     /// <returns>
     /// Returns <c>false</c> if it is finished, or <c>true</c> otherwise;
     /// </returns>
-    public unsafe bool Tick(ref ProcessorState state)
+    public bool Tick(ref ProcessorState state)
     {
         try
         {
@@ -123,7 +123,7 @@ public class BytecodeProcessor
         }
     }
 
-    public unsafe void HandleUserCalls(ref ProcessorState state)
+    public void HandleUserCalls(ref ProcessorState state)
     {
         if (!state.IsDone || CurrentlySyncUserCalling) return;
 
@@ -140,21 +140,21 @@ public class BytecodeProcessor
         }
     }
 
-    unsafe void FinishUserCall(ref ProcessorState state, UserCall userCall)
+    void FinishUserCall(ref ProcessorState state, UserCall userCall)
     {
         state.Pop(userCall.Arguments.Length);
         Span<byte> returnValue = state.Pop(userCall.Function.ReturnValueSize);
         userCall.Result = returnValue.IsEmpty ? Array.Empty<byte>() : returnValue.ToArray();
     }
 
-    unsafe void FinishUserCall(ref ProcessorState state, ref UserCallSync userCall)
+    void FinishUserCall(ref ProcessorState state, ref UserCallSync userCall)
     {
         state.Pop(userCall.Arguments.Length);
         Span<byte> returnValue = state.Pop(userCall.Function.ReturnValueSize);
         userCall.Result = returnValue.IsEmpty ? Array.Empty<byte>() : returnValue.ToArray();
     }
 
-    unsafe void BeginUserCall(ref ProcessorState state, UserCall userCall)
+    void BeginUserCall(ref ProcessorState state, UserCall userCall)
     {
         // Global variables are on top of the stack right now
 
@@ -180,7 +180,7 @@ public class BytecodeProcessor
         state.Registers.CodePointer = userCall.Function.InstructionOffset;
     }
 
-    unsafe void BeginUserCall(ref ProcessorState state, ref UserCallSync userCall)
+    void BeginUserCall(ref ProcessorState state, ref UserCallSync userCall)
     {
         // Global variables are on top of the stack right now
 

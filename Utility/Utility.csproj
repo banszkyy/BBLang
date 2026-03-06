@@ -15,18 +15,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="BrainfuckRenderer\**" />
-    <EmbeddedResource Remove="BrainfuckRenderer\**" />
-    <None Remove="BrainfuckRenderer\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Remove="ConsoleGUI\**" />
-    <EmbeddedResource Remove="ConsoleGUI\**" />
-    <None Remove="ConsoleGUI\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="../Debugger/Debugger.csproj" />
     <ProjectReference Include="../Source/Core.csproj" />
   </ItemGroup>

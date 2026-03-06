@@ -8,12 +8,15 @@ class DynamicScopeTokenResolver : ITokenResolver
     static readonly PropertyInfo? _indexer;
     static readonly FieldInfo? _scopeFi;
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.NonPublicFields)]
     static readonly Type? _genMethodInfoType;
     static readonly FieldInfo? _genmethFi1, _genmethFi2;
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.NonPublicFields)]
     static readonly Type? _varArgMethodType;
     static readonly FieldInfo? _varargFi1;
 
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.NonPublicFields)]
     static readonly Type? _genFieldInfoType;
     static readonly FieldInfo? _genfieldFi1, _genfieldFi2;
 

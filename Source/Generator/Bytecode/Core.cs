@@ -253,7 +253,15 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     public CodeGeneratorForMain(CompilerResult compilerResult, MainGeneratorSettings settings, DiagnosticsCollection diagnostics) : base(compilerResult, diagnostics)
     {
+#if TRIMMED
+        ILGenerator = null;
+        if (settings.ILGeneratorSettings.HasValue)
+        {
+            Diagnostics.Add(Diagnostic.Warning($"Emitting MSIL isn't supported by this build of the compiler"));
+        }
+#else
         ILGenerator = settings.ILGeneratorSettings.HasValue ? new CodeGeneratorForIL(compilerResult, new DiagnosticsCollection(), settings.ILGeneratorSettings.Value, null) : null;
+#endif  
         ExternalFunctions = compilerResult.ExternalFunctions;
         CleanupStack2 = new();
         ReturnInstructions = new();

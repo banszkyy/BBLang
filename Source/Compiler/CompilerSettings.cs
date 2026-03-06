@@ -52,6 +52,7 @@ public struct CompilerSettings
     public ImmutableArray<ExpressionVariable> ExpressionVariables { get; set; }
     public IDictionary<Uri, CacheItem>? Cache { get; set; }
     public CancellationToken CancellationToken { get; set; }
+    public bool OptimizationDiagnostics { get; set; }
 
     [SetsRequiredMembers]
     public CompilerSettings(CompilerSettings other)
@@ -75,5 +76,6 @@ public struct CompilerSettings
         ExpressionVariables = other.ExpressionVariables;
         Cache = other.Cache;
         CancellationToken = other.CancellationToken;
+        OptimizationDiagnostics = other.OptimizationDiagnostics;
     }
 }

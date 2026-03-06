@@ -38,6 +38,9 @@ public partial class CodeGeneratorForIL : CodeGenerator
             case PointerType:
                 il.Emit(OpCodes.Ldind_Ref);
                 return true;
+            case ReferenceType:
+                il.Emit(OpCodes.Ldind_Ref);
+                return true;
             default:
                 break;
         }
@@ -75,6 +78,9 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 il.Emit(OpCodes.Stobj, _type);
                 return true;
             case PointerType:
+                il.Emit(OpCodes.Stind_Ref);
+                return true;
+            case ReferenceType:
                 il.Emit(OpCodes.Stind_Ref);
                 return true;
             default:
@@ -219,6 +225,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 }
             }
             case PointerType:
+            case ReferenceType:
             {
                 il.Emit(OpCodes.Ldnull);
                 return true;
@@ -259,7 +266,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         }
     }
 
-    static void Stringify(StringBuilder builder, int indentation, Type type)
+    static void Stringify(StringBuilder builder, int indentation, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type)
     {
         builder.Indent(indentation);
         builder.Append($"{type.Attributes & TypeAttributes.VisibilityMask} ");

@@ -29,6 +29,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
             FunctionType v => CompiledFunctionTypeExpression.CreateAnonymous(v, location),
             GenericType v => CompiledGenericTypeExpression.CreateAnonymous(v, location),
             PointerType v => CompiledPointerTypeExpression.CreateAnonymous(v, location),
+            ReferenceType v => CompiledReferenceTypeExpression.CreateAnonymous(v, location),
             StructType v => CompiledStructTypeExpression.CreateAnonymous(v, location),
             _ => throw new UnreachableException(),
         };
@@ -128,6 +129,11 @@ public abstract class CompiledTypeExpression : CompiledStatement,
             return TryGetTypeParameters(definedPointerType.To, passedPointerType.To, typeParameters);
         }
 
+        if (defined.Is(out CompiledReferenceTypeExpression? definedReferenceType) && passed.Is(out CompiledReferenceTypeExpression? passedReferenceType))
+        {
+            return TryGetTypeParameters(definedReferenceType.To, passedReferenceType.To, typeParameters);
+        }
+
         if (defined.Is(out CompiledFunctionTypeExpression? definedFunctionType) && passed.Is(out CompiledFunctionTypeExpression? passedFunctionType))
         {
             if (definedFunctionType.Parameters.Length != passedFunctionType.Parameters.Length) return false;
@@ -174,6 +180,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
             case CompiledGenericTypeExpression: return false;
             case CompiledBuiltinTypeExpression: return true;
             case CompiledPointerTypeExpression pointerType: return pointerType.To.AllGenericsDefined();
+            case CompiledReferenceTypeExpression referenceType: return referenceType.To.AllGenericsDefined();
             case CompiledArrayTypeExpression arrayType: return arrayType.Of.AllGenericsDefined();
 
             case CompiledFunctionTypeExpression functionType:
@@ -216,6 +223,12 @@ public abstract class CompiledTypeExpression : CompiledStatement,
                 return new CompiledPointerTypeExpression(pointerTo, type.Location);
             }
 
+            case CompiledReferenceTypeExpression pointerType:
+            {
+                CompiledTypeExpression pointerTo = InsertTypeParameters(pointerType.To, typeArguments);
+                return new CompiledReferenceTypeExpression(pointerTo, type.Location);
+            }
+
             case CompiledArrayTypeExpression arrayType:
             {
                 CompiledTypeExpression stackArrayOf = InsertTypeParameters(arrayType.Of, typeArguments);
@@ -249,7 +262,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
             case CompiledBuiltinTypeExpression:
                 return type;
 
-            case CompiledAliasTypeExpression: // TODO
+            case CompiledAliasTypeExpression: // todo
                 return type;
 
             case CompiledFunctionTypeExpression functionType:

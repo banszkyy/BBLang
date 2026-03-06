@@ -41,7 +41,7 @@ public class CompiledGeneratorState
             Struct,
             new FieldDefinition(
                 Token.CreateAnonymous(variableName),
-                null!, // FIXME
+                null!, // fixme
                 ImmutableArray<Token>.Empty,
                 ImmutableArray<AttributeUsage>.Empty
             )
@@ -52,7 +52,7 @@ public class CompiledGeneratorState
 
     public CompiledGeneratorState()
     {
-        // FIXME
+        // fixme
         Uri file = null!;
         Struct = new CompiledStruct(
             ImmutableArray.Create<CompiledField>(

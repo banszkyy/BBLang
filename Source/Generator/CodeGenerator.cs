@@ -139,6 +139,7 @@ public abstract class CodeGenerator : IRuntimeInfoProvider
     protected bool FindSize(GeneralType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error) => type switch
     {
         PointerType v => FindSize(v, out size, out error),
+        ReferenceType v => FindSize(v, out size, out error),
         ArrayType v => FindSize(v, out size, out error),
         FunctionType v => FindSize(v, out size, out error),
         StructType v => FindSize(v, out size, out error),
@@ -147,6 +148,12 @@ public abstract class CodeGenerator : IRuntimeInfoProvider
         AliasType v => FindSize(v, out size, out error),
         _ => throw new NotImplementedException(),
     };
+    protected virtual bool FindSize(ReferenceType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        size = PointerSize;
+        error = null;
+        return true;
+    }
     protected virtual bool FindSize(PointerType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         size = PointerSize;

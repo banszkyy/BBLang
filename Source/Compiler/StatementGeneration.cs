@@ -9,11 +9,14 @@ public partial class StatementCompiler
 {
     bool CompileAllocation(CompiledTypeExpression type, [NotNullWhen(true)] out CompiledExpression? compiledStatement)
     {
-        if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
+        if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics)
         {
             if (FindSize(type, out int typeSize, out PossibleDiagnostic? typeSizeError, this))
             {
-                return CompileAllocation(typeSize, type.Location, out compiledStatement);
+                if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
+                {
+                    return CompileAllocation(typeSize, type.Location, out compiledStatement);
+                }
             }
             else
             {
@@ -265,6 +268,7 @@ public partial class StatementCompiler
             TypeInstanceFunction v => CompileStatement(v, out result, diagnostics),
             TypeInstanceStackArray v => CompileStatement(v, out result, diagnostics),
             TypeInstancePointer v => CompileStatement(v, out result, diagnostics),
+            TypeInstanceReference v => CompileStatement(v, out result, diagnostics),
             MissingTypeInstance v => CompileStatement(v, out result, diagnostics),
             _ => throw new UnreachableException(),
         };
@@ -379,6 +383,17 @@ public partial class StatementCompiler
 
         return true;
     }
+    bool CompileStatement(TypeInstanceReference type, [NotNullWhen(true)] out CompiledTypeExpression? result, DiagnosticsCollection diagnostics)
+    {
+        result = null;
+
+        if (!CompileStatement(type.To, out CompiledTypeExpression? to, diagnostics)) return false;
+
+        result = new CompiledReferenceTypeExpression(to, type.Location);
+        //type.SetAnalyzedType(result);
+
+        return true;
+    }
 
     bool CompileArguments(IReadOnlyList<ArgumentExpression> arguments, ICompiledFunctionDefinition compiledFunction, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments, int alreadyPassed = 0)
     {
@@ -393,14 +408,14 @@ public partial class StatementCompiler
         //     else break;
         // }
 
-        // TODO:
+        // todo:
         // if (arguments.Count < partial)
         // {
         //     Diagnostics.Add(Diagnostic.Error($"Wrong number of arguments passed to function \"{callee.ToReadable()}\": required {compiledFunction.ParameterCount} passed {arguments.Count}", caller));
         //     return false;
         // }
 
-        // TODO: A hint if the passed value is the same as the default value
+        // todo: A hint if the passed value is the same as the default value
 
         for (int i = 0; i < arguments.Count; i++)
         {
@@ -780,7 +795,7 @@ public partial class StatementCompiler
                 {
                     Field = GeneratorStructDefinition.FunctionField,
                     Object = compiledArguments[0].Value,
-                    // FIXME: dirty ahh
+                    // fixme: dirty ahh
                     Type = GeneralType.InsertTypeParameters(GeneratorStructDefinition.FunctionField.Type, ((StructType)((PointerType)((ICompiledFunctionDefinition)callee).Parameters[0].Type).To).TypeArguments),
                     Location = caller.Location,
                     SaveValue = true,
@@ -810,25 +825,28 @@ public partial class StatementCompiler
 
         CompileFunction(callee, typeArguments);
 
-        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating) &&
+        if ((Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating) || Settings.OptimizationDiagnostics) &&
             TryEvaluate(callee, compiledArguments, new EvaluationContext(), out CompiledValue? returnValue, out ImmutableArray<RuntimeStatement2> runtimeStatements) &&
             returnValue.HasValue &&
             runtimeStatements.Length == 0)
         {
             SetPredictedValue(caller, returnValue.Value);
             Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result \"{returnValue.Value}\"", caller));
-            compiledStatement = new CompiledConstantValue()
+            if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
             {
-                Value = returnValue.Value,
-                Location = caller.Location,
-                SaveValue = caller.SaveValue,
-                Type = callee.Type,
-            };
-            return true;
+                compiledStatement = new CompiledConstantValue()
+                {
+                    Value = returnValue.Value,
+                    Location = caller.Location,
+                    SaveValue = caller.SaveValue,
+                    Type = callee.Type,
+                };
+                return true;
+            }
         }
 
-        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionInlining) &&
-            callee.IsInlineable)
+        if ((Settings.Optimizations.HasFlag(OptimizationSettings.FunctionInlining) || Settings.OptimizationDiagnostics) &&
+            callee.IsInline)
         {
             CompiledFunction? f = GeneratedFunctions.FirstOrDefault(v => v.Function == callee);
             if (f is not null)
@@ -840,7 +858,7 @@ public partial class StatementCompiler
                         .ToImmutableDictionary(v => v.Content, v => v.Item2),
                 };
 
-                if (InlineFunction(f.Body, inlineContext, out CompiledStatement? inlined1))
+                if (InlineFunction(f.Body, inlineContext, out CompiledStatement? inlined1, out DiagnosticAt? inlineError))
                 {
                     {
                         ImmutableArray<CompiledArgument> volatileArguments =
@@ -867,8 +885,7 @@ public partial class StatementCompiler
 
                     foreach (CompiledArgument argument in compiledArguments)
                     {
-                        StatementComplexity complexity = StatementComplexity.None;
-                        complexity |= GetStatementComplexity(argument.Value);
+                        StatementComplexity complexity = GetStatementComplexity(argument.Value);
 
                         if (complexity.HasFlag(StatementComplexity.Bruh))
                         {
@@ -893,15 +910,17 @@ public partial class StatementCompiler
                         controlFlowUsage == ControlFlowUsage.None)
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function inlined", caller));
-                        CompiledStatement? compiledStatement2 = inlined1;
-                        compiledStatement = new CompiledDummyExpression()
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
                         {
-                            Statement = compiledStatement2,
-                            Location = compiledStatement2.Location,
-                            SaveValue = false,
-                            Type = BuiltinType.Void,
-                        };
-                        return true;
+                            compiledStatement = new CompiledDummyExpression()
+                            {
+                                Statement = inlined1,
+                                Location = inlined1.Location,
+                                SaveValue = false,
+                                Type = BuiltinType.Void,
+                            };
+                            return true;
+                        }
                     }
                     else if (callee.ReturnSomething &&
                              controlFlowUsage == ControlFlowUsage.None &&
@@ -911,17 +930,21 @@ public partial class StatementCompiler
 
                         if (!CanCastImplicitly(statementWithValue.Type, callee.Type, out PossibleDiagnostic? castError))
                         { Diagnostics.Add(castError.ToError(statementWithValue)); }
-                        statementWithValue.SaveValue = caller.SaveValue;
-                        compiledStatement = statementWithValue;
-                        return true;
+
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        {
+                            statementWithValue.SaveValue = caller.SaveValue;
+                            compiledStatement = statementWithValue;
+                            return true;
+                        }
                     }
                     else
                     {
                         Debugger.Break();
+                        Diagnostics.Add(DiagnosticAt.Warning($"Unknown function inline scenario", caller));
                     }
 
                 bad:;
-                    //Debugger.Break();
                 }
                 else
                 {
@@ -932,8 +955,12 @@ public partial class StatementCompiler
                     //        .Select((value, index) => (value.Identifier.Content, compiledArguments[index]))
                     //        .ToImmutableDictionary(v => v.Content, v => v.Item2),
                     //}, out inlined1);
-                    Diagnostics.Add(DiagnosticAt.Warning($"Failed to inline \"{callee.ToReadable()}\"", caller));
+                    Diagnostics.Add(DiagnosticAt.Warning($"Failed to inline \"{callee.ToReadable()}\"", caller).WithSuberrors(inlineError));
                 }
+            }
+            else
+            {
+                Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline \"{callee.ToReadable()}\" because of an internal error", caller));
             }
         }
 
@@ -1532,13 +1559,16 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (condition is CompiledConstantValue evaluatedCondition && Settings.Optimizations.HasFlag(OptimizationSettings.TrimUnreachable))
+        if (condition is CompiledConstantValue evaluatedCondition && (Settings.Optimizations.HasFlag(OptimizationSettings.TrimUnreachable) || Settings.OptimizationDiagnostics))
         {
             if (evaluatedCondition.Value)
             {
                 if (!StatementWalker.Visit(@if.Else, StatementWalkerFilter.FrameOnlyFilter).OfType<InstructionLabelDeclaration>().Any())
                 {
-                    return CompileStatement(@if.Body, out compiledStatement);
+                    if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                    {
+                        return CompileStatement(@if.Body, out compiledStatement);
+                    }
                 }
             }
             else
@@ -1547,20 +1577,26 @@ public partial class StatementCompiler
                 {
                     if (@if.Else is not null)
                     {
-                        if (!CompileStatement(@if.Else, out compiledStatement)) return false;
-                        if (compiledStatement is CompiledElse nextElse)
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
                         {
-                            compiledStatement = nextElse.Body;
+                            if (!CompileStatement(@if.Else, out compiledStatement)) return false;
+                            if (compiledStatement is CompiledElse nextElse)
+                            {
+                                compiledStatement = nextElse.Body;
+                            }
+                            return true;
                         }
-                        return true;
                     }
                     else
                     {
-                        compiledStatement = new CompiledEmptyStatement()
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
                         {
-                            Location = @if.Location,
-                        };
-                        return true;
+                            compiledStatement = new CompiledEmptyStatement()
+                            {
+                                Location = @if.Location,
+                            };
+                            return true;
+                        }
                     }
                 }
             }
@@ -1733,6 +1769,7 @@ public partial class StatementCompiler
             {
                 argument = argumentExpression.Value;
             }
+
             if (argument is IdentifierExpression identifier)
             {
                 if (FindType(identifier.Identifier, identifier.File, out paramType, out PossibleDiagnostic? typeError))
@@ -2070,7 +2107,7 @@ public partial class StatementCompiler
                     CompiledValue leftValue = GetInitialValue(leftNType, leftBitwidth);
                     CompiledValue rightValue = GetInitialValue(rightNType, rightBitwidth);
 
-                    if (!TryComputeSimple(@operator.Operator.Content, leftValue, rightValue, out CompiledValue predictedValue, out PossibleDiagnostic? evaluateError))
+                    if (!TryComputeBinaryOperator(@operator.Operator.Content, leftValue, rightValue, out CompiledValue predictedValue, out PossibleDiagnostic? evaluateError))
                     {
                         Diagnostics.Add(evaluateError.ToError(@operator));
                         return false;
@@ -2104,13 +2141,16 @@ public partial class StatementCompiler
                 SaveValue = @operator.SaveValue,
             };
 
-            if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) &&
+            if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
                 TryCompute(compiledStatement, out CompiledValue evaluated) &&
                 evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
             {
-                compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                 Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                 SetPredictedValue(@operator, casted);
+                if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                {
+                    compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
+                }
             }
 
             return true;
@@ -2182,20 +2222,21 @@ public partial class StatementCompiler
             };
             Frames.Last.CapturesGlobalVariables = null;
 
-            if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) &&
+            if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
                 TryCompute(compiledStatement, out CompiledValue evaluated) &&
                 evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
             {
-                compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                 Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                 SetPredictedValue(@operator, casted);
-                operatorDefinition.References.Add(new Reference<Expression>(@operator, @operator.File, true));
-            }
-            else
-            {
-                operatorDefinition.References.Add(new Reference<Expression>(@operator, @operator.File));
+                if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                {
+                    operatorDefinition.References.Add(new Reference<Expression>(@operator, @operator.File, true));
+                    compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
+                    return true;
+                }
             }
 
+            operatorDefinition.References.Add(new Reference<Expression>(@operator, @operator.File));
             return true;
         }
         else if (LanguageOperators.UnaryOperators.Contains(@operator.Operator.Content))
@@ -2215,13 +2256,16 @@ public partial class StatementCompiler
                         Type = BuiltinType.U8,
                     };
 
-                    if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) &&
+                    if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
                         TryCompute(compiledStatement, out CompiledValue evaluated) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
-                        compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                         SetPredictedValue(@operator, casted);
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        {
+                            compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
+                        }
                     }
 
                     return true;
@@ -2239,13 +2283,16 @@ public partial class StatementCompiler
                         Type = left.Type,
                     };
 
-                    if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) &&
+                    if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
                         TryCompute(compiledStatement, out CompiledValue evaluated) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
-                        compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                         SetPredictedValue(@operator, casted);
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        {
+                            compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
+                        }
                     }
 
                     return true;
@@ -2263,13 +2310,16 @@ public partial class StatementCompiler
                         Type = left.Type,
                     };
 
-                    if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) &&
+                    if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
                         TryCompute(compiledStatement, out CompiledValue evaluated) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
-                        compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                         SetPredictedValue(@operator, casted);
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        {
+                            compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
+                        }
                     }
 
                     return true;
@@ -2287,13 +2337,16 @@ public partial class StatementCompiler
                         Type = left.Type,
                     };
 
-                    if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) &&
+                    if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
                         TryCompute(compiledStatement, out CompiledValue evaluated) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
-                        compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                         SetPredictedValue(@operator, casted);
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        {
+                            compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
+                        }
                     }
 
                     return true;
@@ -3547,8 +3600,8 @@ public partial class StatementCompiler
             && targetType is PointerType targetPointerType
             && targetPointerType.To is ArrayType targetArrayPointerType
             && !targetArrayPointerType.Length.HasValue
-            && FindSize(statementPointerType.To, out var size1, out _, this)
-            && FindSize(targetArrayPointerType.Of, out var size2, out _, this)
+            && FindSize(statementPointerType.To, out int size1, out _, this)
+            && FindSize(targetArrayPointerType.Of, out int size2, out _, this)
             && size1 % size2 == 0)
         {
             targetType = new PointerType(new ArrayType(targetArrayPointerType.Of, size1 / size2));
@@ -3585,20 +3638,23 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) &&
+        if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
             targetType.Is(out BuiltinType? targetBuiltinType) &&
             TryComputeSimple(typeCast.Expression, out CompiledValue prevValue) &&
             prevValue.TryCast(targetBuiltinType.RuntimeType, out CompiledValue castedValue))
         {
             Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Type cast evaluated, converting {prevValue} ({prevValue.Type}) to {castedValue} ({castedValue.Type})", typeCast));
-            compiledStatement = new CompiledConstantValue()
+            if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
             {
-                Value = castedValue,
-                Type = targetBuiltinType,
-                Location = typeCast.Location,
-                SaveValue = typeCast.SaveValue,
-            };
-            return true;
+                compiledStatement = new CompiledConstantValue()
+                {
+                    Value = castedValue,
+                    Type = targetBuiltinType,
+                    Location = typeCast.Location,
+                    SaveValue = typeCast.SaveValue,
+                };
+                return true;
+            }
         }
 
         // f32 -> i32
@@ -3632,7 +3688,8 @@ public partial class StatementCompiler
             };
             return true;
         }
-        //fixme
+
+        // fixme
         compiledStatement = new CompiledCast()
         {
             Value = prev,
@@ -3907,13 +3964,22 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (prevType.Is(out PointerType? pointerType2))
+        if (prevType.Is<PointerType>() || prevType.Is<ReferenceType>())
         {
-            prevType = pointerType2.To;
-
-            while (prevType.Is(out pointerType2))
+            while (true)
             {
-                prevType = pointerType2.To;
+                if (prevType.Is(out PointerType? pointerType))
+                {
+                    prevType = pointerType.To;
+                }
+                else if (prevType.Is(out ReferenceType? referenceType))
+                {
+                    prevType = referenceType.To;
+                }
+                else
+                {
+                    break;
+                }
             }
 
             if (!prevType.Is(out StructType? structPointerType))
@@ -4174,7 +4240,7 @@ public partial class StatementCompiler
             externalFunctionDefinition.ExternalFunctionName is not null &&
             (ExternalFunctions.Any(v => v.Name == externalFunctionDefinition.ExternalFunctionName) || function.Block is null))
         {
-            // FIXME: hmmm
+            // fixme: hmmm
             return false;
         }
 

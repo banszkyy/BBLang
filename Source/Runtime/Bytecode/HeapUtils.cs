@@ -4,10 +4,22 @@ namespace LanguageCore.Runtime;
 
 public static class HeapUtils
 {
+    static bool CheckString(ReadOnlySpan<byte> heap, int pointer)
+    {
+        if (pointer <= 0 || pointer + 1 >= heap.Length)
+        { return false; }
+        while (pointer + 1 < heap.Length)
+        {
+            if (heap.Get<char>(pointer) == '\0') return true;
+            pointer += sizeof(char);
+        }
+        return false;
+    }
+
     public static unsafe string? GetString(ReadOnlySpan<byte> heap, int pointer)
     {
-        if (pointer <= 0 || pointer >= heap.Length)
-        { return null; }
+        if (!CheckString(heap, pointer)) return null;
+
         fixed (byte* ptr = heap)
         {
             return Marshal.PtrToStringUni((nint)ptr + pointer);

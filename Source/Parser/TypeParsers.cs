@@ -71,6 +71,11 @@ public sealed partial class Parser
                 pointerOperator.AnalyzedType = TokenAnalyzedType.TypeModifier;
                 type = new TypeInstancePointer(type, pointerOperator, File);
             }
+            else if (ExpectOperator("&", out Token? referenceOperator))
+            {
+                referenceOperator.AnalyzedType = TokenAnalyzedType.TypeModifier;
+                type = new TypeInstanceReference(type, referenceOperator, File);
+            }
             else
             {
                 if ((flags & AllowedType.Any) == 0)
@@ -101,6 +106,11 @@ public sealed partial class Parser
             {
                 pointerOperator.AnalyzedType = TokenAnalyzedType.TypeModifier;
                 type = new TypeInstancePointer(type, pointerOperator, File);
+            }
+            else if (ExpectOperator("&", out Token? referenceOperator))
+            {
+                referenceOperator.AnalyzedType = TokenAnalyzedType.TypeModifier;
+                type = new TypeInstanceReference(type, referenceOperator, File);
             }
             else if (ExpectOperator("<", out Token? angleBracketStart))
             {

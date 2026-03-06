@@ -9,6 +9,7 @@ using LanguageCore.Runtime;
 
 namespace LanguageCore.IL.Generator;
 
+[RequiresUnreferencedCode("Complex")]
 public partial class CodeGeneratorForIL : CodeGenerator
 {
     readonly Dictionary<CompiledVariableDefinition, LocalBuilder> LocalBuilders = new();
@@ -593,7 +594,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                     return;
                 }
 
-                // FIXME test 70 & 71
+                // fixme test 70 & 71
                 if (false && f.UnmarshaledCallback.Target is not null)
                 {
                     int i = DelegateTargets.IndexOf(f.UnmarshaledCallback.Target);
@@ -1886,30 +1887,33 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         return true;
     }
-    bool ToType(ImmutableArray<GeneralType> types, [NotNullWhen(true)] out Type[]? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
-    {
-        result = new Type[types.Length];
-        error = null;
-
-        for (int i = 0; i < types.Length; i++)
-        {
-            if (!ToType(types[i], out result[i]!, out error)) return false;
-        }
-
-        return true;
-    }
     bool ToType(GeneralType type, [NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error) => type switch
     {
         AliasType v => ToType(v.Value, out result, out error),
         BuiltinType v => ToType(v, out result, out error),
         StructType v => ToType(v, out result, out error),
         PointerType v => ToType(v, out result, out error),
+        ReferenceType v => ToType(v, out result, out error),
         ArrayType v => ToType(v, out result, out error),
         FunctionType v => ToType(v, out result, out error),
         _ => throw new UnreachableException(),
     };
 
     bool ToType(PointerType type, [NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        error = null;
+        if (false && type.To.Is(out ArrayType? arrayType) && ToType(arrayType.Of, out Type? arrayOf, out _))
+        {
+            result = arrayOf.MakeArrayType();
+            return true;
+        }
+        else
+        {
+            result = typeof(nint);
+            return true;
+        }
+    }
+    bool ToType(ReferenceType type, [NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
         if (false && type.To.Is(out ArrayType? arrayType) && ToType(arrayType.Of, out Type? arrayOf, out _))
@@ -1950,12 +1954,12 @@ public partial class CodeGeneratorForIL : CodeGenerator
         return true;
     }
 
-    static bool IsUnmanaged(Type t)
+    static bool IsUnmanaged([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] Type t)
     {
         if (t.IsPrimitive || t.IsPointer || t.IsEnum) return true;
         if (t.IsGenericType || !t.IsValueType) return false;
         return t.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-            .All(x => IsUnmanaged(x.FieldType));
+            .All(static x => IsUnmanaged(x.FieldType));
     }
 
     readonly List<(StructType Type, Type Value)> GeneratedStructTypes = new();
@@ -1972,14 +1976,12 @@ public partial class CodeGeneratorForIL : CodeGenerator
         BuiltinType v => v.Type.ToString(),
         FunctionType => $"fnc",
         PointerType => $"ptr",
+        ReferenceType => $"ref",
         StructType v => MakeUnique(v.Struct.Identifier.Content),
         _ => throw new UnreachableException(),
     };
 
-    string GenerateTypeId(StructType type)
-    {
-        return MakeUnique(type.Struct.Identifier.Content);
-    }
+    string GenerateTypeId(StructType type) => MakeUnique(type.Struct.Identifier.Content);
 
     string MakeUnique(string id) => Utils.MakeUnique(id, v => Module.GetType(v) is null);
 
@@ -2063,7 +2065,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         return true;
     }
-    bool ToType(ArrayType type, [NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    bool ToType(ArrayType type, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)][NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (!type.Length.HasValue)
         {
@@ -2315,6 +2317,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         {
             BuiltinType => false,
             PointerType => true,
+            ReferenceType => true,
             AliasType v => ScanForPointer(v.Value),
             StructType v => v.Struct.Fields.Any(field => ScanForPointer(GeneralType.TryInsertTypeParameters(field.Type, v.TypeArguments))),
             ArrayType v => ScanForPointer(v.Of),
@@ -2348,6 +2351,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         {
             BuiltinType => false,
             PointerType v => ScanForPointer(v.To), // Top-level pointers are okay
+            ReferenceType v => ScanForPointer(v.To), // Top-level pointers are okay
             AliasType v => ScanForPointer(v.Value),
             StructType v => v.Struct.Fields.Any(field => ScanForPointer(GeneralType.TryInsertTypeParameters(field.Type, v.TypeArguments))),
             ArrayType v => ScanForPointer(v.Of),
@@ -2414,7 +2418,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         return checked((int)func());
     }
 
-    static string DebugTypeLayout(Type type, Action<StringBuilder>? additionalStuff = null)
+    static string DebugTypeLayout([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor | DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.NonPublicFields)] Type type, Action<StringBuilder>? additionalStuff = null)
     {
         object? value = Activator.CreateInstance(type);
         StringBuilder result = new();

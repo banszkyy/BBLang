@@ -47,7 +47,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             AddComment($" Clear return value:");
 
-            // TODO: wtf?
+            // todo: wtf?
             const int returnValueSize = 0;
             Pop(returnValueSize);
         }
@@ -100,6 +100,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     bool GenerateSize(GeneralType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => type switch
     {
         PointerType v => GenerateSize(v, result, out error),
+        ReferenceType v => GenerateSize(v, result, out error),
         ArrayType v => GenerateSize(v, result, out error),
         FunctionType v => GenerateSize(v, result, out error),
         StructType v => GenerateSize(v, result, out error),
@@ -108,6 +109,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
         AliasType v => GenerateSize(v, result, out error),
         _ => throw new NotImplementedException(),
     };
+    bool GenerateSize(ReferenceType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        error = null;
+        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(PointerSize, result.BitWidth()));
+        return true;
+    }
     bool GenerateSize(PointerType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
@@ -164,6 +171,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     bool GenerateSize(CompiledTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => type switch
     {
         CompiledPointerTypeExpression v => GenerateSize(v, result, out error),
+        CompiledReferenceTypeExpression v => GenerateSize(v, result, out error),
         CompiledArrayTypeExpression v => GenerateSize(v, result, out error),
         CompiledFunctionTypeExpression v => GenerateSize(v, result, out error),
         CompiledStructTypeExpression v => GenerateSize(v, result, out error),
@@ -173,6 +181,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
         _ => throw new NotImplementedException(),
     };
     bool GenerateSize(CompiledPointerTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        error = null;
+        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(PointerSize, result.BitWidth()));
+        return true;
+    }
+    bool GenerateSize(CompiledReferenceTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
         Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(PointerSize, result.BitWidth()));
@@ -290,7 +304,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                         },
                         Location = value.Location,
                         SaveValue = true,
-                        Type = BuiltinType.Any, // fixme
+                        Type = value.Type,
                     },
                     IsCompoundAssignment = false,
                     Location = value.Location,
@@ -1212,16 +1226,26 @@ public partial class CodeGeneratorForMain : CodeGenerator
         GenerateCodeForStatement(pointer.Address);
 
         GeneralType addressType = pointer.Address.Type;
-        if (!addressType.Is(out PointerType? pointerType))
+        if (addressType.Is(out PointerType? pointerType))
+        {
+            using (RegisterUsage.Auto reg = Registers.GetFree(FindBitWidth(pointerType, pointer)))
+            {
+                PopTo(reg.Register);
+                PushFrom(new AddressRegisterPointer(reg.Register), FindSize(pointerType.To, pointer.Address));
+            }
+        }
+        else if (addressType.Is(out ReferenceType? referenceType))
+        {
+            using (RegisterUsage.Auto reg = Registers.GetFree(FindBitWidth(referenceType, pointer)))
+            {
+                PopTo(reg.Register);
+                PushFrom(new AddressRegisterPointer(reg.Register), FindSize(referenceType.To, pointer.Address));
+            }
+        }
+        else
         {
             Diagnostics.Add(DiagnosticAt.Error($"This isn't a pointer", pointer.Address));
             return;
-        }
-
-        using (RegisterUsage.Auto reg = Registers.GetFree(FindBitWidth(pointerType, pointer)))
-        {
-            PopTo(reg.Register);
-            PushFrom(new AddressRegisterPointer(reg.Register), FindSize(pointerType.To, pointer.Address));
         }
     }
     void GenerateCodeForStatement(CompiledWhileLoop whileLoop)
@@ -1236,7 +1260,16 @@ public partial class CodeGeneratorForMain : CodeGenerator
         InstructionLabel conditionOffset = Code.MarkLabel();
 
         InstructionLabel endLabel = Code.DefineLabel();
-        GenerateCodeForCondition(whileLoop.Condition, endLabel);
+        if (Settings.Optimizations.HasFlag(GeneratorOptimizationSettings.ConditionTrimming)
+            && whileLoop.Condition is CompiledConstantValue constantCondition
+            && constantCondition.Value == true)
+        {
+            _statistics.Optimizations++;
+        }
+        else
+        {
+            GenerateCodeForCondition(whileLoop.Condition, endLabel);
+        }
 
         BreakInstructions.Push(new ControlFlowFrame(endLabel));
 
@@ -1467,7 +1500,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return;
         }
 
-        // TODO: what the hell is that
+        // todo: what the hell is that
 
         CompiledExpression? dereference = NeedDerefernce(field);
 
@@ -1637,6 +1670,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         GeneralType statementType = typeCast.Value.Type;
         GeneralType targetType = typeCast.Type;
+
+        if (statementType.SameAs(targetType))
+        {
+            GenerateCodeForStatement(typeCast.Value);
+            return;
+        }
 
         // f32 -> i32
         if (statementType.SameAs(BuiltinType.F32) &&

@@ -1041,7 +1041,6 @@ public partial class StatementCompiler
                 CompiledConstructors.Add(compiledConstructor);
             }
 
-            // TODO: this
             foreach (FunctionDefinition @operator in compiledStruct.Operators)
             {
                 if (!CompileOperatorDefinition(@operator, null, out CompiledOperatorDefinition? compiled))

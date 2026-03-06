@@ -322,6 +322,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     bool GenerateSize(CompiledTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => type switch
     {
         CompiledPointerTypeExpression v => GenerateSize(v, result, out error),
+        CompiledReferenceTypeExpression v => GenerateSize(v, result, out error),
         CompiledArrayTypeExpression v => GenerateSize(v, result, out error),
         CompiledFunctionTypeExpression v => GenerateSize(v, result, out error),
         CompiledStructTypeExpression v => GenerateSize(v, result, out error),
@@ -331,6 +332,12 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         _ => throw new NotImplementedException(),
     };
     bool GenerateSize(CompiledPointerTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        error = null;
+        Code.AddValue(result, 1);
+        return true;
+    }
+    bool GenerateSize(CompiledReferenceTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
         Code.AddValue(result, 1);
@@ -894,7 +901,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
             GeneralType valueType = value.Type;
 
-            // TODO: this
+            // todo: this
             // AssignTypeCheck(pointerType.To, valueType, value);
 
             int valueAddress = Stack.NextAddress;
@@ -1657,7 +1664,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 expectedType.Is(out PointerType? pointerType) &&
                 pointerType.To.SameAs(BasicType.U16))
             {
-                // TODO: not true but false
+                // todo: not true but false
                 GenerateCodeForLiteralString(statement);
             }
             else
@@ -2590,7 +2597,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     bool IsFunctionInlineable(FunctionThingDefinition function, IEnumerable<CompiledArgument> parameters)
     {
         if (function.Block is null ||
-            !function.IsInlineable)
+            !function.IsInline)
         { return false; }
 
         foreach (CompiledArgument parameter in parameters)
@@ -3510,7 +3517,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     void ContinueControlFlowStatements(Stack<ControlFlowBlock> controlFlowBlocks, string kind)
     {
         if (controlFlowBlocks.Count == 0) return;
-        // TODO: think about it
+        // todo: think about it
         if (!controlFlowBlocks.Last.FlagAddress.HasValue) return;
 
         using (Code.Block(this, $"Continue \"{kind}\" statements"))

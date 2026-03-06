@@ -9,6 +9,11 @@ public abstract class Expression : Statement
     /// </summary>
     public bool SaveValue { get; internal set; } = true;
     /// <summary>
+    /// Set by the <see cref="Parser"/>
+    /// </summary>
+    public TokenPair? SurroundingBrackets { get; internal set; }
+
+    /// <summary>
     /// Set by the compiler
     /// </summary>
     public GeneralType? CompiledType { get; internal set; }
@@ -16,10 +21,6 @@ public abstract class Expression : Statement
     /// Set by the compiler
     /// </summary>
     public CompiledValue? PredictedValue { get; internal set; }
-    /// <summary>
-    /// Set by the compiler
-    /// </summary>
-    public TokenPair? SurroundingBrackets { get; internal set; }
 
     protected Expression(Uri file) : base(file)
     {

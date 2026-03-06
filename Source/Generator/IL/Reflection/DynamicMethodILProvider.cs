@@ -5,6 +5,7 @@ namespace LanguageCore.IL.Reflection;
 
 public static class DynamicMethodILProvider
 {
+    [RequiresUnreferencedCode("Complex")]
     public static byte[]? GetByteArray(DynamicMethod method)
     {
         object? resolver = typeof(DynamicMethod).GetField("_resolver", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(method);
@@ -15,6 +16,7 @@ public static class DynamicMethodILProvider
         return resolver.GetType().GetField("m_code", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(resolver) as byte[] ?? Array.Empty<byte>();
     }
 
+    [RequiresUnreferencedCode("Complex")]
     public static byte[]? GetByteArray(ILGenerator ilgen)
     {
         Type? type = ilgen.GetType();

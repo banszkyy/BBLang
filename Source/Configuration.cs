@@ -1,7 +1,29 @@
+using System.IO;
 using LanguageCore;
 using LanguageCore.Runtime;
 
 namespace LanguageCore.Workspaces;
+
+public static class ConfigurationManager
+{
+    public static IReadOnlyList<(Uri Uri, string Content)> Search(Uri currentDocument)
+    {
+        Uri currentUri = currentDocument;
+        List<(Uri Uri, string Content)> result = new();
+        EndlessCheck endlessCheck = new(50);
+        while (currentUri.LocalPath != "/")
+        {
+            if (endlessCheck.Step()) break;
+            Uri uri = new(currentUri, $"./{Configuration.FileName}");
+            if (File.Exists(uri.LocalPath))
+            {
+                result.Add((uri, File.ReadAllText(uri.LocalPath)));
+            }
+            currentUri = new Uri(currentUri, "..");
+        }
+        return result;
+    }
+}
 
 public sealed class Configuration
 {
@@ -20,16 +42,16 @@ public sealed class Configuration
         ExternalConstants = ImmutableArray<ExternalConstant>.Empty,
     };
 
-    public delegate void DeclarationParser(ReadOnlySpan<char> key, ReadOnlySpan<char> value, Location location);
-
-    public class Parser
+    class Parser
     {
         public readonly DiagnosticsCollection diagnostics;
 
         public readonly List<string> extraDirectories = new();
         public readonly List<string> additionalImports = new();
+        public readonly List<string> includes = new();
         public readonly List<ExternalFunctionStub> externalFunctions = new();
         public readonly List<ExternalConstant> externalConstants = new();
+        public readonly HashSet<Uri> alreadyParsed = new();
 
         public Parser(DiagnosticsCollection diagnostics)
         {
@@ -42,9 +64,13 @@ public sealed class Configuration
             {
                 extraDirectories.Add(value.ToString());
             }
-            else if (key.Equals("include", StringComparison.InvariantCultureIgnoreCase))
+            else if (key.Equals("import", StringComparison.InvariantCultureIgnoreCase))
             {
                 additionalImports.Add(value.ToString());
+            }
+            else if (key.Equals("include", StringComparison.InvariantCultureIgnoreCase))
+            {
+                includes.Add(value.ToString());
             }
             else if (key.Equals("externalfunc", StringComparison.InvariantCultureIgnoreCase))
             {
@@ -84,6 +110,7 @@ public sealed class Configuration
                         }
                     }
                 }
+
                 if (name is not null)
                 {
                     if (!externalFunctions.Any(v => v.Name == name))
@@ -123,8 +150,10 @@ public sealed class Configuration
         }
     }
 
-    public static void Parse(Uri uri, string content, DeclarationParser parser, DiagnosticsCollection diagnostics)
+    static void Parse(Uri uri, string content, Parser parser, DiagnosticsCollection diagnostics)
     {
+        if (!parser.alreadyParsed.Add(uri)) return;
+
         string[] values = content.Split('\n');
         for (int line = 0; line < values.Length; line++)
         {
@@ -146,11 +175,22 @@ public sealed class Configuration
             ReadOnlySpan<char> key = decl[..i].Trim();
             ReadOnlySpan<char> value = decl[(i + 1)..].Trim();
 
-            parser.Invoke(key, value, location);
+            parser.Parse(key, value, location);
+        }
+
+        string[] includes = parser.includes.ToArray();
+        parser.includes.Clear();
+        foreach (string include in includes)
+        {
+            Uri newUri = new(uri, include);
+            if (newUri.Scheme == "file" && File.Exists(newUri.LocalPath))
+            {
+                Parse(newUri, File.ReadAllText(newUri.LocalPath), parser, diagnostics);
+            }
         }
     }
 
-    public static void Parse(IEnumerable<(Uri Uri, string Content)> configurations, DeclarationParser parser, DiagnosticsCollection diagnostics)
+    static void Parse(IEnumerable<(Uri Uri, string Content)> configurations, Parser parser, DiagnosticsCollection diagnostics)
     {
         foreach ((Uri uri, string content) in configurations)
         {
@@ -161,14 +201,14 @@ public sealed class Configuration
     public static Configuration Parse(IEnumerable<(Uri Uri, string Content)> configurations, DiagnosticsCollection diagnostics)
     {
         Parser parser = new(diagnostics);
-        Parse(configurations, parser.Parse, diagnostics);
+        Parse(configurations, parser, diagnostics);
         return parser.Compile();
     }
 
     public static Configuration Parse(Uri uri, string content, DiagnosticsCollection diagnostics)
     {
         Parser parser = new(diagnostics);
-        Parse(uri, content, parser.Parse, diagnostics);
+        Parse(uri, content, parser, diagnostics);
         return parser.Compile();
     }
 }

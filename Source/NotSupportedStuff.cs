@@ -4,6 +4,19 @@ global using MemberNotNullWhenAttribute = System.Runtime.CompilerServices.Member
 [assembly: SuppressMessage("Design", "CS8604")]
 [assembly: SuppressMessage("Design", "CS8632")]
 
+#pragma warning disable IDE0060 // Remove unused parameter
+
+namespace System.Diagnostics.CodeAnalysis
+{
+    [AttributeUsage(AttributeTargets.Method | AttributeTargets.Constructor | AttributeTargets.Class, Inherited = false)]
+    public sealed class RequiresUnreferencedCodeAttribute : Attribute
+    {
+        public RequiresUnreferencedCodeAttribute(string message) { }
+        public bool ExcludeStatics { get; set; }
+        public string? Url { get; set; }
+    }
+}
+
 namespace System.Runtime.InteropServices
 {
     public static class CollectionsMarshal

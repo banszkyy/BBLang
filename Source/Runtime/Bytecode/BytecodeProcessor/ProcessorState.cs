@@ -190,19 +190,28 @@ public ref partial struct ProcessorState
         }
     }
 
+    public static string? GetSimpleRuntimeErrorMessage(Signal signal, int crash) => signal switch
+    {
+        Signal.PointerOutOfRange => $"Pointer out of range ({crash})",
+        Signal.StackOverflow => $"Stack overflow",
+        Signal.UndefinedExternalFunction => $"Undefined external function {crash}",
+        Signal.UserCrash => $"Crashed by user code",
+        _ => null,
+    };
+
     public readonly RuntimeException? GetRuntimeException(CompiledDebugInformation debugInformation = default) => Signal switch
     {
-        Signal.PointerOutOfRange => new RuntimeException($"Pointer out of range ({Crash})")
+        Signal.PointerOutOfRange => new RuntimeException(GetSimpleRuntimeErrorMessage(Signal, Crash)!)
         {
             Context = GetContext(),
             DebugInformation = debugInformation,
         },
-        Signal.StackOverflow => new RuntimeException($"Stack overflow")
+        Signal.StackOverflow => new RuntimeException(GetSimpleRuntimeErrorMessage(Signal, Crash)!)
         {
             Context = GetContext(),
             DebugInformation = debugInformation,
         },
-        Signal.UndefinedExternalFunction => new RuntimeException($"Undefined external function {Crash}")
+        Signal.UndefinedExternalFunction => new RuntimeException(GetSimpleRuntimeErrorMessage(Signal, Crash)!)
         {
             Context = GetContext(),
             DebugInformation = debugInformation,

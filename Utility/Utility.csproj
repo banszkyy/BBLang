@@ -1,18 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <AssemblyName>bblang</AssemblyName>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <ApplicationIcon>icon.ico</ApplicationIcon>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-    <LangVersion>preview</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Content Include="icon.ico" />
-  </ItemGroup>
+  <PropertyGroup>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <AnalysisLevel>preview-all</AnalysisLevel>
+    <WarningLevel>9999</WarningLevel>
+  </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Debugger/Debugger.csproj" />
@@ -21,6 +25,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommandLineParser" Version="2.9.1" />
+    <PackageReference Include="StreamJsonRpc" Version="2.24.84" />
   </ItemGroup>
 
 </Project>

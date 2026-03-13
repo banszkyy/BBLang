@@ -1,20 +1,38 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <AssemblyName>bblang_lib</AssemblyName>
     <OutputType>Library</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net11.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <LangVersion>11</LangVersion>
-    <InvariantGlobalization>true</InvariantGlobalization>
     <BaseOutputPath>../bin/</BaseOutputPath>
     <IntermediateOutputPath Condition=" '$(PlatformName)' == 'AnyCPU' ">../obj/$(Configuration)/</IntermediateOutputPath>
     <IntermediateOutputPath Condition=" '$(PlatformName)' != 'AnyCPU' ">../obj/$(PlatformName)/$(Configuration)/</IntermediateOutputPath>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <IsTrimmable>false</IsTrimmable>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(ForLanguageServer)' == 'true'">
-    <DefineConstants>$(DefineConstants);LANGUAGE_SERVER</DefineConstants>
+    <IsTrimmable>true</IsTrimmable>
+    <VerifyReferenceTrimCompatibility>true</VerifyReferenceTrimCompatibility>
+    <PublishTrimmed>true</PublishTrimmed>
+    <DefineConstants>$(DefineConstants);TRIMMED;LANGUAGE_SERVER</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(ForDebugHost)' == 'true'">
+    <IsTrimmable>true</IsTrimmable>
+    <VerifyReferenceTrimCompatibility>true</VerifyReferenceTrimCompatibility>
+    <PublishTrimmed>true</PublishTrimmed>
+    <DefineConstants>$(DefineConstants);TRIMMED;DEBUG_HOST</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(ForTesting)' == 'true'">

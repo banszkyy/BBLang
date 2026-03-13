@@ -8,9 +8,9 @@ namespace LanguageCore;
 public static class Program
 {
     const string _thisFileName = nameof(Program) + ".cs";
-    static string? _projectPath;
-    public static string ProjectPath => _projectPath ??= GetProjectPath();
+    public static string ProjectPath => field ??= GetProjectPath();
 
+    [SuppressMessage("Usage", "CA2201")]
     static string GetProjectPath([CallerFilePath] string? callerFilePath = null)
     {
         if (callerFilePath is null || !callerFilePath.EndsWith(_thisFileName, StringComparison.Ordinal)) throw new Exception($"Failed to get the project path");

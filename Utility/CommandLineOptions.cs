@@ -9,6 +9,16 @@ public class CommandLineOptions
         HelpText = "The input file to compile. If not specified, the \"interactive\" will be launched instead.")]
     public string? Source { get; set; }
 
+    [Option("ipc",
+        Required = false,
+        Hidden = true)]
+    public bool Ipc { get; set; }
+
+    [Option("uri",
+        Required = false,
+        Hidden = true)]
+    public string? Uri { get; set; }
+
     [Option("verbose",
         Required = false,
         HelpText = "Prints some information about the compilation process")]

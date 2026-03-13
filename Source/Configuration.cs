@@ -58,6 +58,7 @@ public sealed class Configuration
             this.diagnostics = diagnostics;
         }
 
+        [SuppressMessage("Style", "IDE0071", Justification = "Unity")]
         public void Parse(ReadOnlySpan<char> key, ReadOnlySpan<char> value, Location location)
         {
             if (key.Equals("searchin", StringComparison.InvariantCultureIgnoreCase))
@@ -77,17 +78,22 @@ public sealed class Configuration
                 string? name = null;
                 int returnValueSize = 0;
                 int parametersSize = 0;
-                int i = -1;
-                foreach (Range argR in value.Split(' '))
+                int argIndex = -1;
+                int i = 0;
+
+                while (value[i] == ' ') i++;
+
+                while (i < value.Length)
                 {
-                    i++;
-                    ReadOnlySpan<char> arg = value[argR].Trim();
-                    if (arg.IsEmpty) continue;
-                    if (i == 0)
+                    int j = value[i..].IndexOf(' ') + i;
+                    ReadOnlySpan<char> arg = value[..j].Trim();
+                    argIndex++;
+
+                    if (argIndex == 0)
                     {
                         name = arg.ToString();
                     }
-                    else if (i == 1)
+                    else if (argIndex == 1)
                     {
                         if (int.TryParse(arg, out int v))
                         {
@@ -109,6 +115,9 @@ public sealed class Configuration
                             diagnostics.Add(DiagnosticAt.Error($"Invalid integer `{arg.ToString()}`", location));
                         }
                     }
+
+                    i = j;
+                    while (value[i] == ' ') i++;
                 }
 
                 if (name is not null)

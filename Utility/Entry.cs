@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using CommandLine;
 using LanguageCore.BBLang.Generator;
 using LanguageCore.Brainfuck;
@@ -8,6 +9,8 @@ using LanguageCore.Compiler;
 using LanguageCore.Native.Generator;
 using LanguageCore.Runtime;
 using LanguageCore.TUI;
+using LanguageCore.Workspaces;
+using StreamJsonRpc;
 
 namespace LanguageCore;
 
@@ -15,8 +18,9 @@ public static class Entry
 {
     public static int Run(params string[] arguments)
     {
-        CommandLine.Parser parser = new(with => with.HelpWriter = null);
-        ParserResult<CommandLineOptions> parserResult = parser.ParseArguments<CommandLineOptions>(arguments);
+        CommandLine.Parser argsParser = new(static with => with.HelpWriter = null);
+        ParserResult<CommandLineOptions> parserResult = argsParser.ParseArguments<CommandLineOptions>(arguments);
+        argsParser.Dispose();
 
         switch (parserResult.Tag)
         {
@@ -49,8 +53,132 @@ public static class Entry
         }
     }
 
+    static int RunIpc(CommandLineOptions arguments)
+    {
+        if (arguments.Source is null) return 1;
+
+#pragma warning disable CA2000 // Dispose objects before losing scope
+        using JsonRpc rpc = JsonRpc.Attach(
+            Console.OpenStandardOutput(),
+            Console.OpenStandardInput()
+        );
+#pragma warning restore CA2000 // Dispose objects before losing scope
+        JsonRpcLogger log = new(rpc);
+
+        List<IExternalFunction> externalFunctions = new();
+        using JsonRpcIO io = new(rpc);
+        io.Register(externalFunctions);
+        BytecodeProcessor.AddStaticExternalFunctions(externalFunctions);
+
+        DiagnosticsCollection diagnostics = new();
+
+        Configuration config = Configuration.Parse(ConfigurationManager.Search(arguments.Uri is null ? new Uri(Environment.CurrentDirectory, UriKind.Absolute) : new Uri(arguments.Uri, UriKind.Absolute)), diagnostics);
+        diagnostics.WriteErrorsTo(Console.Error);
+        diagnostics.Clear();
+
+        List<ISourceProvider> sourceProviders = new();
+        string entryFile;
+        const string DataSourcePrefix = "data:";
+        if (arguments.Source.StartsWith(DataSourcePrefix))
+        {
+            entryFile = "memory:///script";
+            sourceProviders.Add(new MemorySourceProvider(new Dictionary<string, string>()
+            {
+                { "/script", Encoding.UTF8.GetString(System.Buffers.Text.Base64.DecodeFromChars(arguments.Source.AsSpan(DataSourcePrefix.Length))) }
+            }));
+        }
+        else
+        {
+            entryFile = arguments.Source;
+        }
+        sourceProviders.Add(new FileSourceProvider()
+        {
+            ExtraDirectories = config.ExtraDirectories,
+        });
+
+        CompilerSettings compilerSettings = new(CodeGeneratorForMain.DefaultCompilerSettings)
+        {
+            ExternalFunctions = externalFunctions.ToImmutableArray(),
+            ExternalConstants = [
+                new ExternalConstant("heap_size", BytecodeInterpreterSettings.Default.HeapSize),
+                ..config.ExternalConstants,
+            ],
+            AdditionalImports = config.AdditionalImports,
+            PreprocessorVariables = PreprocessorVariables.Normal,
+            SourceProviders = sourceProviders.ToImmutableArray(),
+        };
+        MainGeneratorSettings mainGeneratorSettings = new(MainGeneratorSettings.Default)
+        {
+            Optimizations = GeneratorOptimizationSettings.All,
+            ILGeneratorSettings = new IL.Generator.ILGeneratorSettings()
+            {
+                AllowCrash = true,
+                // AllowHeap = true,
+                AllowPointers = true,
+            },
+        };
+        BytecodeInterpreterSettings bytecodeInterpreterSettings = new(BytecodeInterpreterSettings.Default)
+        {
+
+        };
+
+        BBLangGeneratorResult generatedCode;
+        try
+        {
+            CompilerResult compiled = StatementCompiler.CompileFile(entryFile, compilerSettings, diagnostics);
+            generatedCode = CodeGeneratorForMain.Generate(compiled, mainGeneratorSettings, null, diagnostics);
+
+            diagnostics.WriteErrorsTo(Console.Error);
+            if (diagnostics.HasErrors) return 1;
+        }
+        catch (LanguageExceptionAt ex)
+        {
+            diagnostics.WriteErrorsTo(Console.Error);
+            Console.Error.WriteLine(ex);
+            return 1;
+        }
+        catch (Exception ex)
+        {
+            diagnostics.WriteErrorsTo(Console.Error);
+            Console.Error.WriteLine(ex);
+            return 1;
+        }
+
+        BytecodeProcessor interpreter = new(
+            bytecodeInterpreterSettings,
+            generatedCode.Code,
+            null,
+            generatedCode.DebugInfo,
+            externalFunctions,
+            generatedCode.GeneratedUnmanagedFunctions
+        );
+
+        try
+        {
+            interpreter.RunUntilCompletion();
+        }
+        catch (RuntimeException error)
+        {
+            Console.Error.WriteLine(error.ToString());
+            return 1;
+        }
+        finally
+        {
+            io.Flush();
+        }
+
+        rpc.NotifyAsync("result", interpreter.Memory.AsSpan().Get<int>(interpreter.Registers.StackPointer));
+
+        return 0;
+    }
+
     public static int Run(CommandLineOptions arguments)
     {
+        if (arguments.Ipc)
+        {
+            return RunIpc(arguments);
+        }
+
         ConsoleLogger logger = new()
         {
             LogDebugs = arguments.Verbose,
@@ -65,7 +193,7 @@ public static class Entry
             return 0;
         }
 
-        ImmutableArray<string> additionalImports = ImmutableArray.Create<string>(
+        ImmutableArray<string> additionalImports = ImmutableArray.Create(
             "Primitives"
         );
 

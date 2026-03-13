@@ -10,7 +10,7 @@ dotnet_style_namespace_match_folder = false
 dotnet_style_require_accessibility_modifiers = omit_if_default
 
 # IDE0022: Use expression body for method
-dotnet_diagnostic.IDE0022.severity = silent
+dotnet_diagnostic.IDE0022.severity = suggestion
 
 # IDE0046: Convert to conditional expression
 dotnet_diagnostic.IDE0046.severity = silent
@@ -95,3 +95,18 @@ dotnet_diagnostic.IDE0001.severity = silent
 
 # IDE0220: Add explicit cast
 dotnet_diagnostic.IDE0220.severity = error
+
+# CA1031: Do not catch general exception types
+dotnet_diagnostic.CA1031.severity = silent
+
+# CA1716: Identifiers should not match keywords
+dotnet_diagnostic.CA1716.severity = silent
+
+# CA1711: Identifiers should not have incorrect suffix
+dotnet_diagnostic.CA1711.severity = silent
+
+# IDE0051: Remove unused private members
+dotnet_diagnostic.IDE0051.severity = suggestion
+
+# IDE0060: Remove unused parameter
+dotnet_diagnostic.IDE0060.severity = suggestion

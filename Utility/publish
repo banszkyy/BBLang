@@ -1,0 +1,17 @@
+#!/bin/sh
+
+set -e
+
+rm -rf ./out
+
+dotnet publish --configuration Release --output ./out/linux-x64 -r linux-x64 -p:DebugType=None
+cd ./out/linux-x64
+zip ../linux-x64.zip bblang
+cd ../..
+rm -rf ./out/linux-x64
+
+dotnet publish --configuration Release --output ./out/win-x64 -r win-x64 -p:DebugType=None
+cd ./out/win-x64
+zip ../win-x64.zip bblang.exe
+cd ../..
+rm -rf ./out/win-x64

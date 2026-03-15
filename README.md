@@ -1,3 +1,5 @@
+![](https://raw.githubusercontent.com/BBpezsgo/BBLang/assets/banner.png)
+
 # BBLang
 
 [![.Net 11.0](https://img.shields.io/badge/.NET-11.0-5C2D91?style=flat-square)](#)

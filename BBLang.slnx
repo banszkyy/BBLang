@@ -6,6 +6,7 @@
   <Project Path="Tests/Tests.csproj" />
   <Project Path="Utility/Utility.csproj" />
   <Folder Name="/Source/" />
+  <Project Path="../../Logger/Logger.csproj" />
   <Project Path="../DebugServer/DebugServer.csproj" />
   <Project Path="../LanguageServer/LanguageServer.csproj" />
   <Project Path="../SpeedTests/Benchmarks.csproj" />

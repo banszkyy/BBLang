@@ -1,9 +1,8 @@
-.vs
 bin
 obj
-*.user
+out
+
 *.xcf
-*.sln
 *.meta
 
 /Tests/Program.cs

@@ -8,10 +8,37 @@
 
 ## About
 
-An interpreted language for mostly scripting purposes or simulations. I use this project in my game to implement in-game programming. It can also generate Brainfuck code, because why not, and can also optimize functions into MSIL, or compile the whole script into a `DynamicMethod`.
+An **interpreted, statically-typed embedded** language for mostly scripting purposes or simulations. I use this project in my game to implement in-game programming. It can also generate Brainfuck code, because why not, and can also optimize functions into MSIL, or compile the whole script into a `DynamicMethod`.
 
 > [!NOTE]
 > Currently it doesn't support serializing, so you can only execute the script. However, you can save the generated Brainfuck code.
+
+## Hello World
+
+```cs
+using "https://raw.githubusercontent.com/BBpezsgo/BBLang/master/StandardLibrary/System.Console.bbc";
+
+printline("hello, world");
+```
+
+Without dependencies:
+
+```cs
+[External("stdout")]
+void print(char message);
+
+void printline(temp string message)
+{
+    for (int i = 0; message[i]; i++)
+    {
+        print(message[i]);
+    }
+    print('\r');
+    print('\n');
+}
+
+printline("hello, world");
+```
 
 ## Command Line Arguments
 
@@ -22,12 +49,6 @@ An interpreted language for mostly scripting purposes or simulations. I use this
 - `--verbose` Prints some information about the compilation process
 
 - `--format format` Specifies which generator to use. Supported formats are `bytecode`, `brainfuck` and `assembly`.
-
-> [!WARNING]
-> Brainfuck sometimes aint working.
-
-> [!WARNING]
-> Assembly 100% not working.
 
 - `--debug` Launches the debugger screen (only avaliable on Windows) [More info](https://github.com/BBpezsgo/BBLang/wiki/Debugger)
 
@@ -56,33 +77,6 @@ An interpreted language for mostly scripting purposes or simulations. I use this
 > Because of how heap represented, its size can't be larger than 126.
 
 - `--no-nullcheck` Disables null check generation when dereferencing a pointer
-
-## Hello World
-
-```cs
-using "https://raw.githubusercontent.com/BBpezsgo/BBLang/master/StandardLibrary/System.Console.bbc";
-
-printline("hello, world");
-```
-
-Without dependencies:
-
-```cs
-[External("stdout")]
-void print(char message);
-
-void printline(temp string message)
-{
-    for (int i = 0; message[i]; i++)
-    {
-        print(message[i]);
-    }
-    print('\r');
-    print('\n');
-}
-
-printline("hello, world");
-```
 
 ## Project Structure
 

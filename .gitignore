@@ -6,15 +6,9 @@ out
 *.meta
 
 /Tests/Program.cs
-/Diagsessions
-/TestFiles/Old
 /Utility/DevelopmentEntry.cs
-/TestFiles/run.bat
-/TestFiles/test.bbc
 /Source/ASM/i8086/Builds/build.bat
 /Source/ASM/i8086/Builds/run.bat
 /Tests/TestResults
-/get-dump.sh
 /Unity/Runtime
-/bindebug
 /Experiments

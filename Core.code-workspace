@@ -4,7 +4,16 @@
 			"path": "."
 		},
 		{
+			"path": "Utility"
+		},
+		{
 			"path": "Tests"
+		},
+		{
+			"path": "Debugger"
+		},
+		{
+			"path": "Analysis"
 		},
 		{
 			"path": "../LanguageServer"
@@ -29,6 +38,10 @@
 		"csharp.debug.console": "externalTerminal",
 		"files.exclude": {
 			"Tests": true,
+			"Debugger": true,
+			"Analysis": true,
+			"Unity": true,
+			"Utility": true,
 			"**/*.meta": true,
 		},
 		"dotnet.server.startTimeout": 60000,
@@ -68,7 +81,7 @@
 				"type": "coreclr",
 				"request": "launch",
 				"preLaunchTask": "build",
-				"program": "${workspaceFolder:Core}/Utility/bin/Debug/net9.0/Utility",
+				"program": "${workspaceFolder:Core}/Utility/bin/Debug/net11.0/linux-x64/bblang",
 				"args": [],
 				"cwd": "${workspaceFolder:Core}",
 				"stopAtEntry": false,

@@ -9,7 +9,8 @@ public interface ICompiledFunctionDefinition :
     IReadable,
     IMsilCompatible,
     ILocated,
-    ICompiledDefinition<FunctionThingDefinition>
+    ICompiledDefinition<FunctionThingDefinition>,
+    IHaveAttributes
 {
     bool ReturnSomething { get; }
     ImmutableArray<CompiledParameter> Parameters { get; }

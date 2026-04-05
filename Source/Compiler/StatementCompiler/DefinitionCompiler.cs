@@ -156,7 +156,7 @@ public partial class StatementCompiler
                 default:
                 {
                     if (!AttributeConstants.List.Contains(attribute.Identifier.Content)
-                        && !CompileUserAttribute(function.Definition, attribute))
+                        && !CompileUserAttribute(function, attribute))
                     {
                         Diagnostics.Add(DiagnosticAt.Warning($"Attribute `{attribute.Identifier}` not found", attribute.Identifier, attribute.File));
                     }
@@ -799,14 +799,14 @@ public partial class StatementCompiler
         {
             foreach (AttributeUsage attribute in @struct.Definition.Attributes)
             {
-                CompileUserAttribute(@struct.Definition, attribute);
+                CompileUserAttribute(@struct, attribute);
             }
 
             foreach (CompiledField field in @struct.Fields)
             {
                 foreach (AttributeUsage attribute in field.Definition.Attributes)
                 {
-                    CompileUserAttribute(field.Definition, attribute);
+                    CompileUserAttribute(field, attribute);
                 }
             }
         }

@@ -26,6 +26,8 @@ public class CompiledConstructorDefinition :
     string? IExternalFunctionDefinition.ExternalFunctionName => null;
     public Uri File => Definition.File;
     public Location Location => Definition.Location;
+    CanUseOn IHaveAttributes.AttributeUsageKind => (Definition as IHaveAttributes).AttributeUsageKind;
+    public ImmutableArray<AttributeUsage> Attributes => Definition.Attributes;
 
     public CompiledConstructorDefinition(GeneralType type, ImmutableArray<CompiledParameter> parameters, CompiledStruct context, ConstructorDefinition functionDefinition)
     {

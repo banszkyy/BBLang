@@ -6,7 +6,8 @@ public class CompiledStruct :
     IReferenceable<TypeInstance>,
     IIdentifiable<string>,
     IInFile,
-    ILocated
+    ILocated,
+    IHaveAttributes
 {
     public StructDefinition Definition { get; }
     public ImmutableArray<CompiledField> Fields { get; private set; }
@@ -15,6 +16,8 @@ public class CompiledStruct :
     public string Identifier => Definition.Identifier.Content;
     public Uri File => Definition.File;
     public Location Location => Definition.Location;
+    CanUseOn IHaveAttributes.AttributeUsageKind => (Definition as IHaveAttributes).AttributeUsageKind;
+    public ImmutableArray<AttributeUsage> Attributes => Definition.Attributes;
 
     public CompiledStruct(ImmutableArray<CompiledField> fields, StructDefinition definition)
     {

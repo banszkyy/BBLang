@@ -28,6 +28,8 @@ public class CompiledFunctionDefinition :
     public string? ExternalFunctionName => Definition.ExternalFunctionName;
     public string? ExposedFunctionName => Definition.ExposedFunctionName;
     public string Identifier => Definition.Identifier.Content;
+    CanUseOn IHaveAttributes.AttributeUsageKind => (Definition as IHaveAttributes).AttributeUsageKind;
+    public ImmutableArray<AttributeUsage> Attributes => Definition.Attributes;
 
     public CompiledFunctionDefinition(GeneralType type, ImmutableArray<CompiledParameter> parameters, CompiledStruct? context, FunctionDefinition functionDefinition)
     {

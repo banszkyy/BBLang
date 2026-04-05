@@ -24,6 +24,8 @@ public class CompiledGeneralFunctionDefinition :
     public Uri File => Definition.File;
     public Location Location => Definition.Location;
     public string Identifier => Definition.Identifier.Content;
+    CanUseOn IHaveAttributes.AttributeUsageKind => (Definition as IHaveAttributes).AttributeUsageKind;
+    public ImmutableArray<AttributeUsage> Attributes => Definition.Attributes;
 
     public CompiledGeneralFunctionDefinition(GeneralType type, ImmutableArray<CompiledParameter> parameters, CompiledStruct context, GeneralFunctionDefinition functionDefinition)
     {

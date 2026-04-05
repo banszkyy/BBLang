@@ -20,6 +20,8 @@ public class CompiledLambda : CompiledExpression,
 
     public FunctionThingDefinition Definition => throw new InvalidOperationException(); // FIXME
     public bool ReturnSomething => !Type.SameAs(BasicType.Void);
+    CanUseOn IHaveAttributes.AttributeUsageKind => (Definition as IHaveAttributes).AttributeUsageKind;
+    public ImmutableArray<AttributeUsage> Attributes => Definition.Attributes;
 
     public CompiledLambda(GeneralType type, ImmutableArray<CompiledParameter> parameters, CompiledBlock block, ParameterDefinitionCollection parameterDefinitions, ImmutableArray<CapturedLocal> capturedLocals, Uri file)
     {

@@ -26,6 +26,8 @@ public class CompiledOperatorDefinition :
     public Location Location => Definition.Location;
     public string? ExternalFunctionName => Definition.ExposedFunctionName;
     public string Identifier => Definition.Identifier.Content;
+    CanUseOn IHaveAttributes.AttributeUsageKind => (Definition as IHaveAttributes).AttributeUsageKind;
+    public ImmutableArray<AttributeUsage> Attributes => Definition.Attributes;
 
     public CompiledOperatorDefinition(GeneralType type, ImmutableArray<CompiledParameter> parameters, CompiledStruct? context, FunctionDefinition functionDefinition)
     {

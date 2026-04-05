@@ -9,7 +9,8 @@ public class CompiledField :
     IIdentifiable<string>,
     IInFile,
     ILocated,
-    IReferenceable<Expression>
+    IReferenceable<Expression>,
+    IHaveAttributes
 {
     public FieldDefinition Definition { get; }
     public CompiledStruct Context { get; set; }
@@ -17,12 +18,13 @@ public class CompiledField :
 
     public HashSet<CompiledFieldAccess> Getters { get; } = new();
     public HashSet<CompiledFieldAccess> Setters { get; } = new();
+    public List<Reference<Expression>> References { get; } = new();
 
     public string Identifier => Definition.Identifier.Content;
     public Uri File => Context.File;
     public Location Location => Definition.Location;
-
-    public List<Reference<Expression>> References { get; } = new();
+    CanUseOn IHaveAttributes.AttributeUsageKind => (Definition as IHaveAttributes).AttributeUsageKind;
+    public ImmutableArray<AttributeUsage> Attributes => Definition.Attributes;
 
     public CompiledField(GeneralType type, CompiledStruct context, FieldDefinition definition)
     {

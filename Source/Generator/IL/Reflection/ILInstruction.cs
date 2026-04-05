@@ -93,8 +93,8 @@ public class InlineSwitchInstruction : ILInstruction
     readonly int[] m_deltas;
     int[]? m_targetOffsets;
 
-    public int[] Deltas => (int[])m_deltas.Clone();
-    public int[] TargetOffsets
+    public IReadOnlyList<int> Deltas => m_deltas;
+    public IReadOnlyList<int> TargetOffsets
     {
         get
         {
@@ -120,7 +120,7 @@ public class InlineSwitchInstruction : ILInstruction
     public override string ToString()
     {
         StringBuilder sb = new();
-        int length = TargetOffsets.Length;
+        int length = TargetOffsets.Count;
         for (int i = 0; i < length; i++)
         {
             if (i == 0) sb.Append('(');

@@ -21,13 +21,13 @@ public interface IHaveType
     TypeInstance Type { get; }
 }
 
-public interface IReferenceableTo<TReference> : IInFile, IReferenceableTo
+public interface IReferenceableTo<TReference> : IInFile, IReferenceableTo where TReference : class
 {
     new TReference? Reference { get; internal set; }
     object? IReferenceableTo.Reference
     {
         get => Reference;
-        set => Reference = (TReference?)value;
+        set => Reference = (value as TReference) ?? throw new InvalidOperationException($"Cannot assign '{value?.GetType().ToString() ?? "null"}' to '{typeof(TReference)}'");
     }
 }
 

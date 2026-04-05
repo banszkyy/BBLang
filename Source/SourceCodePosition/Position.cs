@@ -25,7 +25,7 @@ public readonly struct Position :
         AbsoluteRange = absoluteRange;
     }
 
-    public Position(params IPositioned?[] elements) : this((IEnumerable<IPositioned?>)elements) { }
+    public Position(params IPositioned?[] elements) : this(elements as IEnumerable<IPositioned?>) { }
     public Position(IPositioned item1)
     {
         Range = item1.Position.Range;
@@ -154,6 +154,46 @@ public readonly struct Position :
                 absoluteEnd
             )
         );
+    }
+
+    public Position Union(Position other)
+    {
+        if (other == UnknownPosition) return this;
+        if (this == UnknownPosition) return other;
+
+        return new Position(
+            RangeUtils.Union(Range, other.Range),
+            RangeUtils.Union(AbsoluteRange, other.AbsoluteRange)
+        );
+    }
+
+    public Position Union(params Position[] other)
+    {
+        if (other.Length == 0) return this;
+
+        Position result = this;
+        foreach (Position v in other) result = result.Union(v);
+        return result;
+    }
+
+    public Position Union(IPositioned? other) => other is null ? this : Union(other.Position);
+
+    public Position Union(params IPositioned?[] other)
+    {
+        if (other.Length == 0) return this;
+
+        Position result = this;
+        foreach (IPositioned? v in other) result = result.Union(v);
+        return result;
+    }
+
+    public Position Union(IEnumerable<IPositioned?>? other)
+    {
+        if (other is null) return this;
+
+        Position result = this;
+        foreach (IPositioned? v in other) result = result.Union(v);
+        return result;
     }
 
     public static bool operator ==(Position left, Position right) => left.Equals(right);

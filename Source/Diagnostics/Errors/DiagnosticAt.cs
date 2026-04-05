@@ -26,7 +26,7 @@ public class DiagnosticAt :
     }
 
     public DiagnosticAt(DiagnosticsLevel level, string message, Position position, Uri file, bool @break, ImmutableArray<DiagnosticAt> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation, DiagnosticTag tag)
-        : base(level, message, false, suberrors.ToImmutableArray(v => (Diagnostic)v), relatedInformation)
+        : base(level, message, false, suberrors.As<Diagnostic>(), relatedInformation)
     {
         Position = position;
         File = file;

@@ -1,4 +1,5 @@
 ﻿using LanguageCore.Parser;
+using LanguageCore.Parser.Statements;
 
 namespace LanguageCore.Compiler;
 
@@ -7,7 +8,8 @@ public class CompiledField :
     IInContext<CompiledStruct>,
     IIdentifiable<string>,
     IInFile,
-    ILocated
+    ILocated,
+    IReferenceable<Expression>
 {
     public FieldDefinition Definition { get; }
     public CompiledStruct Context { get; set; }
@@ -19,6 +21,8 @@ public class CompiledField :
     public string Identifier => Definition.Identifier.Content;
     public Uri File => Context.File;
     public Location Location => Definition.Location;
+
+    public List<Reference<Expression>> References { get; } = new();
 
     public CompiledField(GeneralType type, CompiledStruct context, FieldDefinition definition)
     {

@@ -2,22 +2,22 @@ namespace LanguageCore.Compiler;
 
 public static class ReferenceExtensions
 {
-    public static void AddReference<TSource>(this List<Reference<TSource>> references, TSource source, Uri sourceFile)
-        => references.Add(new Reference<TSource>(source, sourceFile));
+    public static void AddReference<TSource>(this IReferenceable<TSource> references, TSource source, Location sourceLocation, bool isImplicit = false)
+        => references.References.Add(new Reference<TSource>(source, sourceLocation, isImplicit));
 
-    public static void AddReference<TSource>(this List<Reference<TSource>> references, TSource source)
-        where TSource : IInFile
-        => references.Add(new Reference<TSource>(source, source.File));
+    public static void AddReference<TSource>(this IReferenceable<TSource> references, TSource source, bool isImplicit = false)
+        where TSource : ILocated
+        => references.References.Add(new Reference<TSource>(source, source.Location, isImplicit));
 }
 
 public readonly struct Reference
 {
-    public Uri SourceFile { get; }
+    public Location SourceLocation { get; }
     public bool IsImplicit { get; }
 
-    public Reference(Uri sourceFile, bool isImplicit = false)
+    public Reference(Location sourceLocation, bool isImplicit = false)
     {
-        SourceFile = sourceFile;
+        SourceLocation = sourceLocation;
         IsImplicit = isImplicit;
     }
 }
@@ -25,17 +25,17 @@ public readonly struct Reference
 public readonly struct Reference<TSource>
 {
     public TSource Source { get; }
-    public Uri SourceFile { get; }
+    public Location SourceLocation { get; }
     public bool IsImplicit { get; }
 
-    public Reference(TSource source, Uri sourceFile, bool isImplicit = false)
+    public Reference(TSource source, Location sourceLocation, bool isImplicit = false)
     {
         Source = source;
-        SourceFile = sourceFile;
+        SourceLocation = sourceLocation;
         IsImplicit = isImplicit;
     }
 
-    public static implicit operator Reference(Reference<TSource> v) => new(v.SourceFile, v.IsImplicit);
+    public static implicit operator Reference(Reference<TSource> v) => new(v.SourceLocation, v.IsImplicit);
 }
 
 public interface IReferenceable

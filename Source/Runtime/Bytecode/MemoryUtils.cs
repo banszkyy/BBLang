@@ -3,6 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace LanguageCore.Runtime;
 
+[SuppressMessage("Quality", "MY003")]
 public static unsafe class MemoryUtils
 {
     #region nint

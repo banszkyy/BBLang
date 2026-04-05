@@ -291,13 +291,11 @@ public partial class CodeGeneratorForIL : CodeGenerator
     int SizeOf(Type type)
     {
         if (_sizeOfCache.TryGetValue(type, out int result)) return result;
-        DynamicMethod dm = new("func", typeof(int),
-            Type.EmptyTypes, typeof(Utils)
-        );
+        DynamicMethod dm = new("func", typeof(int), Type.EmptyTypes, typeof(Utils));
         ILGenerator il = dm.GetILGenerator();
         il.Emit(OpCodes.Sizeof, type);
         il.Emit(OpCodes.Ret);
-        result = _sizeOfCache[type] = ((Func<int>)dm.CreateDelegate(typeof(Func<int>)))();
+        result = _sizeOfCache[type] = dm.CreateDelegate<Func<int>>()();
         return result;
     }
 }

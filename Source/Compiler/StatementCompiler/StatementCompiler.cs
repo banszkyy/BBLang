@@ -153,7 +153,7 @@ public partial class StatementCompiler
             return false;
         }
 
-        result.Function.References.Add(new Reference<Expression?>(null, location.File));
+        result.Function.AddReference(null, location);
 
         if (result.DidReplaceArguments) throw new UnreachableException();
 
@@ -204,7 +204,7 @@ public partial class StatementCompiler
             }
             else
             {
-                destructor.Function.References.Add(new Reference<Expression?>(null, location.File));
+                destructor.Function.AddReference(null, location);
             }
         }
         else
@@ -218,7 +218,7 @@ public partial class StatementCompiler
             }
             else
             {
-                destructor.Function.References.Add(new Reference<Expression?>(null, location.File));
+                destructor.Function.AddReference(null, location);
             }
         }
 
@@ -1507,7 +1507,7 @@ public partial class StatementCompiler
 
         if (GetIndexSetter(_base.Type, _value.Type, _index.Type, target.File, out FunctionQueryResult<CompiledFunctionDefinition>? indexer, out PossibleDiagnostic? indexerNotFoundError, AddCompilable))
         {
-            indexer.Function.References.Add(new(target, target.File));
+            indexer.Function.AddReference(target, target.Location);
             if (CompileFunctionCall(target, ImmutableArray.Create(ArgumentExpression.Wrap(target.Object), target.Index, ArgumentExpression.Wrap(value)), indexer, out CompiledExpression? compiledStatement2))
             {
                 compiledStatement = compiledStatement2;

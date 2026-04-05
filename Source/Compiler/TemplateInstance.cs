@@ -13,6 +13,7 @@ public class TemplateInstance<T> where T : notnull
 
     public override string ToString() => Template?.ToString() ?? "null";
 
+    [SuppressMessage("Quality", "MY003")]
     public TemplateInstance<V> UnsafeTo<V>() where V : notnull => new((V)(object)Template, TypeArguments);
 }
 

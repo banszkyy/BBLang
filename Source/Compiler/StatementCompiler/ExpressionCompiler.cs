@@ -335,7 +335,7 @@ public partial class StatementCompiler
                 Location = caller.Location,
                 SaveValue = caller.SaveValue,
             };
-            GeneratorStructDefinition.Constructor.References.Add(new Reference<ConstructorCallExpression>(
+            GeneratorStructDefinition.Constructor.AddReference(
                 new ConstructorCallExpression(
                     Token.CreateAnonymous(StatementKeywords.New),
                     new TypeInstanceSimple(
@@ -345,9 +345,8 @@ public partial class StatementCompiler
                     ArgumentListExpression.CreateAnonymous(caller.File),
                     caller.File
                 ),
-                caller.File,
-                false
-            ));
+                caller.Location
+            );
 
             return true;
         }
@@ -571,7 +570,7 @@ public partial class StatementCompiler
                     //        .Select((value, index) => (value.Identifier.Content, compiledArguments[index]))
                     //        .ToImmutableDictionary(v => v.Content, v => v.Item2),
                     //}, out inlined1);
-                    Diagnostics.Add(DiagnosticAt.Warning($"Failed to inline \"{callee.ToReadable()}\"", caller).WithSuberrors(inlineError));
+                    //Diagnostics.Add(DiagnosticAt.Warning($"Failed to inline \"{callee.ToReadable()}\"", caller).WithSuberrors(inlineError));
                 }
             }
             else
@@ -666,7 +665,7 @@ public partial class StatementCompiler
                 TrySetStatementReference(anyCall.Expression, result);
                 SetStatementType(anyCall, result.Function.Type);
 
-                result.Function.References.Add(new(anyCall, anyCall.File));
+                result.Function.AddReference(anyCall, anyCall.Location);
 
                 return CompileFunctionCall(functionCall, functionCall.MethodArguments, result, out compiledStatement);
             }
@@ -700,7 +699,7 @@ public partial class StatementCompiler
                 ) && res1.Success)
             {
                 CompiledOperatorDefinition compiledFunction = res1.Function;
-                compiledFunction.References.Add(new(anyCall, anyCall.File));
+                compiledFunction.AddReference(anyCall);
                 return CompileFunctionCall(anyCall, arguments.ToImmutableArray(), res1, out compiledStatement);
             }
         }
@@ -1078,7 +1077,7 @@ public partial class StatementCompiler
                     return false;
                 }
 
-                operatorDefinition.Function.References.Add(new Reference<Expression>(@operator, @operator.File));
+                operatorDefinition.Function.AddReference(@operator);
                 return CompileFunctionCall_External(compiledArguments, @operator.SaveValue, operatorDefinition.Function, externalFunction, @operator.Location, out compiledStatement);
             }
 
@@ -1100,13 +1099,13 @@ public partial class StatementCompiler
                 SetPredictedValue(@operator, casted);
                 if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
                 {
-                    operatorDefinition.Function.References.Add(new Reference<Expression>(@operator, @operator.File, true));
+                    operatorDefinition.Function.AddReference(@operator, true);
                     compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                     return true;
                 }
             }
 
-            operatorDefinition.Function.References.Add(new Reference<Expression>(@operator, @operator.File));
+            operatorDefinition.Function.AddReference(@operator);
             return true;
         }
         else if (LanguageOperators.UnaryOperators.Contains(@operator.Operator.Content))
@@ -1976,7 +1975,7 @@ public partial class StatementCompiler
 
             FunctionType functionType = new(compiledFunction.Function.Type, compiledFunction.Function.Parameters.ToImmutableArray(v => v.Type), false);
 
-            compiledFunction.Function.References.AddReference(variable, variable.File);
+            compiledFunction.Function.AddReference(variable, variable.Location);
             variable.AnalyzedType = TokenAnalyzedType.FunctionName;
             SetStatementReference(variable, compiledFunction.Function);
             SetStatementType(variable, functionType);
@@ -2152,7 +2151,7 @@ public partial class StatementCompiler
 
                 SetStatementType(newInstance.Type, compiledType);
                 SetStatementType(newInstance, compiledType);
-                structType.Struct.References.AddReference(newInstance.Type, newInstance.File);
+                structType.Struct.AddReference(newInstance.Type);
 
                 compiledStatement = new CompiledStackAllocation()
                 {
@@ -2216,7 +2215,7 @@ public partial class StatementCompiler
             Frames.LastRef.IsMsilCompatible = false;
         }
 
-        compiledFunction.Function.References.AddReference(constructorCall);
+        compiledFunction.Function.AddReference(constructorCall);
         SetStatementReference(constructorCall, compiledFunction.Function);
 
         SetStatementType(constructorCall, compiledFunction.Function.Type);
@@ -2349,7 +2348,7 @@ public partial class StatementCompiler
 
         if (GetIndexGetter(index, out FunctionQueryResult<CompiledFunctionDefinition>? indexer, out PossibleDiagnostic? notFoundError, AddCompilable))
         {
-            indexer.Function.References.Add(new(index, index.File));
+            indexer.Function.AddReference(index, index.Location);
             SetStatementReference(index, indexer.Function);
 
             return CompileFunctionCall(index, ImmutableArray.Create(ArgumentExpression.Wrap(index.Object), index.Index), indexer, out compiledStatement);

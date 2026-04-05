@@ -10,6 +10,7 @@ using f32 = System.Single;
 
 namespace LanguageCore.Runtime;
 
+[SuppressMessage("Quality", "MY003")]
 public static class ValueExtensions
 {
     public static i8 I8(this i8 v) => unchecked((i8)v);

@@ -1553,7 +1553,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 AliasType => TokenAnalyzedType.TypeAlias,
                 _ => TokenAnalyzedType.Type,
             };
-            alias.References.Add(new Reference<TypeInstance>(new TypeInstanceSimple(name, relevantFile), relevantFile));
+            alias.AddReference(new TypeInstanceSimple(name, relevantFile));
 
             // HERE
             result = new AliasType(alias.Value, alias);
@@ -1564,7 +1564,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         if (GetStruct(name.Content, relevantFile, out CompiledStruct? @struct, out PossibleDiagnostic? structError))
         {
             name.AnalyzedType = TokenAnalyzedType.Struct;
-            @struct.References.Add(new Reference<TypeInstance>(new TypeInstanceSimple(name, relevantFile), relevantFile));
+            @struct.AddReference(new TypeInstanceSimple(name, relevantFile));
 
             result = new StructType(@struct, relevantFile);
             error = null;
@@ -1575,7 +1575,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         if (GetFunction(FunctionQuery.Create<CompiledFunctionDefinition, string, Token>(name.Content, null, null, relevantFile), out FunctionQueryResult<CompiledFunctionDefinition>? function, out var functionError))
         {
             name.AnalyzedType = TokenAnalyzedType.FunctionName;
-            function.Function.References.Add(new Reference<StatementWithValue?>(new Identifier(name, relevantFile), relevantFile));
+            function.Function.AddReference(new Reference<StatementWithValue?>(new Identifier(name, relevantFile), relevantFile));
 
             result = new FunctionType(function.Function);
             error = null;
@@ -1649,7 +1649,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 AliasType => TokenAnalyzedType.TypeAlias,
                 _ => TokenAnalyzedType.Type,
             };
-            alias.References.Add(new Reference<TypeInstance>(new TypeInstanceSimple(name, relevantFile), relevantFile));
+            alias.AddReference(new TypeInstanceSimple(name, relevantFile));
 
             // HERE
             result = new CompiledAliasTypeExpression(CompiledTypeExpression.CreateAnonymous(alias.Value, alias.Definition.Value), alias, new Location(name.Position, relevantFile));
@@ -1660,7 +1660,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         if (GetStruct(name.Content, relevantFile, out CompiledStruct? @struct, out PossibleDiagnostic? structError))
         {
             name.AnalyzedType = TokenAnalyzedType.Struct;
-            @struct.References.Add(new Reference<TypeInstance>(new TypeInstanceSimple(name, relevantFile), relevantFile));
+            @struct.AddReference(new TypeInstanceSimple(name, relevantFile));
 
             result = new CompiledStructTypeExpression(@struct, relevantFile, new Location(name.Position, relevantFile));
             error = null;
@@ -1818,12 +1818,12 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         return type;
     }
-    void TrySetStatementReference<TRef>(Statement statement, TRef? reference)
+    void TrySetStatementReference<TRef>(Statement statement, TRef? reference) where TRef : class
     {
         if (statement is IReferenceableTo<TRef> v1) SetStatementReference(v1, reference);
         else if (statement is IReferenceableTo v2) SetStatementReference(v2, reference);
     }
-    void SetStatementReference<TRef>(IReferenceableTo<TRef> statement, TRef? reference)
+    void SetStatementReference<TRef>(IReferenceableTo<TRef> statement, TRef? reference) where TRef : class
     {
         if (!Frames.Last.IsTemplateInstance) statement.Reference = reference;
     }

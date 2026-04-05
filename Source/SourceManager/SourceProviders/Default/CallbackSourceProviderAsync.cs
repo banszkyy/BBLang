@@ -21,7 +21,7 @@ public class CallbackSourceProviderAsync : ISourceProviderAsync, ISourceQueryPro
         BasePath = basePath;
     }
 
-    public IEnumerable<Uri> GetQuery(string requestedFile, Uri? currentFile) => new CallbackSourceProviderSync((Func<Uri, Stream?>)((v) => throw new InvalidOperationException()), BasePath).GetQuery(requestedFile, currentFile);
+    public IEnumerable<Uri> GetQuery(string requestedFile, Uri? currentFile) => new CallbackSourceProviderSync(Stream? (Uri v) => throw new InvalidOperationException(), BasePath).GetQuery(requestedFile, currentFile);
 
     public SourceProviderResultAsync TryLoad(string requestedFile, Uri? currentFile, CancellationToken cancellationToken = default)
     {

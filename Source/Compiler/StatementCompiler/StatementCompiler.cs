@@ -13,6 +13,7 @@ public partial class StatementCompiler
         {
             if (FindSize(type, out int typeSize, out PossibleDiagnostic? typeSizeError, this))
             {
+                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Allocation size computed as {typeSize}", type));
                 if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                 {
                     return CompileAllocation(typeSize, type.Location, out compiledStatement);
@@ -475,7 +476,7 @@ public partial class StatementCompiler
 
         if (GetConstant(newVariable.Identifier.Content, newVariable.File, out _, out _))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Symbol name \"{newVariable.Identifier}\" conflicts with an another symbol name", newVariable.Identifier, newVariable.File));
+            Diagnostics.Add(DiagnosticAt.Error($"Constant with name \"{newVariable.Identifier}\" already exists", newVariable.Identifier, newVariable.File));
             return false;
         }
 
@@ -605,6 +606,8 @@ public partial class StatementCompiler
             },
             IsGlobal = isGlobal,
         };
+
+        SetStatementReference(newVariable, compiledVariable);
 
         if (isGlobal)
         { compiledStatement = CompiledGlobalVariables.Push(compiledVariable); }
@@ -978,7 +981,8 @@ public partial class StatementCompiler
             {
                 if (!StatementWalker.Visit(@if.Else, StatementWalkerFilter.FrameOnlyFilter).OfType<InstructionLabelDeclaration>().Any())
                 {
-                    if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                    Diagnostics.Add(DiagnosticAt.OptimizationNotice($"If condition trimmed away", @if.Condition));
+                    if (Settings.Optimizations.HasFlag(OptimizationSettings.TrimUnreachable))
                     {
                         return CompileStatement(@if.Body, out compiledStatement);
                     }
@@ -988,9 +992,10 @@ public partial class StatementCompiler
             {
                 if (!StatementWalker.Visit(@if, StatementWalkerFilter.FrameOnlyFilter).OfType<InstructionLabelDeclaration>().Any())
                 {
+                    Diagnostics.Add(DiagnosticAt.OptimizationNotice($"If branch trimmed away", @if));
                     if (@if.Else is not null)
                     {
-                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.TrimUnreachable))
                         {
                             if (!CompileStatement(@if.Else, out compiledStatement)) return false;
                             if (compiledStatement is CompiledElse nextElse)
@@ -1002,7 +1007,7 @@ public partial class StatementCompiler
                     }
                     else
                     {
-                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.TrimUnreachable))
                         {
                             compiledStatement = new CompiledEmptyStatement()
                             {

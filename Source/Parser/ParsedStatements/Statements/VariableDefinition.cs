@@ -7,7 +7,8 @@ public class VariableDefinition : Statement,
     IHaveType,
     IExportable,
     IIdentifiable<Token>,
-    IHaveAttributes
+    IHaveAttributes,
+    IReferenceableTo
 {
     /// <summary>
     /// Set by the compiler
@@ -17,6 +18,10 @@ public class VariableDefinition : Statement,
     /// Set by the compiler
     /// </summary>
     public CompiledCleanup? CleanupReference { get; set; }
+    /// <summary>
+    /// Set by the compiler
+    /// </summary>
+    public object? Reference { get; set; }
 
     public ImmutableArray<AttributeUsage> Attributes { get; }
     public TypeInstance Type { get; }

@@ -14,47 +14,48 @@ public class PossibleDiagnostic
     bool IsPopulated => File is not null && Position != default;
 
     public PossibleDiagnostic(string message, bool shouldBreak = true)
-        : this(message, ImmutableArray<PossibleDiagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak)
+        : this(message, null, ImmutableArray<PossibleDiagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak)
     { }
 
     public PossibleDiagnostic(string message, params PossibleDiagnostic[] suberrors)
-        : this(message, suberrors.ToImmutableArray(), ImmutableArray<DiagnosticRelatedInformation>.Empty)
+        : this(message, null, suberrors.ToImmutableArray(), ImmutableArray<DiagnosticRelatedInformation>.Empty)
     { }
 
     public PossibleDiagnostic(string message, ImmutableArray<PossibleDiagnostic> suberrors, bool shouldBreak = true)
-    {
-        Message = message;
-        SubErrors = suberrors;
-        ShouldBreak = shouldBreak;
-        RelatedInformation = ImmutableArray<DiagnosticRelatedInformation>.Empty;
-    }
+        : this(message, null, suberrors, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak)
+    { }
 
     public PossibleDiagnostic(string message, ImmutableArray<PossibleDiagnostic> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation, bool shouldBreak = true)
-    {
-        Message = message;
-        SubErrors = suberrors;
-        ShouldBreak = shouldBreak;
-        RelatedInformation = relatedInformation;
-    }
+        : this(message, null, suberrors, relatedInformation, shouldBreak)
+    { }
 
-    public PossibleDiagnostic(string message, ILocated? location)
-        : this(message, location, ImmutableArray<PossibleDiagnostic>.Empty)
+    public PossibleDiagnostic(string message, ILocated? location, bool shouldBreak = true)
+        : this(message, location, ImmutableArray<PossibleDiagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak)
     { }
 
     public PossibleDiagnostic(string message, ILocated? location, params PossibleDiagnostic[] suberrors)
-        : this(message, location, suberrors.ToImmutableArray())
+        : this(message, location, suberrors.ToImmutableArray(), ImmutableArray<DiagnosticRelatedInformation>.Empty)
     { }
 
-    public PossibleDiagnostic(string message, ILocated? location, ImmutableArray<PossibleDiagnostic> suberrors)
+    public PossibleDiagnostic(string message, ILocated? location, ImmutableArray<PossibleDiagnostic> suberrors, bool shouldBreak = true)
+        : this(message, location, suberrors, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak)
+    { }
+
+    public PossibleDiagnostic(string message, ILocated? location, ImmutableArray<PossibleDiagnostic> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation, bool shouldBreak = true)
     {
         Message = message;
         SubErrors = suberrors;
+        RelatedInformation = relatedInformation;
+        ShouldBreak = shouldBreak;
         if (location is not null)
         {
             Position = location.Location.Position;
             File = location.Location.File;
         }
     }
+
+    public virtual PossibleDiagnostic Populated(ILocated location) => IsPopulated ? this : new PossibleDiagnostic(Message, location, SubErrors, RelatedInformation, false);
+    public virtual PossibleDiagnostic Populated(IPositioned position, Uri file) => IsPopulated ? this : new PossibleDiagnostic(Message, new Location(position.Position, file), SubErrors, RelatedInformation, false);
 
     public virtual PossibleDiagnostic WithRelatedInfo(DiagnosticRelatedInformation? relatedInfo) => relatedInfo is null ? this : new(Message, SubErrors, ImmutableArray.Create(relatedInfo), false);
     public virtual PossibleDiagnostic WithRelatedInfo(params DiagnosticRelatedInformation?[] relatedInfo) => WithRelatedInfo(relatedInfo.Where(v => v is not null).ToImmutableArray()!);

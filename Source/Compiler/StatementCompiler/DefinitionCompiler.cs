@@ -764,7 +764,7 @@ public partial class StatementCompiler
         {
             if (IsSymbolDefined(@struct))
             {
-                Diagnostics.Add(DiagnosticAt.Error("Symbol already exists", @struct.Identifier, @struct.File));
+                Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{@struct.Identifier}\" already exists", @struct.Identifier, @struct.File));
                 continue;
             }
 
@@ -775,7 +775,7 @@ public partial class StatementCompiler
         {
             if (IsSymbolDefined(@aliasDefinition))
             {
-                Diagnostics.Add(DiagnosticAt.Error("Symbol already exists", @aliasDefinition.Identifier, @aliasDefinition.File));
+                Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{@aliasDefinition.Identifier}\" already exists", @aliasDefinition.Identifier, @aliasDefinition.File));
                 continue;
             }
 

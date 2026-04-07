@@ -691,44 +691,44 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     #region CompileConstant()
 
-    bool CompileConstant(VariableDefinition variableDeclaration, [NotNullWhen(true)] out CompiledVariableConstant? result)
+    bool CompileConstant(VariableDefinition variableDefinition, [NotNullWhen(true)] out CompiledVariableConstant? result)
     {
         result = null;
-        variableDeclaration.Identifier.AnalyzedType = TokenAnalyzedType.ConstantName;
+        variableDefinition.Identifier.AnalyzedType = TokenAnalyzedType.ConstantName;
 
-        if (GetConstant(variableDeclaration.Identifier.Content, variableDeclaration.File, out _, out _))
-        { Diagnostics.Add(DiagnosticAt.Error($"Constant \"{variableDeclaration.Identifier}\" already defined", variableDeclaration.Identifier, variableDeclaration.File)); }
+        if (GetConstant(variableDefinition.Identifier.Content, variableDefinition.File, out _, out _))
+        { Diagnostics.Add(DiagnosticAt.Error($"Constant \"{variableDefinition.Identifier}\" already defined", variableDefinition.Identifier, variableDefinition.File)); }
 
-        CompileVariableAttributes(variableDeclaration);
+        CompileVariableAttributes(variableDefinition);
 
         GeneralType? constantType = null;
-        if (variableDeclaration.Type != StatementKeywords.Var)
+        if (variableDefinition.Type != StatementKeywords.Var)
         {
-            CompileType(variableDeclaration.Type, out constantType, Diagnostics);
+            CompileType(variableDefinition.Type, out constantType, Diagnostics);
         }
 
         CompiledValue constantValue;
 
-        if (variableDeclaration.ExternalConstantName is not null)
+        if (variableDefinition.ExternalConstantName is not null)
         {
-            ExternalConstant? externalConstant = ExternalConstants.FirstOrDefault(v => v.Name == variableDeclaration.ExternalConstantName);
+            ExternalConstant? externalConstant = ExternalConstants.FirstOrDefault(v => v.Name == variableDefinition.ExternalConstantName);
             if (externalConstant is not null)
             {
                 constantValue = externalConstant.Value;
                 goto gotExternalValue;
             }
-            else if (variableDeclaration.InitialValue is null)
+            else if (variableDefinition.InitialValue is null)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"External constant \"{variableDeclaration.ExternalConstantName}\" not found", variableDeclaration));
+                Diagnostics.Add(DiagnosticAt.Error($"External constant \"{variableDefinition.ExternalConstantName}\" not found", variableDefinition));
                 constantValue = default;
             }
         }
 
-        if (variableDeclaration.InternalConstantName is not null)
+        if (variableDefinition.InternalConstantName is not null)
         {
-            if (!InternalConstants.TryGetValue(variableDeclaration.InternalConstantName, out GeneralType? internalConstantType))
+            if (!InternalConstants.TryGetValue(variableDefinition.InternalConstantName, out GeneralType? internalConstantType))
             {
-                Diagnostics.Add(DiagnosticAt.Warning($"Internal constant \"{variableDeclaration.InternalConstantName}\" not found", variableDeclaration));
+                Diagnostics.Add(DiagnosticAt.Warning($"Internal constant \"{variableDefinition.InternalConstantName}\" not found", variableDefinition));
             }
             else
             {
@@ -736,7 +736,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
                 if (!GetInitialValue(constantType, out constantValue))
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Invalid type `{constantType}` specified for internal constant", variableDeclaration.Type));
+                    Diagnostics.Add(DiagnosticAt.Error($"Invalid type `{constantType}` specified for internal constant", variableDefinition.Type));
                     constantValue = default;
                 }
 
@@ -744,17 +744,23 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             }
         }
 
-        if (variableDeclaration.InitialValue is null)
+        if (variableDefinition.InitialValue is null)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Constant value must have initial value", variableDeclaration));
+            Diagnostics.Add(DiagnosticAt.Error($"Constant value must have initial value", variableDefinition));
             constantValue = default;
         }
         else
         {
-            CompileExpression(variableDeclaration.InitialValue, out CompiledExpression? compiledInitialValue, constantType);
-            if (!TryCompute(compiledInitialValue, out constantValue))
+            if (CompileExpression(variableDefinition.InitialValue, out CompiledExpression? compiledInitialValue, constantType))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Constant value must be evaluated at compile-time", variableDeclaration.InitialValue));
+                if (!TryCompute(compiledInitialValue, out constantValue, out PossibleDiagnostic? evaluationError))
+                {
+                    Diagnostics.Add(DiagnosticAt.Error($"Constant value must be evaluated at compile-time", variableDefinition.InitialValue).WithSuberrors(evaluationError.ToError(variableDefinition.InitialValue)));
+                    constantValue = default;
+                }
+            }
+            else
+            {
                 constantValue = default;
             }
         }
@@ -763,11 +769,11 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         if (constantType is not null)
         {
-            if (constantType.Is(out BuiltinType? builtinType))
+            if (!constantValue.IsNull && constantType.Is(out BuiltinType? builtinType))
             {
                 if (!constantValue.TryCast(builtinType.RuntimeType, out CompiledValue castedConstantValue))
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constantValue} of type \"{constantValue.Type}\" to {constantType}", variableDeclaration));
+                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constantValue} of type \"{constantValue.Type}\" to {constantType}", variableDefinition.InitialValue?.Location ?? variableDefinition.Location));
                 }
                 else
                 {
@@ -779,12 +785,13 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         {
             if (!CompileType(constantValue.Type, out constantType, out PossibleDiagnostic? typeError))
             {
-                Diagnostics.Add(typeError.ToError(variableDeclaration.InitialValue?.Location ?? variableDeclaration.Location));
+                Diagnostics.Add(typeError.ToError(variableDefinition.InitialValue?.Location ?? variableDefinition.Location));
                 return false;
             }
         }
 
-        result = new CompiledVariableConstant(constantValue, constantType, variableDeclaration);
+        result = new CompiledVariableConstant(constantValue, constantType, variableDefinition);
+        SetStatementReference(variableDefinition, result);
         return true;
     }
 
@@ -3703,17 +3710,18 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         }
     }
 
-    bool TryCompute(CompiledDereference pointer, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledDereference pointer, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (pointer.Address is CompiledGetReference addressGetter)
-        { return TryCompute(addressGetter.Of, context, out value); }
+        { return TryCompute(addressGetter.Of, context, out value, out error); }
 
         value = CompiledValue.Null;
+        error = new PossibleDiagnostic($"Cannot compute runtime references", pointer);
         return false;
     }
-    bool TryCompute(CompiledBinaryOperatorCall @operator, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledBinaryOperatorCall @operator, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        if (!TryCompute(@operator.Left, context, out CompiledValue leftValue))
+        if (!TryCompute(@operator.Left, context, out CompiledValue leftValue, out error))
         {
             value = CompiledValue.Null;
             return false;
@@ -3721,11 +3729,13 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         string op = @operator.Operator;
 
-        if (TryCompute(@operator.Right, context, out CompiledValue rightValue) &&
-            TryComputeBinaryOperator(op, leftValue, rightValue, out value, out _))
+        if (TryCompute(@operator.Right, context, out CompiledValue rightValue, out error) &&
+            TryComputeBinaryOperator(op, leftValue, rightValue, out value, out error))
         {
             return true;
         }
+
+        error ??= error?.Populated(@operator);
 
         switch (op)
         {
@@ -3749,28 +3759,37 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             }
             default:
                 value = CompiledValue.Null;
+                error ??= new PossibleDiagnostic($"Cannot compute this");
                 return false;
         }
 
         value = leftValue;
         return true;
     }
-    bool TryCompute(CompiledUnaryOperatorCall @operator, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledUnaryOperatorCall @operator, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
+        if (TryCompute(@operator.Left, context, out CompiledValue leftValue, out error)
+            && TryComputeUnaryOperator(@operator.Operator, leftValue, out value, out error))
+        {
+            return true;
+        }
+
         value = CompiledValue.Null;
-        return TryCompute(@operator.Left, context, out CompiledValue leftValue)
-            && TryComputeUnaryOperator(@operator.Operator, leftValue, out value, out _);
+        error = error.Populated(@operator);
+        return false;
     }
-    bool TryCompute(CompiledConstantValue literal, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledConstantValue literal, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         value = literal.Value;
+        error = null;
         return true;
     }
-    bool TryCompute(CompiledFunctionCall functionCall, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledFunctionCall functionCall, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         value = CompiledValue.Null;
+        error = null;
 
-        if (!TryCompute(functionCall.Arguments, context, out ImmutableArray<CompiledValue> parameters))
+        if (!TryCompute(functionCall.Arguments, context, out ImmutableArray<CompiledValue> parameters, out error))
         {
             return false;
         }
@@ -3779,6 +3798,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             externalFunctionDefinition.ExternalFunctionName is not null)
         {
             Debugger.Break();
+            error = new PossibleDiagnostic($"meow :3", functionCall);
             return false;
         }
 
@@ -3786,6 +3806,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         if (found is null)
         {
+            error = new PossibleDiagnostic($"Function {functionCall.Function.Template.ToReadable()} wasn't generated (for whatever reason idk meow :3)", functionCall);
             return false;
         }
 
@@ -3797,69 +3818,89 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return true;
         }
 
+        error = new PossibleDiagnostic($"Couldn't evaluate the function body", functionCall);
         return false;
     }
-    bool TryCompute(CompiledSizeof functionCall, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledSizeof functionCall, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        if (!FindSize(functionCall.Of, out int size, out _, this))
+        if (!FindSize(functionCall.Of, out int size, out error, this))
         {
             value = CompiledValue.Null;
+            error = error.Populated(functionCall);
             return false;
         }
 
         value = new CompiledValue(size);
+        error = null;
         return true;
     }
-    bool TryCompute(CompiledVariableAccess identifier, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledVariableAccess identifier, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (!context.TryGetVariable(identifier.Variable, out value))
         {
             value = CompiledValue.Null;
+            error = new PossibleDiagnostic($"Variable \"{identifier.Variable.Identifier}\" not found", identifier);
             return false;
         }
 
+        error = null;
         return true;
     }
-    bool TryCompute(CompiledParameterAccess identifier, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledParameterAccess identifier, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (!context.TryGetParameter(identifier.Parameter.Identifier, out value))
         {
             value = CompiledValue.Null;
+            error = new PossibleDiagnostic($"Parameter \"{identifier.Parameter.Identifier}\" not found", identifier);
             return false;
         }
 
+        error = null;
         return true;
     }
-    bool TryCompute(CompiledReinterpretation typeCast, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledReinterpretation typeCast, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        if (!TryCompute(typeCast.Value, context, out value))
+        if (!TryCompute(typeCast.Value, context, out value, out error))
         {
             value = CompiledValue.Null;
             return false;
         }
 
-        if (!typeCast.Type.Is(out BuiltinType? builtinType)) return false;
+        if (!typeCast.Type.Is(out BuiltinType? builtinType))
+        {
+            error = new PossibleDiagnostic($"This must be a built-in type to compute", typeCast.TypeExpression);
+            return false;
+        }
 
         value = CompiledValue.CreateUnsafe(value.I32, builtinType.RuntimeType);
         return true;
     }
-    bool TryCompute(CompiledCast typeCast, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledCast typeCast, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        if (!TryCompute(typeCast.Value, context, out value))
+        if (!TryCompute(typeCast.Value, context, out value, out error))
         {
             value = CompiledValue.Null;
             return false;
         }
 
-        if (!typeCast.Type.Is(out BuiltinType? builtinType)) return false;
-        if (!value.TryCast(builtinType.RuntimeType, out CompiledValue casted)) return false;
+        if (!typeCast.Type.Is(out BuiltinType? builtinType))
+        {
+            error = new PossibleDiagnostic($"This must be a built-in type to compute", typeCast.TypeExpression);
+            return false;
+        }
+
+        if (!value.TryCast(builtinType.RuntimeType, out CompiledValue casted))
+        {
+            error = new PossibleDiagnostic($"Failed to cast {value.ToStringValue()} to type {builtinType.RuntimeType}", typeCast);
+            return false;
+        }
 
         value = casted;
         return true;
     }
-    bool TryCompute(CompiledElementAccess indexCall, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledElementAccess indexCall, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        if (!TryCompute(indexCall.Index, context, out CompiledValue index))
+        if (!TryCompute(indexCall.Index, context, out CompiledValue index, out error))
         {
             value = CompiledValue.Null;
             return false;
@@ -3883,35 +3924,37 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return true;
         }
 
-        if (indexCall.Base is CompiledList listLiteral &&
-            TryCompute(listLiteral.Values[(int)index], context, out value))
+        if (indexCall.Base is CompiledList listLiteral)
         {
-            return true;
+            return TryCompute(listLiteral.Values[(int)index], context, out value, out error);
         }
 
         value = CompiledValue.Null;
+        error = new PossibleDiagnostic($"Cannot index into a runtime-only array", indexCall);
         return false;
     }
-    bool TryCompute(CompiledFunctionReference functionAddressGetter, EvaluationContext context, out CompiledValue value)
+    bool TryCompute(CompiledFunctionReference functionAddressGetter, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         value = CompiledValue.Null;
+        error = new PossibleDiagnostic($"Cannot compute runtime-only references", functionAddressGetter);
         return false;
     }
 
-    bool TryCompute([NotNullWhen(true)] CompiledExpression? statement, out CompiledValue value)
-        => TryCompute(statement, EvaluationContext.Empty, out value);
-    bool TryCompute(IEnumerable<CompiledExpression>? statements, EvaluationContext context, [NotNullWhen(true)] out ImmutableArray<CompiledValue> values)
+    bool TryCompute([NotNullWhen(true)] CompiledExpression? statement, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
+        => TryCompute(statement, EvaluationContext.Empty, out value, out error);
+    bool TryCompute(IEnumerable<CompiledExpression>? statements, EvaluationContext context, [NotNullWhen(true)] out ImmutableArray<CompiledValue> values, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (statements is null)
         {
             values = ImmutableArray<CompiledValue>.Empty;
+            error = new PossibleDiagnostic($"Cannot compute nothingness");
             return false;
         }
 
         ImmutableArray<CompiledValue>.Builder result = ImmutableArray.CreateBuilder<CompiledValue>();
         foreach (CompiledExpression statement in statements)
         {
-            if (!TryCompute(statement, context, out CompiledValue value))
+            if (!TryCompute(statement, context, out CompiledValue value, out error))
             {
                 values = ImmutableArray<CompiledValue>.Empty;
                 return false;
@@ -3921,26 +3964,35 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         }
 
         values = result.ToImmutable();
+        error = null;
         return true;
     }
-    bool TryCompute([NotNullWhen(true)] CompiledExpression? statement, EvaluationContext context, out CompiledValue value)
+    bool TryCompute([NotNullWhen(true)] CompiledExpression? statement, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         value = CompiledValue.Null;
+
+        if (statement is null)
+        {
+            error = new PossibleDiagnostic($"Cannot compute nothingness");
+            return false;
+        }
+
+        error = new PossibleDiagnostic($"Cannot compute runtime-only expressions ({statement.GetType().Name})");
         return statement switch
         {
-            CompiledConstantValue v => TryCompute(v, context, out value),
-            CompiledBinaryOperatorCall v => TryCompute(v, context, out value),
-            CompiledUnaryOperatorCall v => TryCompute(v, context, out value),
-            CompiledDereference v => TryCompute(v, context, out value),
-            CompiledFunctionCall v => TryCompute(v, context, out value),
-            CompiledSizeof v => TryCompute(v, context, out value),
-            CompiledVariableAccess v => TryCompute(v, context, out value),
-            CompiledParameterAccess v => TryCompute(v, context, out value),
-            CompiledReinterpretation v => TryCompute(v, context, out value),
-            CompiledCast v => TryCompute(v, context, out value),
-            CompiledElementAccess v => TryCompute(v, context, out value),
-            CompiledArgument v => TryCompute(v.Value, context, out value),
-            CompiledFunctionReference v => TryCompute(v, context, out value),
+            CompiledConstantValue v => TryCompute(v, context, out value, out error),
+            CompiledBinaryOperatorCall v => TryCompute(v, context, out value, out error),
+            CompiledUnaryOperatorCall v => TryCompute(v, context, out value, out error),
+            CompiledDereference v => TryCompute(v, context, out value, out error),
+            CompiledFunctionCall v => TryCompute(v, context, out value, out error),
+            CompiledSizeof v => TryCompute(v, context, out value, out error),
+            CompiledVariableAccess v => TryCompute(v, context, out value, out error),
+            CompiledParameterAccess v => TryCompute(v, context, out value, out error),
+            CompiledReinterpretation v => TryCompute(v, context, out value, out error),
+            CompiledCast v => TryCompute(v, context, out value, out error),
+            CompiledElementAccess v => TryCompute(v, context, out value, out error),
+            CompiledArgument v => TryCompute(v.Value, context, out value, out error),
+            CompiledFunctionReference v => TryCompute(v, context, out value, out error),
             CompiledLambda => false, // todo
 
             CompiledString => false,
@@ -3957,7 +4009,6 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             CompiledLabelReference => false,
             CompiledExpressionVariableAccess => false,
             CompiledCompilerVariableAccess => false,
-            null => false,
 
             _ => throw new NotImplementedException(statement.GetType().ToString()),
         };
@@ -3973,7 +4024,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         if (found is null)
         { return false; }
 
-        if (TryCompute(parameters, context, out ImmutableArray<CompiledValue> parameterValues)
+        if (TryCompute(parameters, context, out ImmutableArray<CompiledValue> parameterValues, out _)
             && TryEvaluate(found, parameterValues, context, out value, out runtimeStatements))
         { return true; }
 
@@ -3991,7 +4042,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return false;
         }
 
-        if (TryCompute(parameters, context, out ImmutableArray<CompiledValue> parameterValues)
+        if (TryCompute(parameters, context, out ImmutableArray<CompiledValue> parameterValues, out _)
             && TryEvaluate(found, parameterValues, context, out value, out runtimeStatements))
         { return true; }
 
@@ -4064,7 +4115,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         while (true)
         {
-            if (!TryCompute(whileLoop.Condition, context, out CompiledValue condition))
+            if (!TryCompute(whileLoop.Condition, context, out CompiledValue condition, out _))
             { return false; }
 
             if (!condition)
@@ -4102,7 +4153,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             CompiledValue condition;
             if (forLoop.Condition is null)
             { condition = true; }
-            else if (!TryCompute(forLoop.Condition, context, out condition))
+            else if (!TryCompute(forLoop.Condition, context, out condition, out _))
             { return false; }
 
             if (!condition)
@@ -4139,7 +4190,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             {
                 case CompiledIf _if:
                 {
-                    if (!TryCompute(_if.Condition, context, out CompiledValue condition))
+                    if (!TryCompute(_if.Condition, context, out CompiledValue condition, out _))
                     { return false; }
 
                     if (condition)
@@ -4182,7 +4233,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         }
         else
         {
-            if (!TryCompute(variableDeclaration.InitialValue, context, out value))
+            if (!TryCompute(variableDeclaration.InitialValue, context, out value, out _))
             { return false; }
         }
 
@@ -4193,7 +4244,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     }
     bool TryEvaluate(CompiledSetter anyAssignment, EvaluationContext context)
     {
-        if (!TryCompute(anyAssignment.Value, context, out CompiledValue value))
+        if (!TryCompute(anyAssignment.Value, context, out CompiledValue value, out _))
         { return false; }
 
         if (anyAssignment.Target is CompiledVariableAccess targetVariable)
@@ -4219,7 +4270,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         if (keywordCall.Value is not null)
         {
-            if (!TryCompute(keywordCall.Value, context, out CompiledValue returnValue))
+            if (!TryCompute(keywordCall.Value, context, out CompiledValue returnValue, out _))
             { return false; }
 
             context.Frames.Last.ReturnValue = returnValue;
@@ -4246,7 +4297,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     }
     bool TryEvaluate(CompiledStatement statement, EvaluationContext context) => statement switch
     {
-        CompiledExpression v => TryCompute(v, context, out _),
+        CompiledExpression v => TryCompute(v, context, out _, out _),
         CompiledBlock v => TryEvaluate(v, context),
         CompiledVariableDefinition v => TryEvaluate(v, context),
         CompiledWhileLoop v => TryEvaluate(v, context),

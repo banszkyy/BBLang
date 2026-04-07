@@ -525,7 +525,7 @@ public partial class StatementCompiler
                         controlFlowUsage == ControlFlowUsage.None)
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function inlined", caller));
-                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionInlining))
                         {
                             compiledStatement = new CompiledDummyExpression()
                             {
@@ -546,7 +546,7 @@ public partial class StatementCompiler
                         if (!CanCastImplicitly(statementWithValue.Type, GeneralType.TryInsertTypeParameters(callee.Type, typeArguments), out PossibleDiagnostic? castError))
                         { Diagnostics.Add(castError.ToError(statementWithValue)); }
 
-                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionInlining))
                         {
                             statementWithValue.SaveValue = caller.SaveValue;
                             compiledStatement = statementWithValue;
@@ -1014,12 +1014,12 @@ public partial class StatementCompiler
             };
 
             if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
-                TryCompute(compiledStatement, out CompiledValue evaluated) &&
+                TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                 evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
             {
                 Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                 SetPredictedValue(@operator, casted);
-                if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                 {
                     compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                 }
@@ -1092,12 +1092,12 @@ public partial class StatementCompiler
             Frames.Last.CapturesGlobalVariables = null;
 
             if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
-                TryCompute(compiledStatement, out CompiledValue evaluated) &&
+                TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                 evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
             {
                 Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                 SetPredictedValue(@operator, casted);
-                if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                 {
                     operatorDefinition.Function.AddReference(@operator, true);
                     compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
@@ -1126,12 +1126,12 @@ public partial class StatementCompiler
                     };
 
                     if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
-                        TryCompute(compiledStatement, out CompiledValue evaluated) &&
+                        TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                         SetPredictedValue(@operator, casted);
-                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                         {
                             compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                         }
@@ -1153,12 +1153,12 @@ public partial class StatementCompiler
                     };
 
                     if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
-                        TryCompute(compiledStatement, out CompiledValue evaluated) &&
+                        TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                         SetPredictedValue(@operator, casted);
-                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                         {
                             compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                         }
@@ -1180,12 +1180,12 @@ public partial class StatementCompiler
                     };
 
                     if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
-                        TryCompute(compiledStatement, out CompiledValue evaluated) &&
+                        TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                         SetPredictedValue(@operator, casted);
-                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                         {
                             compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                         }
@@ -1207,12 +1207,12 @@ public partial class StatementCompiler
                     };
 
                     if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
-                        TryCompute(compiledStatement, out CompiledValue evaluated) &&
+                        TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
                         SetPredictedValue(@operator, casted);
-                        if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                        if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                         {
                             compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
                         }
@@ -2356,7 +2356,7 @@ public partial class StatementCompiler
 
         if (baseStatement.Type.Is(out ArrayType? arrayType))
         {
-            if (TryCompute(indexStatement, out CompiledValue computedIndexData))
+            if (TryCompute(indexStatement, out CompiledValue computedIndexData, out _))
             {
                 SetPredictedValue(index.Index, computedIndexData);
 
@@ -2523,7 +2523,7 @@ public partial class StatementCompiler
             prevValue.TryCast(targetBuiltinType.RuntimeType, out CompiledValue castedValue))
         {
             Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Type cast evaluated, converting {prevValue} ({prevValue.Type}) to {castedValue} ({castedValue.Type})", typeCast));
-            if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+            if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
             {
                 compiledStatement = new CompiledConstantValue()
                 {

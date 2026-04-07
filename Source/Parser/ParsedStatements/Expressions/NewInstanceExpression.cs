@@ -2,7 +2,10 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Parser.Statements;
 
-public class NewInstanceExpression : Expression, IHaveType, IInFile
+public class NewInstanceExpression :
+    Expression,
+    IHaveType,
+    IInFile
 {
     public Token Keyword { get; }
     public TypeInstance Type { get; }

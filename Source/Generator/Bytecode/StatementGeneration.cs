@@ -30,7 +30,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             return;
         }
-        CompiledFunction f = Functions.First(v => Utils.ReferenceEquals(v.Function, cleanup.Deallocator.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Deallocator.TypeArguments));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Deallocator.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Deallocator.TypeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{cleanup.Deallocator.Template.ToReadable()}\" wasn't compiled", cleanup));
+            return;
+        }
 
         if (cleanup.Deallocator.Template.ExternalFunctionName is not null)
         {
@@ -82,7 +87,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
         }
 
-        CompiledFunction f = Functions.First(v => Utils.ReferenceEquals(v.Function, cleanup.Destructor.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Destructor.TypeArguments));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Destructor.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Destructor.TypeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{cleanup.Destructor.Template.ToReadable()}\" wasn't compiled", cleanup));
+            return;
+        }
 
         AddComment(" Param0 should be already there");
 
@@ -493,7 +503,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForFunctionCall_MSIL(CompiledExternalFunctionCall caller)
     {
-        CompiledFunction f = Functions.First(v => Utils.ReferenceEquals(v.Function, caller.Declaration) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, null));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, caller.Declaration) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, null));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{caller.Declaration.ToReadable()}\" wasn't compiled", caller));
+            return;
+        }
 
         AddComment($"Call \"{caller.Declaration.ToReadable()}\" {{");
 
@@ -564,7 +579,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForFunctionCall(CompiledFunctionCall caller)
     {
-        CompiledFunction f = Functions.First(v => Utils.ReferenceEquals(v.Function, caller.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, caller.Function.TypeArguments));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, caller.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, caller.Function.TypeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{caller.Function.Template.ToReadable()}\" wasn't compiled", caller));
+            return;
+        }
+
         if (ILGenerator is not null)
         {
             ILGenerator.Diagnostics.Clear();
@@ -1388,7 +1409,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForStatement(CompiledConstructorCall constructorCall)
     {
-        CompiledFunction f = Functions.First(v => Utils.ReferenceEquals(v.Function, constructorCall.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, constructorCall.Function.TypeArguments));
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, constructorCall.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, constructorCall.Function.TypeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{constructorCall.Function.Template.ToReadable()}\" wasn't compiled", constructorCall));
+            return;
+        }
 
         AddComment($"Call \"{constructorCall.Function.Template.ToReadable()}\" {{");
 
@@ -2919,7 +2945,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
                     continue;
                 }
 
-                CompiledFunction e = Functions.First(v => Utils.ReferenceEquals(v.Function, f) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, null));
+                CompiledFunction? e = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, f) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, null));
+                if (e is null)
+                {
+                    Diagnostics.Add(DiagnosticAt.Internal($"Function \"{f.ToReadable()}\" wasn't compiled", f));
+                    continue;
+                }
 
                 int returnValueSize = f.ReturnSomething ? FindSize(f.Type, f.Definition.Type) : 0;
                 int argumentsSize = 0;

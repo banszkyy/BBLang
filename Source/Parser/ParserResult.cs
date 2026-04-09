@@ -9,6 +9,7 @@ public readonly struct ParserResult
     public readonly ImmutableArray<FunctionDefinition> Operators;
     public readonly ImmutableArray<StructDefinition> Structs;
     public readonly ImmutableArray<AliasDefinition> AliasDefinitions;
+    public readonly ImmutableArray<EnumDefinition> EnumDefinitions;
     public readonly ImmutableArray<UsingDefinition> Usings;
     public readonly ImmutableArray<Statement> TopLevelStatements;
     public readonly ImmutableArray<Token> OriginalTokens;
@@ -22,6 +23,7 @@ public readonly struct ParserResult
         ImmutableArray<StructDefinition>.Empty,
         ImmutableArray<UsingDefinition>.Empty,
         ImmutableArray<AliasDefinition>.Empty,
+        ImmutableArray<EnumDefinition>.Empty,
         ImmutableArray<Statement>.Empty,
         ImmutableArray<Token>.Empty,
         ImmutableArray<Token>.Empty);
@@ -32,6 +34,7 @@ public readonly struct ParserResult
         ImmutableArray<StructDefinition> structs,
         ImmutableArray<UsingDefinition> usings,
         ImmutableArray<AliasDefinition> aliasDefinitions,
+        ImmutableArray<EnumDefinition> enumDefinitions,
         ImmutableArray<Statement> topLevelStatements,
         ImmutableArray<Token> originalTokens,
         ImmutableArray<Token> tokens)
@@ -40,6 +43,7 @@ public readonly struct ParserResult
         Operators = operators;
         Structs = structs;
         AliasDefinitions = aliasDefinitions;
+        EnumDefinitions = enumDefinitions;
         Usings = usings;
         TopLevelStatements = topLevelStatements;
         OriginalTokens = originalTokens;

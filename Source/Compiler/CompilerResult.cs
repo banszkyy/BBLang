@@ -11,6 +11,7 @@ public readonly struct CompilerResult
     public readonly ImmutableArray<CompiledConstructorDefinition> ConstructorDefinitions;
 
     public readonly ImmutableArray<CompiledAlias> Aliases;
+    public readonly ImmutableArray<CompiledEnum> Enums;
     public readonly ImmutableArray<CompiledStruct> Structs;
 
     public readonly ImmutableArray<ParsedFile> RawTokens;
@@ -100,6 +101,7 @@ public readonly struct CompilerResult
         ImmutableArray<CompiledOperatorDefinition>.Empty,
         ImmutableArray<CompiledConstructorDefinition>.Empty,
         ImmutableArray<CompiledAlias>.Empty,
+        ImmutableArray<CompiledEnum>.Empty,
         ImmutableArray<IExternalFunction>.Empty,
         ImmutableArray<CompiledStruct>.Empty,
         ImmutableArray<(ImmutableArray<Statement>, Uri)>.Empty,
@@ -115,6 +117,7 @@ public readonly struct CompilerResult
         ImmutableArray<CompiledOperatorDefinition> operators,
         ImmutableArray<CompiledConstructorDefinition> constructors,
         ImmutableArray<CompiledAlias> aliases,
+        ImmutableArray<CompiledEnum> enums,
         ImmutableArray<IExternalFunction> externalFunctions,
         ImmutableArray<CompiledStruct> structs,
         ImmutableArray<(ImmutableArray<Statement> Statements, Uri File)> topLevelStatements,
@@ -129,6 +132,7 @@ public readonly struct CompilerResult
         OperatorDefinitions = operators;
         ConstructorDefinitions = constructors;
         Aliases = aliases;
+        Enums = enums;
         ExternalFunctions = externalFunctions;
         Structs = structs;
         RawStatements = topLevelStatements;

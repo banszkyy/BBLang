@@ -163,7 +163,11 @@ public class RuntimeException : LanguageException
                     break;
                 case AliasType aliasType:
                     if (colored) result.SetGraphics(Ansi.ForegroundGreen);
-                    result.Append(type.ToString());
+                    result.Append(aliasType.ToString());
+                    break;
+                case EnumType enumType:
+                    if (colored) result.SetGraphics(Ansi.ForegroundGreen);
+                    result.Append(enumType.ToString());
                     break;
                 default:
                     if (colored) result.SetGraphics(Ansi.BrightForegroundBlack);

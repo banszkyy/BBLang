@@ -22,4 +22,6 @@ public enum TokenAnalyzedType
     OtherOperator,
     TypeModifier,
     InstructionLabel,
+    Enum,
+    EnumMember,
 }

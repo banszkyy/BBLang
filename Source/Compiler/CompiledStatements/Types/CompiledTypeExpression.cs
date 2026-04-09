@@ -25,6 +25,7 @@ public abstract class CompiledTypeExpression : CompiledStatement,
         return type switch
         {
             AliasType v => CompiledAliasTypeExpression.CreateAnonymous(v, location),
+            EnumType v => CompiledEnumTypeExpression.CreateAnonymous(v, location),
             ArrayType v => CompiledArrayTypeExpression.CreateAnonymous(v, location),
             BuiltinType v => CompiledBuiltinTypeExpression.CreateAnonymous(v, location),
             FunctionType v => CompiledFunctionTypeExpression.CreateAnonymous(v, location),
@@ -260,6 +261,9 @@ public abstract class CompiledTypeExpression : CompiledStatement,
                 return type;
 
             case CompiledAliasTypeExpression: // todo
+                return type;
+
+            case CompiledEnumTypeExpression:
                 return type;
 
             case CompiledFunctionTypeExpression functionType:

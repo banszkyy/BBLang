@@ -302,21 +302,25 @@ public partial class StatementCompiler
                 return false;
             }
 
-            if (functionMatches.Count > 1)
+            if (functionMatches.Count > 1
+                && functionMatches[0].CompareTo(functionMatches[1]) == 0
+                && !(
+                    best.IsIdentifierMatched
+                    && best.IsParameterCountMatches
+                    && (best.ParameterTypeMatch is null || best.ParameterTypeMatch.Value != TypeMatch.None)
+                    && (best.ReturnTypeMatch != TypeMatch.None)
+                ))
             {
-                if (functionMatches[0].CompareTo(functionMatches[1]) == 0)
+                error = new PossibleDiagnostic($"Multiple functions matched ({functionMatches[0]} and {functionMatches[1]})");
+                if (functionMatches[0].Function is FunctionThingDefinition ftd1
+                    && functionMatches[1].Function is FunctionThingDefinition ftd2)
                 {
-                    error = new PossibleDiagnostic($"Multiple functions matched ({functionMatches[0]} and {functionMatches[1]})");
-                    if (functionMatches[0].Function is FunctionThingDefinition ftd1
-                        && functionMatches[1].Function is FunctionThingDefinition ftd2)
-                    {
-                        error = error.WithRelatedInfo(
-                            new DiagnosticRelatedInformationAt(functionMatches[0].Function.ToReadable(), new Location(ftd1.Identifier.Position, ftd1.File)),
-                            new DiagnosticRelatedInformationAt(functionMatches[1].Function.ToReadable(), new Location(ftd2.Identifier.Position, ftd2.File))
-                        );
-                    }
-                    return false;
+                    error = error.WithRelatedInfo(
+                        new DiagnosticRelatedInformationAt(functionMatches[0].Function.ToReadable(), new Location(ftd1.Identifier.Position, ftd1.File)),
+                        new DiagnosticRelatedInformationAt(functionMatches[1].Function.ToReadable(), new Location(ftd2.Identifier.Position, ftd2.File))
+                    );
                 }
+                return false;
             }
 
             if (!best.IsIdentifierMatched)

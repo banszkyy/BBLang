@@ -1814,6 +1814,10 @@ public partial class CodeGeneratorForIL : CodeGenerator
         successful = false;
         Diagnostics.Add(DiagnosticAt.Error($"Internal variables aren't supported in MSIL", statement, false));
     }
+    void EmitStatement(CompiledEnumMemberAccess statement, ILProxy il, ref bool successful)
+    {
+        EmitStatement(statement.EnumMember.Value, il, ref successful);
+    }
     void EmitStatement(CompiledStatement statement, ILProxy il, ref bool successful)
     {
         switch (statement)
@@ -1857,6 +1861,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             case CompiledStackString v: EmitStatement(v, il, ref successful); break;
             case CompiledLambda v: EmitStatement(v, il, ref successful); break;
             case CompiledCompilerVariableAccess v: EmitStatement(v, il, ref successful); break;
+            case CompiledEnumMemberAccess v: EmitStatement(v, il, ref successful); break;
             default: throw new NotImplementedException(statement.GetType().Name);
         }
     }
@@ -1924,6 +1929,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     bool ToType(GeneralType type, [NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error) => type switch
     {
         AliasType v => ToType(v.Value, out result, out error),
+        EnumType v => ToType(v.Definition.Type, out result, out error),
         BuiltinType v => ToType(v, out result, out error),
         StructType v => ToType(v, out result, out error),
         PointerType v => ToType(v, out result, out error),
@@ -2347,6 +2353,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             PointerType => true,
             ReferenceType => true,
             AliasType v => ScanForPointer(v.Value),
+            EnumType v => ScanForPointer(v.Definition.Type),
             StructType v => v.Struct.Fields.Any(field => ScanForPointer(GeneralType.TryInsertTypeParameters(field.Type, v.TypeArguments))),
             ArrayType v => ScanForPointer(v.Of),
             FunctionType => true,
@@ -2381,6 +2388,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             PointerType v => ScanForPointer(v.To), // Top-level pointers are okay
             ReferenceType v => ScanForPointer(v.To), // Top-level pointers are okay
             AliasType v => ScanForPointer(v.Value),
+            EnumType v => ScanForPointer(v.Definition.Type),
             StructType v => v.Struct.Fields.Any(field => ScanForPointer(GeneralType.TryInsertTypeParameters(field.Type, v.TypeArguments))),
             ArrayType v => ScanForPointer(v.Of),
             _ => throw new UnreachableException(),

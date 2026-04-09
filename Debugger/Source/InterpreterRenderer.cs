@@ -197,6 +197,9 @@ public class InterpreterRenderer
             case AliasType v:
                 t.Write(v.Identifier, AnsiColor.Green);
                 break;
+            case EnumType v:
+                t.Write(v.Identifier, AnsiColor.Green);
+                break;
             case ArrayType v:
                 WriteType(ref t, v.Of);
                 t.Write('[');

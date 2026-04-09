@@ -8,11 +8,13 @@ public static class DeclarationKeywords
     public const string Struct = "struct";
     public const string Using = "using";
     public const string Alias = "alias";
+    public const string Enum = "enum";
 
     public static readonly ImmutableArray<string> List = ImmutableArray.Create(
         Struct,
         Using,
-        Alias
+        Alias,
+        Enum
     );
 }
 
@@ -139,6 +141,7 @@ public static class LanguageConstants
         DeclarationKeywords.Struct,
         DeclarationKeywords.Using,
         DeclarationKeywords.Alias,
+        DeclarationKeywords.Enum,
 
         ModifierKeywords.Temp,
         ModifierKeywords.This,

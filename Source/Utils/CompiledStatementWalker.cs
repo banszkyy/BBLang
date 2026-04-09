@@ -119,6 +119,7 @@ public static partial class StatementWalker
             CompiledLabelReference v => Visit(v, callback),
             CompiledCompilerVariableAccess v => Visit(v, callback),
             CompiledLambda v => Visit(v, callback),
+            CompiledEnumMemberAccess v => Visit(v, callback),
             _ => throw new UnreachableException(),
         };
     }
@@ -129,6 +130,12 @@ public static partial class StatementWalker
         if (!Visit(statement.Block, callback)) return false;
         return true;
     }
+    static bool Visit(CompiledEnumMemberAccess statement, Func<CompiledStatement, bool> callback)
+    {
+        if (!callback(statement)) return false;
+        if (!Visit(statement.EnumMember.Value, callback)) return false;
+        return true;
+    }
     static bool Visit(CompiledTypeExpression statement, Func<CompiledStatement, bool> callback)
     {
         if (!callback(statement)) return false;
@@ -136,6 +143,8 @@ public static partial class StatementWalker
         {
             case CompiledAliasTypeExpression v:
                 return Visit(v.Value, callback);
+            case CompiledEnumTypeExpression v:
+                return true;
             case CompiledArrayTypeExpression v:
                 if (!Visit(v.Of, callback)) return false;
                 if (v.Length is not null) if (!Visit(v.Length, callback)) return false;

@@ -138,6 +138,120 @@ public sealed partial class Parser
         return true;
     }
 
+    bool ExpectEnumDefinition([NotNullWhen(true)] out EnumDefinition? enumDefinition, OrderedDiagnosticCollection diagnostics)
+    {
+        ParseRestorePoint savepoint = SavePoint();
+        enumDefinition = null;
+
+        ImmutableArray<AttributeUsage> attributes = ExpectAttributes();
+
+        ImmutableArray<Token> modifiers = ExpectModifiers();
+
+        if (!ExpectIdentifier(DeclarationKeywords.Enum, out Token? keyword))
+        {
+            diagnostics.Add(0, DiagnosticAt.Error($"Expected keyword `{DeclarationKeywords.Enum}` for enum definition", CurrentLocation, false));
+            savepoint.Restore();
+            return false;
+        }
+
+        keyword.AnalyzedType = TokenAnalyzedType.Keyword;
+
+        CheckModifiers(modifiers, EnumModifiers);
+
+        if (!ExpectIdentifier(out Token? identifier))
+        {
+            identifier = new MissingToken(TokenType.Identifier, keyword.Position.After());
+            Diagnostics.Add(DiagnosticAt.Error($"Expected identifier after enum type", identifier, File, false));
+        }
+
+        identifier.AnalyzedType = TokenAnalyzedType.Enum;
+
+        TypeInstance? type = null;
+
+        if (ExpectOperator(":", out Token? inheritOperator))
+        {
+            if (!ExpectType(AllowedType.FunctionPointer | AllowedType.StackArrayWithoutLength, out type))
+            {
+                type = new MissingTypeInstance(inheritOperator.Position.After(), File);
+                Diagnostics.Add(DiagnosticAt.Error($"Expected type after ':'", type, File, false));
+            }
+        }
+
+        if (!ExpectOperator("{", out Token? bracketStart))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Expected '{{' after enum identifier", identifier.Position.After(), File, false));
+            return false;
+        }
+
+        ImmutableArray<EnumMemberDefinition>.Builder members = ImmutableArray.CreateBuilder<EnumMemberDefinition>();
+        Token? bracketEnd;
+        Position lastPosition = bracketStart.Position;
+        Token? previousComma = null;
+        while (true)
+        {
+            if (ExpectOperator("}", out bracketEnd))
+            {
+                break;
+            }
+
+            if (previousComma is MissingToken)
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Expected ',' after this enum member", previousComma, File, false));
+            }
+
+            if (!ExpectIdentifier(out Token? memberIdentifier))
+            {
+                memberIdentifier = new MissingToken(TokenType.Identifier, lastPosition.After());
+                Diagnostics.Add(DiagnosticAt.Error($"Expected identifier for enum member", memberIdentifier, File, false));
+            }
+            lastPosition = memberIdentifier.Position;
+            memberIdentifier.AnalyzedType = TokenAnalyzedType.EnumMember;
+
+            Expression? memberValue;
+
+            if (!ExpectOperator("=", out Token? equalsToken))
+            {
+                memberValue = null;
+            }
+            else
+            {
+                lastPosition = equalsToken.Position;
+
+                if (!ExpectAnyExpression(out memberValue))
+                {
+                    memberValue = new MissingExpression(lastPosition.After(), File);
+                    Diagnostics.Add(DiagnosticAt.Error($"Expected enum member value after '='", memberValue, false));
+                }
+                lastPosition = memberValue.Position;
+            }
+
+            members.Add(new EnumMemberDefinition(memberIdentifier, memberValue, File));
+
+            if (!ExpectOperator(",", out previousComma))
+            {
+                previousComma = new MissingToken(TokenType.Operator, lastPosition.After(), ",");
+            }
+        }
+
+        enumDefinition = new EnumDefinition(
+            attributes,
+            modifiers,
+            keyword,
+            type,
+            identifier,
+            members.ToImmutable(),
+            File,
+            new TokenPair(bracketStart, bracketEnd)
+        );
+
+        if (ExpectOperator(";", out Token? semicolon))
+        {
+            Diagnostics.Add(DiagnosticAt.Warning($"Unnecessary semicolon", semicolon, File));
+        }
+
+        return true;
+    }
+
     bool ExpectTemplateInfo([NotNullWhen(true)] out TemplateInfo? templateInfo)
     {
         if (!ExpectOperator("<", out Token? startBracket))

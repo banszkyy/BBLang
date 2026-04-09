@@ -6,7 +6,8 @@ public class CompiledVariableConstant :
     IHaveCompiledType,
     IIdentifiable<string>,
     IInFile,
-    ILocated
+    ILocated,
+    ICompiledDefinition<VariableDefinition>
 {
     public VariableDefinition Definition { get; }
     public CompiledValue Value { get; }

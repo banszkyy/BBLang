@@ -146,6 +146,7 @@ public abstract class CodeGenerator : IRuntimeInfoProvider
         GenericType v => FindSize(v, out size, out error),
         BuiltinType v => FindSize(v, out size, out error),
         AliasType v => FindSize(v, out size, out error),
+        EnumType v => FindSize(v, out size, out error),
         _ => throw new NotImplementedException(),
     };
     protected virtual bool FindSize(ReferenceType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -225,6 +226,7 @@ public abstract class CodeGenerator : IRuntimeInfoProvider
         }
     }
     protected virtual bool FindSize(AliasType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error) => FindSize(type.Value, out size, out error);
+    protected virtual bool FindSize(EnumType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error) => FindSize(type.Definition.Type, out size, out error);
 
     protected bool FindSize(CompiledTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {

@@ -7,7 +7,8 @@ public class CompiledStruct :
     IIdentifiable<string>,
     IInFile,
     ILocated,
-    IHaveAttributes
+    IHaveAttributes,
+    ICompiledDefinition<StructDefinition>
 {
     public StructDefinition Definition { get; }
     public ImmutableArray<CompiledField> Fields { get; private set; }

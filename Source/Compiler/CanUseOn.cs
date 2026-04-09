@@ -10,6 +10,7 @@ public enum CanUseOn
     Field = 0x4,
     TypeAlias = 0x8,
     Variable = 0x10,
+    Enum = 0x20,
 
-    TypeDefinition = Struct | TypeAlias,
+    TypeDefinition = Struct | TypeAlias | Enum,
 }

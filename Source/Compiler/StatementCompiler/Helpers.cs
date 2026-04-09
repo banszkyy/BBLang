@@ -15,6 +15,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     readonly List<CompiledFunctionDefinition> CompiledFunctions = new();
     readonly List<CompiledGeneralFunctionDefinition> CompiledGeneralFunctions = new();
     readonly List<CompiledAlias> CompiledAliases = new();
+    readonly List<CompiledEnum> CompiledEnums = new();
 
     readonly Stack<CompiledVariableConstant> CompiledGlobalConstants = new();
     readonly Stack<CompiledVariableDefinition> CompiledGlobalVariables = new();
@@ -47,6 +48,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     readonly List<FunctionDefinition> FunctionDefinitions = new();
     readonly List<StructDefinition> StructDefinitions = new();
     readonly List<AliasDefinition> AliasDefinitions = new();
+    readonly List<EnumDefinition> EnumDefinitions = new();
 
     readonly List<(ImmutableArray<Statement> Statements, Uri File)> TopLevelStatements = new();
 
@@ -1029,6 +1031,121 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     #endregion
 
+    #region GetAlias()
+
+    public enum EnumPerfectus
+    {
+        None,
+
+        /// <summary>
+        /// The identifier is good
+        /// </summary>
+        Identifier,
+
+        /// <summary>
+        /// Boundary between good and bad enums
+        /// </summary>
+        Good,
+
+        // == MATCHED --> Searching for the most relevant enum ==
+
+        /// <summary>
+        /// The enum is in the same file
+        /// </summary>
+        File,
+    }
+
+    bool GetEnum(
+        string enumName,
+        Uri relevantFile,
+
+        [NotNullWhen(true)] out CompiledEnum? result,
+        [NotNullWhen(false)] out PossibleDiagnostic? error)
+        => GetEnum(
+            CompiledEnums,
+
+            enumName,
+            relevantFile,
+
+            out result,
+            out error);
+
+    public static bool GetEnum(
+        IEnumerable<CompiledEnum> enums,
+
+        string enumName,
+        Uri relevantFile,
+
+        [NotNullWhen(true)] out CompiledEnum? result,
+        [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        CompiledEnum? result_ = default;
+        PossibleDiagnostic? error_ = null;
+
+        EnumPerfectus perfectus = EnumPerfectus.None;
+
+        static EnumPerfectus Max(EnumPerfectus a, EnumPerfectus b) => a > b ? a : b;
+
+        bool HandleIdentifier(CompiledEnum @enum)
+        {
+            if (enumName is not null &&
+                @enum.Identifier != enumName)
+            { return false; }
+
+            perfectus = Max(perfectus, EnumPerfectus.Identifier);
+            return true;
+        }
+
+        bool HandleFile(CompiledEnum @enum)
+        {
+            if (relevantFile is null ||
+                @enum.Definition.File != relevantFile)
+            {
+                // Not in the same file
+                return false;
+            }
+
+            if (perfectus >= EnumPerfectus.File)
+            {
+                error_ = new PossibleDiagnostic($"Enum \"{enumName}\" not found: multiple enums matched in the same file");
+            }
+
+            perfectus = EnumPerfectus.File;
+            result_ = @enum;
+            return true;
+        }
+
+        foreach (CompiledEnum @enum in enums)
+        {
+            if (!HandleIdentifier(@enum))
+            { continue; }
+
+            // MATCHED --> Searching for most relevant enum
+
+            if (perfectus < EnumPerfectus.Good)
+            {
+                result_ = @enum;
+                perfectus = EnumPerfectus.Good;
+            }
+
+            if (!HandleFile(@enum))
+            { continue; }
+        }
+
+        if (result_ is not null && perfectus >= EnumPerfectus.Good)
+        {
+            result = result_;
+            error = error_;
+            return true;
+        }
+
+        error = error_ ?? new PossibleDiagnostic($"Enum \"{enumName}\" not found");
+        result = null;
+        return false;
+    }
+
+    #endregion
+
     public enum GlobalVariablePerfectus
     {
         None,
@@ -1558,12 +1675,31 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 StructType => TokenAnalyzedType.Struct,
                 GenericType => TokenAnalyzedType.TypeParameter,
                 AliasType => TokenAnalyzedType.TypeAlias,
+                EnumType => TokenAnalyzedType.Enum,
                 _ => TokenAnalyzedType.Type,
             };
             alias.AddReference(new TypeInstanceSimple(name, relevantFile));
 
             // HERE
             result = new AliasType(alias.Value, alias);
+            error = null;
+            return true;
+        }
+
+        if (GetEnum(name.Content, relevantFile, out CompiledEnum? @enum, out PossibleDiagnostic? enumType))
+        {
+            name.AnalyzedType = @enum.Type.FinalValue switch
+            {
+                BuiltinType => TokenAnalyzedType.BuiltinType,
+                StructType => TokenAnalyzedType.Struct,
+                GenericType => TokenAnalyzedType.TypeParameter,
+                AliasType => TokenAnalyzedType.TypeAlias,
+                EnumType => TokenAnalyzedType.Enum,
+                _ => TokenAnalyzedType.Type,
+            };
+            @enum.AddReference(new TypeInstanceSimple(name, relevantFile));
+
+            result = new EnumType(@enum);
             error = null;
             return true;
         }
@@ -1654,12 +1790,31 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 StructType => TokenAnalyzedType.Struct,
                 GenericType => TokenAnalyzedType.TypeParameter,
                 AliasType => TokenAnalyzedType.TypeAlias,
+                EnumType => TokenAnalyzedType.Enum,
                 _ => TokenAnalyzedType.Type,
             };
             alias.AddReference(new TypeInstanceSimple(name, relevantFile));
 
             // HERE
             result = new CompiledAliasTypeExpression(CompiledTypeExpression.CreateAnonymous(alias.Value, alias.Definition.Value), alias, new Location(name.Position, relevantFile));
+            error = null;
+            return true;
+        }
+
+        if (GetEnum(name.Content, relevantFile, out CompiledEnum? @enum, out PossibleDiagnostic? enumType))
+        {
+            name.AnalyzedType = @enum.Type.FinalValue switch
+            {
+                BuiltinType => TokenAnalyzedType.BuiltinType,
+                StructType => TokenAnalyzedType.Struct,
+                GenericType => TokenAnalyzedType.TypeParameter,
+                AliasType => TokenAnalyzedType.TypeAlias,
+                EnumType => TokenAnalyzedType.Enum,
+                _ => TokenAnalyzedType.Type,
+            };
+            @enum.AddReference(new TypeInstanceSimple(name, relevantFile));
+
+            result = new CompiledEnumTypeExpression(@enum, new Location(name.Position, relevantFile));
             error = null;
             return true;
         }
@@ -1720,6 +1875,22 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                         return false;
                     }
                     type = new AliasType(alias.Value, alias);
+                }
+            }
+        }
+
+        foreach (CompiledEnum @enum in CompiledEnums)
+        {
+            if (@enum.Definition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? attribute))
+            {
+                if (ParseAttribute(attribute) == by)
+                {
+                    if (type is not null)
+                    {
+                        error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute);
+                        return false;
+                    }
+                    type = new EnumType(@enum);
                 }
             }
         }
@@ -2502,6 +2673,15 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     bool FindStatementType(FieldExpression field, [NotNullWhen(true)] out GeneralType? type, DiagnosticsCollection diagnostics)
     {
         type = null;
+
+        PossibleDiagnostic? enumError = null;
+        if (field.Object is IdentifierExpression objectIdentifier
+            && GetEnum(objectIdentifier.Identifier.Content, objectIdentifier.File, out CompiledEnum? @enum, out enumError))
+        {
+            type = new EnumType(@enum);
+            return true;
+        }
+
         if (!FindStatementType(field.Object, out GeneralType? prevStatementType, diagnostics)) return false;
 
         if (prevStatementType.Is<ArrayType>() && field.Identifier.Content == "Length")
@@ -2662,6 +2842,9 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             case CompiledAliasTypeExpression v:
                 if (!Inline(v.Value, context, out CompiledTypeExpression? vInlined, out error)) return false;
                 inlined = new CompiledAliasTypeExpression(vInlined, v.Definition, v.Location);
+                break;
+            case CompiledEnumTypeExpression v:
+                inlined = v;
                 break;
             case CompiledArrayTypeExpression v:
                 if (!Inline(v.Of, context, out CompiledTypeExpression? ofInlined, out error)) return false;
@@ -3993,6 +4176,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             CompiledElementAccess v => TryCompute(v, context, out value, out error),
             CompiledArgument v => TryCompute(v.Value, context, out value, out error),
             CompiledFunctionReference v => TryCompute(v, context, out value, out error),
+            CompiledEnumMemberAccess v => TryCompute(v.EnumMember.Value, context, out value, out error),
             CompiledLambda => false, // todo
 
             CompiledString => false,
@@ -4354,6 +4538,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         GenericType v => FindSize(v, out size, out error, runtime),
         BuiltinType v => FindSize(v, out size, out error, runtime),
         AliasType v => FindSize(v, out size, out error, runtime),
+        EnumType v => FindSize(v, out size, out error, runtime),
         _ => throw new NotImplementedException(),
     };
     static bool FindSize(PointerType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
@@ -4435,6 +4620,10 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     {
         return FindSize(type.Value, out size, out error, runtime);
     }
+    static bool FindSize(EnumType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    {
+        return FindSize(type.Definition.Type, out size, out error, runtime);
+    }
 
     public static bool FindSize(CompiledTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime) => type switch
     {
@@ -4446,6 +4635,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         CompiledGenericTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledBuiltinTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledAliasTypeExpression v => FindSize(v, out size, out error, runtime),
+        CompiledEnumTypeExpression v => FindSize(v, out size, out error, runtime),
         _ => throw new NotImplementedException(),
     };
     static bool FindSize(CompiledPointerTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
@@ -4530,6 +4720,10 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     static bool FindSize(CompiledAliasTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
     {
         return FindSize(type.Value, out size, out error, runtime);
+    }
+    static bool FindSize(CompiledEnumTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    {
+        return FindSize(type.Definition.Type, out size, out error, runtime);
     }
 
     #endregion
@@ -4623,6 +4817,8 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             case AliasType v:
                 foreach (CompiledStatement v2 in Visit(v.Value)) yield return v2;
                 break;
+            case EnumType v:
+                break;
             case PointerType v:
                 foreach (CompiledStatement v2 in Visit(v.To)) yield return v2;
                 break;
@@ -4652,6 +4848,8 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 break;
             case CompiledAliasTypeExpression v:
                 foreach (CompiledStatement v2 in Visit(v.Value)) yield return v2;
+                break;
+            case CompiledEnumTypeExpression v:
                 break;
             case CompiledPointerTypeExpression v:
                 foreach (CompiledStatement v2 in Visit(v.To)) yield return v2;
@@ -4982,6 +5180,11 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             {
                 if (!CompileType(v.Value, out GeneralType? aliasValue, out error, ignoreValues)) return false;
                 type = new AliasType(aliasValue, v.Definition);
+                return true;
+            }
+            case CompiledEnumTypeExpression v:
+            {
+                type = new EnumType(v.Definition);
                 return true;
             }
             case CompiledArrayTypeExpression v:

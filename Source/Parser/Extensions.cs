@@ -16,6 +16,9 @@ public static class Extensions
         foreach (Statement statement in parserResult.Operators.IsDefault ? Enumerable.Empty<Statement>() : parserResult.Operators.SelectMany(v => StatementWalker.Visit(v.Block)))
         { yield return statement; }
 
+        foreach (Statement statement in parserResult.EnumDefinitions.IsDefault ? Enumerable.Empty<Statement>() : parserResult.EnumDefinitions.SelectMany(v => v.Members).SelectMany(v => StatementWalker.Visit(v.Value)))
+        { yield return statement; }
+
         foreach (StructDefinition structs in parserResult.Structs.IsDefault ? Enumerable.Empty<StructDefinition>() : parserResult.Structs)
         {
             foreach (Statement statement in structs.GeneralFunctions.SelectMany(v => StatementWalker.Visit(v.Block)))
@@ -35,6 +38,8 @@ public static class Extensions
     public static IEnumerable<TypeInstance> EnumerateTypeInstances(this ParserResult ast)
     {
         foreach (AliasDefinition item in ast.AliasDefinitions) yield return item.Value;
+
+        foreach (EnumDefinition item in ast.EnumDefinitions.Where(v => v.Type is not null)) yield return item.Type!;
 
         foreach (StructDefinition item in ast.Structs)
         {
@@ -87,6 +92,14 @@ public static class Extensions
         if (!parserResult.Statements.IsDefault)
         {
             if (!StatementWalker.Visit(parserResult.Statements, callback)) return false;
+        }
+
+        if (!parserResult.Enums.IsDefault)
+        {
+            foreach (CompiledExpression? item in parserResult.Enums.SelectMany(v => v.Members).Select(v => v.Value))
+            {
+                if (!StatementWalker.Visit(item, callback)) return false;
+            }
         }
 
         if (!parserResult.Functions.IsDefault)

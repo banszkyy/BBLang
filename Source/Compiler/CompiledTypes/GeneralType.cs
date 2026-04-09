@@ -236,6 +236,9 @@ public abstract class GeneralType :
             case AliasType: // t
                 return type;
 
+            case EnumType:
+                return type;
+
             case FunctionType functionType:
                 return new FunctionType(InsertTypeParameters(functionType.ReturnType, typeArguments), InsertTypeParameters(functionType.Parameters, typeArguments), functionType.HasClosure);
 

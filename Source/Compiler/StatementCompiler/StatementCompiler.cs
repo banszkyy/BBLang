@@ -291,6 +291,7 @@ public partial class StatementCompiler
         SetStatementReference(type, result switch
         {
             CompiledAliasTypeExpression v => v.Definition,
+            CompiledEnumTypeExpression v => v.Definition,
             CompiledStructTypeExpression v => v.Struct,
             CompiledGenericTypeExpression v => v.Definition,
             _ => null,
@@ -302,6 +303,7 @@ public partial class StatementCompiler
             CompiledStructTypeExpression => TokenAnalyzedType.Struct,
             CompiledBuiltinTypeExpression => TokenAnalyzedType.BuiltinType,
             CompiledAliasTypeExpression => TokenAnalyzedType.TypeAlias,
+            CompiledEnumTypeExpression => TokenAnalyzedType.Enum,
             _ => TokenAnalyzedType.Type,
         };
 

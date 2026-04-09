@@ -259,6 +259,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         GenericType v => GenerateSize(v, result, out error),
         BuiltinType v => GenerateSize(v, result, out error),
         AliasType v => GenerateSize(v, result, out error),
+        EnumType v => GenerateSize(v, result, out error),
         _ => throw new NotImplementedException(),
     };
     bool GenerateSize(PointerType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -318,6 +319,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         return true;
     }
     bool GenerateSize(AliasType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Value, result, out error);
+    bool GenerateSize(EnumType type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Definition.Type, result, out error);
 
     bool GenerateSize(CompiledTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => type switch
     {
@@ -329,6 +331,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CompiledGenericTypeExpression v => GenerateSize(v, result, out error),
         CompiledBuiltinTypeExpression v => GenerateSize(v, result, out error),
         CompiledAliasTypeExpression v => GenerateSize(v, result, out error),
+        CompiledEnumTypeExpression v => GenerateSize(v, result, out error),
         _ => throw new NotImplementedException(),
     };
     bool GenerateSize(CompiledPointerTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -408,6 +411,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         return true;
     }
     bool GenerateSize(CompiledAliasTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Value, result, out error);
+    bool GenerateSize(CompiledEnumTypeExpression type, int result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Definition.Type, result, out error);
 
     #endregion
 

@@ -124,6 +124,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         GenericType v => GenerateSize(v, result, out error),
         BuiltinType v => GenerateSize(v, result, out error),
         AliasType v => GenerateSize(v, result, out error),
+        EnumType v => GenerateSize(v, result, out error),
         _ => throw new NotImplementedException(),
     };
     bool GenerateSize(ReferenceType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -184,6 +185,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         return true;
     }
     bool GenerateSize(AliasType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Value, result, out error);
+    bool GenerateSize(EnumType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Definition.Type, result, out error);
 
     bool GenerateSize(CompiledTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => type switch
     {
@@ -195,6 +197,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         CompiledGenericTypeExpression v => GenerateSize(v, result, out error),
         CompiledBuiltinTypeExpression v => GenerateSize(v, result, out error),
         CompiledAliasTypeExpression v => GenerateSize(v, result, out error),
+        CompiledEnumTypeExpression v => GenerateSize(v, result, out error),
         _ => throw new NotImplementedException(),
     };
     bool GenerateSize(CompiledPointerTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -274,6 +277,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         return true;
     }
     bool GenerateSize(CompiledAliasTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Value, result, out error);
+    bool GenerateSize(CompiledEnumTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error) => GenerateSize(type.Definition.Type, result, out error);
 
     #endregion
 
@@ -1183,6 +1187,10 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
         }
     }
+    void GenerateCodeForStatement(CompiledEnumMemberAccess enumMemberAccess)
+    {
+        GenerateCodeForStatement(enumMemberAccess.EnumMember.Value);
+    }
     void GenerateCodeForStatement(CompiledRegisterAccess register)
     {
         Code.Emit(Opcode.Push, register.Register);
@@ -1936,6 +1944,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case CompiledString v: GenerateCodeForStatement(v); break;
             case CompiledStackString v: GenerateCodeForStatement(v); break;
             case CompiledLambda v: GenerateCodeForStatement(v); break;
+            case CompiledEnumMemberAccess v: GenerateCodeForStatement(v); break;
             case CompiledCompilerVariableAccess v: GenerateCodeForStatement(v); break;
             default: throw new NotImplementedException($"Unimplemented statement \"{statement.GetType().Name}\"");
         }

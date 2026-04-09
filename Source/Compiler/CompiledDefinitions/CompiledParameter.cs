@@ -6,7 +6,8 @@ public class CompiledParameter :
     IHaveCompiledType,
     IIdentifiable<string>,
     IInFile,
-    ILocated
+    ILocated,
+    ICompiledDefinition<ParameterDefinition>
 {
     public ParameterDefinition Definition { get; }
     public GeneralType Type { get; }

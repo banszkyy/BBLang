@@ -2248,9 +2248,48 @@ public partial class StatementCompiler
     bool CompileExpression(FieldExpression field, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)
     {
         compiledStatement = null;
-        field.Identifier.AnalyzedType = TokenAnalyzedType.FieldName;
 
-        if (!CompileExpression(field.Object, out CompiledExpression? prev)) return false;
+        PossibleDiagnostic? enumError = null;
+        if (field.Object is IdentifierExpression objectIdentifier
+            && GetEnum(objectIdentifier.Identifier.Content, objectIdentifier.File, out CompiledEnum? @enum, out enumError))
+        {
+            SetStatementReference(objectIdentifier, @enum);
+            objectIdentifier.Identifier.AnalyzedType = TokenAnalyzedType.Enum;
+
+            if (field.Identifier is IMissingNode)
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Incomplete AST", field.Identifier, field.File, false));
+                return false;
+            }
+
+            foreach (CompiledEnumMember member in @enum.Members)
+            {
+                if (member.Identifier == field.Identifier.Content)
+                {
+                    field.Identifier.AnalyzedType = TokenAnalyzedType.EnumMember;
+                    SetStatementReference(field, member);
+                    member.AddReference(field);
+                    compiledStatement = new CompiledEnumMemberAccess()
+                    {
+                        EnumMember = member,
+                        Location = field.Location,
+                        SaveValue = field.SaveValue,
+                        Type = new EnumType(@enum),
+                    };
+                    return true;
+                }
+            }
+
+            Diagnostics.Add(DiagnosticAt.Error($"Enum member \"{field.Identifier}\" doesn't exists in enum \"{@enum.Identifier}\"", field.Identifier, field.File)
+                .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Enum \"{@enum.Identifier}\" defined here", @enum.Location)));
+            return false;
+        }
+
+        if (!CompileExpression(field.Object, out CompiledExpression? prev))
+        {
+            if (enumError is not null) Diagnostics.Add(enumError.ToError(field));
+            return false;
+        }
 
         if (field.Identifier is IMissingNode)
         {
@@ -2266,6 +2305,7 @@ public partial class StatementCompiler
                 return false;
             }
 
+            field.Identifier.AnalyzedType = TokenAnalyzedType.ConstantName;
             SetStatementType(field, ArrayLengthType);
             SetPredictedValue(field, arrayType.Length.Value);
 
@@ -2300,6 +2340,7 @@ public partial class StatementCompiler
                 return false;
             }
 
+            field.Identifier.AnalyzedType = TokenAnalyzedType.FieldName;
             SetStatementType(field, fieldDefinition.Type);
             SetStatementReference(field, fieldDefinition);
 
@@ -2326,6 +2367,7 @@ public partial class StatementCompiler
             return false;
         }
 
+        field.Identifier.AnalyzedType = TokenAnalyzedType.FieldName;
         SetStatementType(field, compiledField.Type);
         SetStatementReference(field, compiledField);
 

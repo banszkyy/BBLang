@@ -10,7 +10,8 @@ public class CompiledField :
     IInFile,
     ILocated,
     IReferenceable<Expression>,
-    IHaveAttributes
+    IHaveAttributes,
+    ICompiledDefinition<FieldDefinition>
 {
     public FieldDefinition Definition { get; }
     public CompiledStruct Context { get; set; }

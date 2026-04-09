@@ -37,6 +37,11 @@ public sealed partial class Parser
         ProtectionKeywords.Export
     );
 
+    static readonly ImmutableArray<string> EnumModifiers = ImmutableArray.Create
+    (
+        ProtectionKeywords.Export
+    );
+
     static readonly ImmutableArray<string> FieldModifiers = ImmutableArray.Create
     (
         ProtectionKeywords.Private
@@ -125,6 +130,7 @@ public sealed partial class Parser
     readonly Dictionary<string, StructDefinition> Structs = new();
     readonly List<UsingDefinition> Usings = new();
     readonly List<AliasDefinition> AliasDefinitions = new();
+    readonly List<EnumDefinition> EnumDefinitions = new();
     readonly List<Statement> TopLevelStatements = new();
 
     Parser(ImmutableArray<Token> tokens, Uri file, DiagnosticsCollection diagnostics, bool isExpression)
@@ -195,6 +201,7 @@ public sealed partial class Parser
             Structs.Values.ToImmutableArray(),
             Usings.ToImmutableArray(),
             AliasDefinitions.ToImmutableArray(),
+            EnumDefinitions.ToImmutableArray(),
             TopLevelStatements.ToImmutableArray(),
             OriginalTokens,
             Tokens.ToImmutableArray()
@@ -268,6 +275,8 @@ public sealed partial class Parser
         { Operators.Add(operatorDefinition); }
         else if (ExpectAliasDefinition(out AliasDefinition? aliasDefinition, diagnostics))
         { AliasDefinitions.Add(aliasDefinition); }
+        else if (ExpectEnumDefinition(out EnumDefinition? enumDefinition, diagnostics))
+        { EnumDefinitions.Add(enumDefinition); }
         else if (ExpectStatement(out Statement? statement, diagnostics))
         { TopLevelStatements.Add(statement); }
         else

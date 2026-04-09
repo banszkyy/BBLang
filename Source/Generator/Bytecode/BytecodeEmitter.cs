@@ -598,8 +598,9 @@ public class BytecodeEmitter
         return new Instruction(v.Opcode, Compile(v.Operand1, i, variables), Compile(v.Operand2, i, variables));
     }
 
-    void PurgeLabels()
+    bool PurgeLabels()
     {
+        bool v = false;
         for (int i = Labels.Count - 1; i >= 0; i--)
         {
             InstructionLabel label = Labels[i];
@@ -607,7 +608,9 @@ public class BytecodeEmitter
             { continue; }
             if (label.Keep) continue;
             Labels.RemoveSwapBack(i);
+            v = true;
         }
+        return v;
     }
 
     public ImmutableArray<Instruction> Compile(Dictionary<string, int> variables)
@@ -616,14 +619,17 @@ public class BytecodeEmitter
         do
         {
             notDone = false;
-            for (int i = Code.Count - 1; i >= 0; i--)
+            for (int i = 0; i < Code.Count; i++)
             {
                 if (OptimizeCodeAt(i))
                 {
-                    PurgeLabels();
                     notDone = true;
-                    break;
+                    i--;
                 }
+            }
+            if (PurgeLabels())
+            {
+                notDone = true;
             }
         } while (notDone);
 

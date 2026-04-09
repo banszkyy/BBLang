@@ -2655,9 +2655,6 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 }
             }
 
-            if (defined.Definition.Modifiers.Contains(ModifierKeywords.Ref) && defined.Definition.Modifiers.Contains(ModifierKeywords.Const))
-            { Diagnostics.Add(DiagnosticAt.Error($"Bruh", defined.Definition.Identifier, defined.Definition.File)); }
-
             if (passed.Value is CompiledGetReference addressGetter)
             {
                 if (!GetVariable(addressGetter.Of, out BrainfuckVariable? v, out PossibleDiagnostic? notFoundError))
@@ -2749,12 +2746,6 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             //     });
             //     continue;
             // }
-
-            if (defined.Definition.Modifiers.Contains(ModifierKeywords.Ref))
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"You must pass the parameter \"{passed}\" with a \"{ModifierKeywords.Ref}\" modifier", passed));
-                return;
-            }
 
             if (defined.Definition.Modifiers.Contains(ModifierKeywords.Const))
             {
@@ -3253,25 +3244,25 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CurrentMacro.Pop();
     }
 
-    void GenerateCodeForFunction(CompiledConstructorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, CompiledConstructorCall callerPosition)
+    void GenerateCodeForFunction(CompiledConstructorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, CompiledConstructorCall caller)
     {
         using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
 
         if (function.Definition.ParameterCount - 1 != parameters.Length)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to constructor \"{function.ToReadable()}\" (required {function.Definition.ParameterCount - 1} passed {parameters.Length})", callerPosition));
+            Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to constructor \"{function.ToReadable()}\" (required {function.Definition.ParameterCount - 1} passed {parameters.Length})", caller));
             return;
         }
 
         if (function.Definition.Block is null)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Constructor \"{function.ToReadable()}\" does not have any body definition", callerPosition));
+            Diagnostics.Add(DiagnosticAt.Error($"Constructor \"{function.ToReadable()}\" does not have any body definition", caller));
             return;
         }
 
         using IDisposableProgress<string>? progressLabel = Logger?.Label(LogType.Debug, $"Generating function \"{function.ToReadable(typeArguments)}\"");
 
-        if (!IxMaxResursiveDepthReached(function, callerPosition))
+        if (!IxMaxResursiveDepthReached(function, caller))
         { return; }
 
         Stack<BrainfuckVariable> compiledParameters = new();
@@ -3279,14 +3270,14 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         CurrentMacro.Push(function);
 
         int newInstanceAddress = Stack.NextAddress;
-        GeneralType newInstanceType = callerPosition.Type;
-        GenerateCodeForStatement(callerPosition.Object);
+        GeneralType newInstanceType = caller.Type;
+        GenerateCodeForStatement(caller.Object);
 
         if (newInstanceType.Is<PointerType>(out PointerType? newInstancePointerType))
         {
             if (!newInstancePointerType.To.Is<StructType>())
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Wrong type \"{newInstanceType}\" used for constructor", callerPosition));
+                Diagnostics.Add(DiagnosticAt.Error($"Wrong type \"{newInstanceType}\" used for constructor", caller));
                 return;
             }
 
@@ -3324,7 +3315,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         }
         else
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Wrong type \"{newInstanceType}\" used for constructor", callerPosition));
+            Diagnostics.Add(DiagnosticAt.Error($"Wrong type \"{newInstanceType}\" used for constructor", caller));
             return;
         }
 
@@ -3349,18 +3340,6 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                     Diagnostics.Add(DiagnosticAt.Error($"Parameter \"{defined}\" already defined as parameter", defined.Definition.Identifier, defined.Definition.File));
                     return;
                 }
-            }
-
-            if (defined.Definition.Modifiers.Contains(ModifierKeywords.Ref) && defined.Definition.Modifiers.Contains(ModifierKeywords.Const))
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"Bruh", defined.Definition.Identifier, defined.Definition.File));
-                return;
-            }
-
-            if (defined.Definition.Modifiers.Contains(ModifierKeywords.Ref))
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"You must pass the parameter \"{passed}\" with a \"{ModifierKeywords.Ref}\" modifier", passed));
-                return;
             }
 
             if (defined.Definition.Modifiers.Contains(ModifierKeywords.Const))

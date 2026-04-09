@@ -77,14 +77,12 @@ public static class ProtectionKeywords
 public static class ModifierKeywords
 {
     public const string Temp = "temp";
-    public const string Ref = "ref";
     public const string This = "this";
     public const string Const = "const";
     public const string Inline = "inline";
 
     public static readonly ImmutableArray<string> List = ImmutableArray.Create(
         Temp,
-        Ref,
         This,
         Const,
         Inline
@@ -143,7 +141,6 @@ public static class LanguageConstants
         DeclarationKeywords.Alias,
 
         ModifierKeywords.Temp,
-        ModifierKeywords.Ref,
         ModifierKeywords.This,
         ModifierKeywords.Const,
         ModifierKeywords.Inline,

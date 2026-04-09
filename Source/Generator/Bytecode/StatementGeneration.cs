@@ -473,7 +473,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             AddComment($" Pass {parameter}:");
 
-            GenerateCodeForStatement(argument.Value, parameterType);
+            GenerateCodeForStatement(argument.Value);
 
             argumentCleanup.Push(argument.Cleanup);
         }
@@ -485,7 +485,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         for (int i = 0; i < parameters.Count; i++)
         {
             AddComment($" Param {i}:");
-            GenerateCodeForStatement(parameters[i].Value, function.Parameters[i]);
+            GenerateCodeForStatement(parameters[i].Value);
             parameterCleanup.Push(parameters[i].Cleanup);
         }
     }
@@ -1056,7 +1056,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
         }
     }
-    void GenerateCodeForStatement(CompiledConstantValue literal, GeneralType? expectedType = null)
+    void GenerateCodeForStatement(CompiledConstantValue literal)
     {
         Push(literal.Value);
     }
@@ -1183,28 +1183,23 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
         }
     }
-    void GenerateCodeForStatement(CompiledRegisterAccess register, GeneralType? expectedType = null, bool resolveReference = true)
+    void GenerateCodeForStatement(CompiledRegisterAccess register)
     {
         Code.Emit(Opcode.Push, register.Register);
     }
-    void GenerateCodeForStatement(CompiledParameterAccess parameterRef, GeneralType? expectedType = null, bool resolveReference = true)
+    void GenerateCodeForStatement(CompiledParameterAccess parameterRef)
     {
-        Address address = GetParameterAddress(parameterRef.Parameter);
-
-        if (parameterRef.Parameter.Definition.IsRef && resolveReference)
-        { address = new AddressPointer(address); }
-
-        PushFrom(address, FindSize(parameterRef.Type, parameterRef.Parameter.Definition));
+        PushFrom(GetParameterAddress(parameterRef.Parameter), FindSize(parameterRef.Type, parameterRef.Parameter.Definition));
     }
-    void GenerateCodeForStatement(CompiledVariableAccess variableRef, GeneralType? expectedType = null, bool resolveReference = true)
+    void GenerateCodeForStatement(CompiledVariableAccess variableRef)
     {
         PushFrom(GetVariableAddress(variableRef.Variable), FindSize(variableRef.Type, variableRef));
     }
-    void GenerateCodeForStatement(CompiledExpressionVariableAccess expressionVariableRef, GeneralType? expectedType = null, bool resolveReference = true)
+    void GenerateCodeForStatement(CompiledExpressionVariableAccess expressionVariableRef)
     {
         PushFrom(new AddressAbsolute(expressionVariableRef.Variable.Address), FindSize(expressionVariableRef.Type, expressionVariableRef));
     }
-    void GenerateCodeForStatement(CompiledFunctionReference functionRef, GeneralType? expectedType = null, bool resolveReference = true)
+    void GenerateCodeForStatement(CompiledFunctionReference functionRef)
     {
         InstructionLabel label = LabelForDefinition(functionRef.Function);
 
@@ -1213,7 +1208,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         Push(label.Absolute());
     }
-    void GenerateCodeForStatement(CompiledLabelReference labelRef, GeneralType? expectedType = null, bool resolveReference = true)
+    void GenerateCodeForStatement(CompiledLabelReference labelRef)
     {
         InstructionLabel label;
 
@@ -1845,9 +1840,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
 
         Diagnostics.Add(DiagnosticAt.Warning($"Ignoring invalid type cast ({statementType} -> {targetType})", typeCast));
-        GenerateCodeForStatement(typeCast.Value, targetType);
+        GenerateCodeForStatement(typeCast.Value);
     }
-    void GenerateCodeForStatement(CompiledCompilerVariableAccess statement, GeneralType? expectedType = null, bool resolveReference = true)
+    void GenerateCodeForStatement(CompiledCompilerVariableAccess statement)
     {
         Code.Emit(Opcode.Push, new PreparationInstructionOperand(new VariableInstructionOperand(statement.Identifier)));
     }
@@ -1908,7 +1903,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             });
         }
     }
-    void GenerateCodeForStatement(CompiledExpression statement, GeneralType? expectedType = null, bool resolveReference = true)
+    void GenerateCodeForStatement(CompiledExpression statement)
     {
         Settings.CancellationToken.ThrowIfCancellationRequested();
 
@@ -1919,13 +1914,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case CompiledSizeof v: GenerateCodeForStatement(v); break;
             case CompiledBinaryOperatorCall v: GenerateCodeForStatement(v); break;
             case CompiledUnaryOperatorCall v: GenerateCodeForStatement(v); break;
-            case CompiledConstantValue v: GenerateCodeForStatement(v, expectedType); break;
-            case CompiledRegisterAccess v: GenerateCodeForStatement(v, expectedType, resolveReference); break;
-            case CompiledVariableAccess v: GenerateCodeForStatement(v, expectedType, resolveReference); break;
-            case CompiledExpressionVariableAccess v: GenerateCodeForStatement(v, expectedType, resolveReference); break;
-            case CompiledParameterAccess v: GenerateCodeForStatement(v, expectedType, resolveReference); break;
-            case CompiledFunctionReference v: GenerateCodeForStatement(v, expectedType, resolveReference); break;
-            case CompiledLabelReference v: GenerateCodeForStatement(v, expectedType, resolveReference); break;
+            case CompiledConstantValue v: GenerateCodeForStatement(v); break;
+            case CompiledRegisterAccess v: GenerateCodeForStatement(v); break;
+            case CompiledVariableAccess v: GenerateCodeForStatement(v); break;
+            case CompiledExpressionVariableAccess v: GenerateCodeForStatement(v); break;
+            case CompiledParameterAccess v: GenerateCodeForStatement(v); break;
+            case CompiledFunctionReference v: GenerateCodeForStatement(v); break;
+            case CompiledLabelReference v: GenerateCodeForStatement(v); break;
             case CompiledFieldAccess v: GenerateCodeForStatement(v); break;
             case CompiledElementAccess v: GenerateCodeForStatement(v); break;
             case CompiledGetReference v: GenerateCodeForStatement(v); break;
@@ -2264,30 +2259,22 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForValueSetter(CompiledVariableAccess localVariableSetter, CompiledExpression value)
     {
-        GenerateCodeForStatement(value, localVariableSetter.Variable.Type);
+        GenerateCodeForStatement(value);
         PopTo(GetVariableAddress(localVariableSetter.Variable), FindSize(localVariableSetter.Variable.Type, localVariableSetter.Variable));
         // localVariableSetter.Variable.Variable.IsInitialized = true;
     }
     void GenerateCodeForValueSetter(CompiledExpressionVariableAccess localVariableSetter, CompiledExpression value)
     {
-        GenerateCodeForStatement(value, localVariableSetter.Variable.Type);
+        GenerateCodeForStatement(value);
         PopTo(new AddressAbsolute(localVariableSetter.Variable.Address), FindSize(localVariableSetter.Variable.Type, value));
     }
     void GenerateCodeForValueSetter(CompiledParameterAccess parameterSetter, CompiledExpression value)
     {
-        GenerateCodeForStatement(value, parameterSetter.Parameter.Type);
-
-        Address address = GetParameterAddress(parameterSetter.Parameter);
-
-        if (parameterSetter.Parameter.Definition.IsRef)
-        { address = new AddressPointer(address); }
-
-        PopTo(address, FindSize(parameterSetter.Parameter.Type, parameterSetter));
-        return;
+        GenerateCodeForStatement(value);
+        PopTo(GetParameterAddress(parameterSetter.Parameter), FindSize(parameterSetter.Parameter.Type, parameterSetter));
     }
     void GenerateCodeForValueSetter(CompiledFieldAccess fieldSetter, CompiledExpression value)
     {
-        GeneralType type = fieldSetter.Type;
         GeneralType valueType = value.Type;
 
         CompiledExpression? dereference = NeedDerefernce(fieldSetter);
@@ -2335,7 +2322,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
         else
         {
-            GenerateCodeForStatement(value, type);
+            GenerateCodeForStatement(value);
 
             if (dereference is null)
             {
@@ -2463,7 +2450,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
             size = FindSize(evaluatedInitialValue.Type, newVariable.InitialValue);
 
             Push(evaluatedInitialValue.Value);
-            generatedVariable.IsInitialized = true;
 
             AddComment("}");
         }
@@ -2474,7 +2460,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
             literalStatement.Value.Length == arrayType.Length.Value)
         {
             size = FindSize(arrayType, newVariable);
-            generatedVariable.IsInitialized = true;
 
             for (int i = 0; i < literalStatement.Value.Length; i++)
             {
@@ -2629,9 +2614,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 Address = GetParameterAddress(p).Offset,
                 Kind = StackElementKind.Parameter,
                 BasePointerRelative = true,
-                Size = p.Definition.IsRef ? PointerSize : FindSize(pType, p.Definition),
+                Size = FindSize(pType, p.Definition),
                 Identifier = p.Identifier,
-                Type = p.Definition.IsRef ? new PointerType(pType) : pType,
+                Type = pType,
             };
             CurrentScopeDebug.Last.Stack.Add(debugInfo);
         }
@@ -3049,7 +3034,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (false)
         {
+#pragma warning disable CS0162 // Unreachable code detected
             AddComment("Create stack frame");
+#pragma warning restore CS0162 // Unreachable code detected
             Push(Register.BasePointer);
             Code.Emit(Opcode.Move, Register.BasePointer, Register.StackPointer);
 
@@ -3130,10 +3117,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
             GeneratedVariables[variableDeclaration] = new GeneratedVariable()
             {
                 MemoryAddress = currentOffset,
-                IsInitialized = false,
             };
 
-            int absoluteGlobalAddress = FindSize(ExitCodeType) + GlobalVariablesSize;
             CurrentScopeDebug.LastRef.Stack.Add(new StackElementInformation()
             {
                 Address = currentOffset,

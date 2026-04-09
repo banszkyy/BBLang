@@ -239,15 +239,14 @@ public partial class CodeGeneratorForMain : CodeGenerator
             if (!HasCapturedGlobalVariables)
             { throw new LanguageExceptionAt($"Unexpected global variable `{variable}`", variable.Location.Position, variable.Location.File); }
 
-            return new AddressOffset(
-                new AddressPointer(AbsoluteGlobalAddress),
-                0
-                + generatedVariable.MemoryAddress
-            //  + ((
-            //      AbsGlobalAddressSize
-            //      + BasePointerSize
-            //  ) * BytecodeProcessor.StackDirection)
-            );
+            if (InFunction)
+            {
+                return new AddressOffset(new AddressPointer(AbsoluteGlobalAddress), generatedVariable.MemoryAddress);
+            }
+            else
+            {
+                return new AddressOffset(new AddressRegisterPointer(Register.BasePointer), 8 + generatedVariable.MemoryAddress);
+            }
         }
 
         if (CurrentContext is CompiledLambda compiledLambda)
@@ -304,7 +303,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             if (i <= beforeThis) continue;
             CompiledParameter parameter = CompiledParameters[i];
-            sum += parameter.Definition.IsRef ? PointerSize : FindSize(GeneralType.TryInsertTypeParameters(parameter.Type, TypeArguments), parameter.Definition);
+            sum += FindSize(GeneralType.TryInsertTypeParameters(parameter.Type, TypeArguments), parameter.Definition);
         }
 
         return sum;
@@ -1029,7 +1028,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             foreach (CompiledParameter parameter in CompiledParameters)
             {
-                sum += parameter.Definition.IsRef ? PointerSize : FindSize(GeneralType.TryInsertTypeParameters(parameter.Type, TypeArguments), parameter.Definition);
+                sum += FindSize(GeneralType.TryInsertTypeParameters(parameter.Type, TypeArguments), parameter.Definition);
             }
 
             return sum;

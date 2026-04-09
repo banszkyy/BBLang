@@ -36,7 +36,6 @@ class GeneratedInstructionLabel : IHaveInstructionOffset
 class GeneratedVariable
 {
     public int MemoryAddress { get; set; }
-    public bool IsInitialized { get; set; }
 }
 
 public partial class CodeGeneratorForMain : CodeGenerator

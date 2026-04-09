@@ -23,5 +23,5 @@ public class CompiledParameter :
         Type = type;
     }
 
-    public override string ToString() => $"{(Definition.IsRef ? "ref " : string.Empty)}{Type} {Identifier}";
+    public override string ToString() => $"{Type} {Identifier}";
 }

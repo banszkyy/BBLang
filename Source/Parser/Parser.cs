@@ -22,7 +22,6 @@ public sealed partial class Parser
 
         ModifierKeywords.Inline,
         ModifierKeywords.Const,
-        ModifierKeywords.Ref,
         ModifierKeywords.Temp,
         ModifierKeywords.This
     );
@@ -58,13 +57,11 @@ public sealed partial class Parser
     static readonly ImmutableArray<string> ParameterModifiers = ImmutableArray.Create
     (
         ModifierKeywords.This,
-        ModifierKeywords.Ref,
         ModifierKeywords.Temp
     );
 
     static readonly ImmutableArray<string> ArgumentModifiers = ImmutableArray.Create
     (
-        ModifierKeywords.Ref,
         ModifierKeywords.Temp
     );
 

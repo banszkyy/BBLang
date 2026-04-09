@@ -2397,9 +2397,8 @@ public partial class StatementCompiler
 
         return modifiedStatement.Modifier.Content switch
         {
-            ModifierKeywords.Ref => throw new NotImplementedException(),
             ModifierKeywords.Temp => CompileExpression(modifiedStatement.Value, out compiledStatement, expectedType),
-            _ => throw new NotImplementedException(),
+            _ => throw new NotImplementedException(modifiedStatement.Modifier.Content),
         };
     }
     bool CompileExpression(ListExpression listValue, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)

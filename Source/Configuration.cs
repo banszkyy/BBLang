@@ -29,6 +29,7 @@ public sealed class Configuration
 {
     public const string FileName = "bbl.conf";
 
+    public required bool IsProject { get; init; }
     public required ImmutableArray<string> ExtraDirectories { get; init; }
     public required ImmutableArray<string> AdditionalImports { get; init; }
     public required ImmutableArray<ExternalFunctionStub> ExternalFunctions { get; init; }
@@ -36,6 +37,7 @@ public sealed class Configuration
 
     public static readonly Configuration Empty = new()
     {
+        IsProject = false,
         ExtraDirectories = ImmutableArray<string>.Empty,
         AdditionalImports = ImmutableArray<string>.Empty,
         ExternalFunctions = ImmutableArray<ExternalFunctionStub>.Empty,
@@ -52,6 +54,7 @@ public sealed class Configuration
         public readonly List<ExternalFunctionStub> externalFunctions = new();
         public readonly List<ExternalConstant> externalConstants = new();
         public readonly HashSet<Uri> alreadyParsed = new();
+        public bool isProject;
 
         public Parser(DiagnosticsCollection diagnostics)
         {
@@ -61,7 +64,11 @@ public sealed class Configuration
         [SuppressMessage("Style", "IDE0071", Justification = "Unity")]
         public void Parse(ReadOnlySpan<char> key, ReadOnlySpan<char> value, Location location)
         {
-            if (key.Equals("searchin", StringComparison.InvariantCultureIgnoreCase))
+            if (key.Equals("project", StringComparison.InvariantCultureIgnoreCase))
+            {
+                isProject = true;
+            }
+            else if (key.Equals("searchin", StringComparison.InvariantCultureIgnoreCase))
             {
                 extraDirectories.Add(value.ToString());
             }
@@ -153,6 +160,7 @@ public sealed class Configuration
         {
             return new Configuration()
             {
+                IsProject = isProject,
                 AdditionalImports = additionalImports.ToImmutableArray(),
                 ExtraDirectories = extraDirectories.ToImmutableArray(),
                 ExternalFunctions = externalFunctions.ToImmutableArray(),

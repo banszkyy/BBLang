@@ -172,7 +172,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
         Push(returnLabel.Absolute());
 
         //PushFrom(AbsoluteGlobalAddress, FindSize(AbsGlobalAddressType, address));
-        Push(Register.BasePointer);
 
         GenerateCodeForStatement(address);
 
@@ -191,7 +190,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
             PopTo(reg.Register);
             InstructionLabel offsetLabel = Code.DefineLabel();
             Code.Emit(Opcode.MathSub, reg.Register, offsetLabel.Absolute());
-            Code.Emit(Opcode.Move, Register.BasePointer, Register.StackPointer);
             Code.MarkLabel(offsetLabel);
             Code.Emit(Opcode.Jump, reg.Register);
         }
@@ -208,9 +206,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             PushFrom(AbsoluteGlobalAddress, PointerSize);
         }
-        Push(Register.BasePointer);
-
-        Code.Emit(Opcode.Move, Register.BasePointer, Register.StackPointer);
 
         Code.Emit(Opcode.Jump, label.Relative());
 

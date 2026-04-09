@@ -2570,6 +2570,10 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return;
         }
 
+        AddComment("Create stack frame");
+        Push(Register.BasePointer);
+        Code.Emit(Opcode.Move, Register.BasePointer, Register.StackPointer);
+
         CompiledScope scope = OnScopeEnter(body, true);
 
         if (function is IHaveCompiledType returnType && !returnType.Type.SameAs(BasicType.Void))

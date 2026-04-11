@@ -651,9 +651,10 @@ public partial class StatementCompiler
             return true;
         }
 
+        PossibleDiagnostic? notFound = null;
         if (anyCall.ToFunctionCall(out FunctionCallExpression? functionCall))
         {
-            if (GetFunction(functionCall, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? notFound, AddCompilable))
+            if (GetFunction(functionCall, out FunctionQueryResult<CompiledFunctionDefinition>? result, out notFound, AddCompilable))
             {
                 if (anyCall.Expression is IdentifierExpression _identifier2)
                 { _identifier2.AnalyzedType = TokenAnalyzedType.FunctionName; }
@@ -673,7 +674,8 @@ public partial class StatementCompiler
 
         if (!CompileExpression(anyCall.Expression, out CompiledExpression? functionValue))
         {
-            Diagnostics.Add(DiagnosticAt.Error("Function not found", anyCall.Expression));
+            Diagnostics.Add(DiagnosticAt.Error("Function not found", anyCall.Expression)
+                .WithSuberrors(notFound?.ToError(anyCall)));
             return false;
         }
 
@@ -707,6 +709,7 @@ public partial class StatementCompiler
         if (!functionValue.Type.Is(out FunctionType? functionType))
         {
             Diagnostics.Add(DiagnosticAt.Error($"This isn't a function", anyCall.Expression));
+            Diagnostics.Add(notFound?.ToError(anyCall));
             return false;
         }
 
@@ -715,10 +718,15 @@ public partial class StatementCompiler
         if (anyCall.Arguments.Arguments.Length != functionType.Parameters.Length)
         {
             Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function \"{functionType}\": required {functionType.Parameters.Length} passed {anyCall.Arguments.Arguments.Length}", new Position(anyCall.Arguments.Arguments.As<IPositioned>().DefaultIfEmpty(anyCall.Arguments.Brackets)), anyCall.File));
+            Diagnostics.Add(notFound?.ToError(anyCall));
             return false;
         }
 
-        if (!CompileArguments(anyCall.Arguments.Arguments, functionType, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
+        if (!CompileArguments(anyCall.Arguments.Arguments, functionType, out ImmutableArray<CompiledArgument> compiledArguments))
+        {
+            Diagnostics.Add(notFound?.ToError(anyCall));
+            return false;
+        }
 
         PossibleDiagnostic? argumentError = null;
         if (!Utils.SequenceEquals(compiledArguments, functionType.Parameters, (argument, parameter) =>
@@ -735,6 +743,7 @@ public partial class StatementCompiler
         }))
         {
             Diagnostics.Add(DiagnosticAt.Error($"Argument types of caller \"...({string.Join(", ", compiledArguments.Select(v => v.Type))})\" doesn't match with callee \"{functionType}\"", anyCall).WithSuberrors(argumentError?.ToError(anyCall)));
+            Diagnostics.Add(notFound?.ToError(anyCall));
             return false;
         }
 
@@ -2319,13 +2328,13 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (prev.Type.Is(out PointerType? pointerType2))
+        if (prev.Type.Is<IReferenceType>())
         {
-            GeneralType prevType = pointerType2.To;
+            GeneralType prevType = prev.Type;
 
-            while (prevType.Is(out pointerType2))
+            while (prevType.Is(out IReferenceType? referenceType))
             {
-                prevType = pointerType2.To;
+                prevType = referenceType.To;
             }
 
             if (!prevType.Is(out StructType? structPointerType))

@@ -64,4 +64,5 @@ public class CompiledOperatorDefinition :
     }
 
     string IReadable.ToReadable() => ToReadable(null);
+    public override string ToString() => ToReadable(null);
 }

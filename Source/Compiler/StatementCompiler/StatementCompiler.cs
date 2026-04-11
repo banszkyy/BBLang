@@ -1406,22 +1406,11 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (prevType.Is<PointerType>() || prevType.Is<ReferenceType>())
+        if (prevType.Is<IReferenceType>())
         {
-            while (true)
+            while (prevType.Is(out IReferenceType? referenceType))
             {
-                if (prevType.Is(out PointerType? pointerType))
-                {
-                    prevType = pointerType.To;
-                }
-                else if (prevType.Is(out ReferenceType? referenceType))
-                {
-                    prevType = referenceType.To;
-                }
-                else
-                {
-                    break;
-                }
+                prevType = referenceType.To;
             }
 
             if (!prevType.Is(out StructType? structPointerType))

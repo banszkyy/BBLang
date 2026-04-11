@@ -3,7 +3,8 @@
 namespace LanguageCore.Compiler;
 
 public class PointerType : GeneralType,
-    IEquatable<PointerType>
+    IEquatable<PointerType>,
+    IReferenceType
 {
     public GeneralType To { get; }
 

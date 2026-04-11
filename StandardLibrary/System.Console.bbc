@@ -482,3 +482,25 @@ export string readline()
     delete buffer;
     return result;
 }
+
+export int readint()
+{
+    int result = 0;
+
+    while (1)
+    {
+        char inpChar = stdin();
+        if (inpChar == '\n') break;
+        else if (inpChar == '\r') break;
+        else if (inpChar >= '0' && inpChar <= '9')
+        {
+            print(inpChar);
+            result *= 10;
+            result += inpChar - '0';
+        }
+        else break;
+    }
+    print('\n');
+
+    return result;
+}

@@ -837,17 +837,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         ArrayType? array;
         Address? baseAddress;
 
-        if (prevType.Is(out PointerType? prevPointerType))
-        {
-            if (!prevPointerType.To.Is(out array))
-            {
-                error = new PossibleDiagnostic($"Multiple dereference is not supported at the moment", indexCall.Base);
-                return false;
-            }
-
-            baseAddress = new AddressRuntimePointer(indexCall.Base);
-        }
-        else if (prevType.Is(out ReferenceType? prevReferenceType))
+        if (prevType.Is(out IReferenceType? prevReferenceType))
         {
             if (!prevReferenceType.To.Is(out array))
             {
@@ -892,28 +882,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
         GeneralType prevType = value.Object.Type;
         Address? baseAddress = null;
 
-        while (true)
+        while (prevType.Is(out IReferenceType? referenceType))
         {
-            if (prevType.Is(out PointerType? pointerType))
-            {
-                prevType = pointerType.To;
-                baseAddress =
-                    baseAddress is null
-                    ? new AddressRuntimePointer(value.Object)
-                    : new AddressPointer(baseAddress);
-            }
-            else if (prevType.Is(out ReferenceType? referenceType))
-            {
-                prevType = referenceType.To;
-                baseAddress =
-                    baseAddress is null
-                    ? new AddressRuntimePointer(value.Object)
-                    : new AddressPointer(baseAddress);
-            }
-            else
-            {
-                break;
-            }
+            prevType = referenceType.To;
+            baseAddress =
+                baseAddress is null
+                ? new AddressRuntimePointer(value.Object)
+                : new AddressPointer(baseAddress);
         }
 
         if (!prevType.Is(out StructType? @struct))
@@ -937,45 +912,36 @@ public partial class CodeGeneratorForMain : CodeGenerator
         return true;
     }
 
-    CompiledExpression? NeedDerefernce(CompiledExpression value) => value switch
+    CompiledExpression? FindFirstReference(CompiledExpression value) => value switch
     {
         CompiledVariableAccess => null,
         CompiledParameterAccess => null,
         CompiledExpressionVariableAccess => null,
-        CompiledElementAccess v => NeedDerefernce(v),
-        CompiledFieldAccess v => NeedDerefernce(v),
-        CompiledFunctionCall v => NeedDerefernce(v),
+        CompiledElementAccess v => FindFirstReference(v),
+        CompiledFieldAccess v => FindFirstReference(v),
+        CompiledFunctionCall v => FindFirstReference(v),
         _ => throw new NotImplementedException()
     };
-    CompiledExpression? NeedDerefernce(CompiledFunctionCall functionCall)
+    CompiledExpression? FindFirstReference(CompiledFunctionCall functionCall)
     {
-        if (functionCall.Type.Is<PointerType>())
-        { return functionCall; }
-
-        if (functionCall.Type.Is<ReferenceType>())
+        if (functionCall.Type.Is<IReferenceType>())
         { return functionCall; }
 
         return null;
     }
-    CompiledExpression? NeedDerefernce(CompiledElementAccess indexCall)
+    CompiledExpression? FindFirstReference(CompiledElementAccess indexCall)
     {
-        if (indexCall.Base.Type.Is<PointerType>())
+        if (indexCall.Base.Type.Is<IReferenceType>())
         { return indexCall.Base; }
 
-        if (indexCall.Base.Type.Is<ReferenceType>())
-        { return indexCall.Base; }
-
-        return NeedDerefernce(indexCall.Base);
+        return FindFirstReference(indexCall.Base);
     }
-    CompiledExpression? NeedDerefernce(CompiledFieldAccess field)
+    CompiledExpression? FindFirstReference(CompiledFieldAccess field)
     {
-        if (field.Object.Type.Is<PointerType>())
+        if (field.Object.Type.Is<IReferenceType>())
         { return field.Object; }
 
-        if (field.Object.Type.Is<ReferenceType>())
-        { return field.Object; }
-
-        return NeedDerefernce(field.Object);
+        return FindFirstReference(field.Object);
     }
 
     #endregion

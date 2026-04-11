@@ -35,8 +35,6 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 il.Emit(OpCodes.Ldobj, _type);
                 return true;
             case PointerType:
-                il.Emit(OpCodes.Ldind_Ref);
-                return true;
             case ReferenceType:
                 il.Emit(OpCodes.Ldind_Ref);
                 return true;
@@ -77,8 +75,6 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 il.Emit(OpCodes.Stobj, _type);
                 return true;
             case PointerType:
-                il.Emit(OpCodes.Stind_Ref);
-                return true;
             case ReferenceType:
                 il.Emit(OpCodes.Stind_Ref);
                 return true;

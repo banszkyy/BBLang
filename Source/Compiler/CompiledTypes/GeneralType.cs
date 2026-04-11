@@ -39,8 +39,8 @@ public abstract class GeneralType :
     public bool SameAs(RuntimeType other) => FinalValue.Equals(other);
     public bool SameAs(BasicType other) => FinalValue.Equals(other);
 
-    public bool Is<T>() where T : GeneralType => FinalValue is T;
-    public bool Is<T>([NotNullWhen(true)] out T? value) where T : GeneralType
+    public bool Is<T>() => FinalValue is T;
+    public bool Is<T>([NotNullWhen(true)] out T? value)
     {
         if (FinalValue is T _value)
         {
@@ -49,7 +49,7 @@ public abstract class GeneralType :
         }
         else
         {
-            value = null;
+            value = default;
             return false;
         }
     }

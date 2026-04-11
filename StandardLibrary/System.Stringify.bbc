@@ -72,7 +72,7 @@ export string tostring<T>(List<T>* list)
         if (i > 0)
         { result = (temp result) + ", "; }
 
-        result = (temp result) + (temp list.raw()[i].tostring());
+        result = (temp result) + (temp list[i].tostring());
     }
     
     return "{ " + (temp result) + " }";

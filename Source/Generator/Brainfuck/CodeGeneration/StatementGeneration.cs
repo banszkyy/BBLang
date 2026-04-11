@@ -488,11 +488,11 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             return;
         }
 
-        if (field.Object.Type.Is(out PointerType? pointerType))
+        if (field.Object.Type.Is(out IReferenceType? referenceType))
         {
-            if (!pointerType.To.Is(out StructType? structPointerType))
+            if (!referenceType.To.Is(out StructType? structPointerType))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Could not get the field offsets of type \"{pointerType}\"", field.Object));
+                Diagnostics.Add(DiagnosticAt.Error($"Could not get the field offsets of type \"{referenceType}\"", field.Object));
                 return;
             }
 

@@ -3,7 +3,8 @@
 namespace LanguageCore.Compiler;
 
 public class ReferenceType : GeneralType,
-    IEquatable<ReferenceType>
+    IEquatable<ReferenceType>,
+    IReferenceType
 {
     public GeneralType To { get; }
 

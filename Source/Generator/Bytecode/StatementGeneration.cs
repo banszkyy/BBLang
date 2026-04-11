@@ -1246,17 +1246,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
         GenerateCodeForStatement(pointer.Address);
 
         GeneralType addressType = pointer.Address.Type;
-        if (addressType.Is(out PointerType? pointerType))
+        if (addressType.Is(out IReferenceType? referenceType))
         {
-            using (RegisterUsage.Auto reg = Registers.GetFree(FindBitWidth(pointerType, pointer)))
-            {
-                PopTo(reg.Register);
-                PushFrom(new AddressRegisterPointer(reg.Register), FindSize(pointerType.To, pointer.Address));
-            }
-        }
-        else if (addressType.Is(out ReferenceType? referenceType))
-        {
-            using (RegisterUsage.Auto reg = Registers.GetFree(FindBitWidth(referenceType, pointer)))
+            using (RegisterUsage.Auto reg = Registers.GetFree(FindBitWidth(addressType, pointer)))
             {
                 PopTo(reg.Register);
                 PushFrom(new AddressRegisterPointer(reg.Register), FindSize(referenceType.To, pointer.Address));
@@ -1471,14 +1463,17 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         GeneralType prevType = field.Object.Type;
 
-        if (prevType.Is(out PointerType? pointerType2))
+        if (prevType.Is(out IReferenceType? referenceType))
         {
             GenerateCodeForStatement(field.Object);
             CheckPointerNull();
-            prevType = pointerType2.To;
 
-            while (prevType.Is(out pointerType2))
+            prevType = referenceType.To;
+
+            while (prevType.Is(out referenceType))
             {
+                prevType = referenceType.To;
+
                 using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
                 {
                     PopTo(reg.Register);
@@ -1488,7 +1483,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
                     );
                 }
                 CheckPointerNull();
-                prevType = pointerType2.To;
             }
 
             if (!prevType.Is(out StructType? structPointerType))
@@ -1526,7 +1520,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         // todo: what the hell is that
 
-        CompiledExpression? dereference = NeedDerefernce(field);
+        CompiledExpression? dereference = FindFirstReference(field);
 
         if (!GetAddress(field, out Address? address, out PossibleDiagnostic? error))
         {
@@ -2286,7 +2280,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         GeneralType valueType = value.Type;
 
-        CompiledExpression? dereference = NeedDerefernce(fieldSetter);
+        CompiledExpression? dereference = FindFirstReference(fieldSetter);
 
         if (value is CompiledStackString stackString)
         {

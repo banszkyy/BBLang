@@ -213,3 +213,60 @@ export void free(any* pointer)
 
     while (join_free_blocks()) { }
 }
+
+[Expose("memprof_block_count")]
+i32 memprof_block_count()
+{
+#if IL
+    crash "The function `memprof_block_count` is not compatible with MSIL";
+#endif
+    i32 result = 0;
+
+    BlockHeader* headerPointer = HeapStart as BlockHeader*;
+    while (headerPointer < HeapSize)
+    {
+        int blockSize;
+        bool blockUsed;
+        get_header(headerPointer, &blockSize, &blockUsed);
+        headerPointer += blockSize + HeaderSize;
+        result++;
+    }
+
+    return result;
+}
+
+struct memprof_block_get_result
+{
+    u8 status;
+    i32 size;
+}
+
+[Expose("memprof_block_get")]
+memprof_block_get_result memprof_block_get(i32 index)
+{
+#if IL
+    crash "The function `memprof_block_get` is not compatible with MSIL";
+#endif
+    i32 i = 0;
+
+    BlockHeader* headerPointer = HeapStart as BlockHeader*;
+    while (headerPointer < HeapSize)
+    {
+        int blockSize;
+        bool blockUsed;
+        get_header(headerPointer, &blockSize, &blockUsed);
+
+        if (i == index)
+        {
+            memprof_block_get_result res;
+            res.status = blockUsed;
+            res.size = blockSize;
+            return res;
+        }
+
+        headerPointer += blockSize + HeaderSize;
+        i++;
+    }
+
+    return new memprof_block_get_result;
+}

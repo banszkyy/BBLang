@@ -1316,13 +1316,13 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 return true;
             case CompiledFieldAccess fieldAccess:
             {
-                if (fieldAccess.Object.Type.Is<PointerType>() || fieldAccess.Object.Type.Is<ReferenceType>()) return true;
+                if (fieldAccess.Object.Type.Is<IReferenceType>()) return true;
                 if (!IsLValue(fieldAccess.Object, out error)) return false;
                 return true;
             }
             case CompiledElementAccess elementAccess:
             {
-                if (elementAccess.Base.Type.Is<PointerType>() || elementAccess.Base.Type.Is<ReferenceType>()) return true;
+                if (elementAccess.Base.Type.Is<IReferenceType>()) return true;
                 if (!IsLValue(elementAccess.Base, out error)) return false;
                 return true;
             }
@@ -2101,14 +2101,15 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     bool FindStatementType(IndexCallExpression index, [NotNullWhen(true)] out GeneralType? type, DiagnosticsCollection diagnostics)
     {
         type = null;
-        if (!FindStatementType(index.Object, out GeneralType? prevType, diagnostics)) return false;
-        if (!FindStatementType(index.Index, out GeneralType? indexType, diagnostics)) return false;
 
-        if (GetIndexGetter(prevType, indexType, index.File, out FunctionQueryResult<CompiledFunctionDefinition>? indexer, out PossibleDiagnostic? notFoundError))
+        if (GetIndexGetter(index, out FunctionQueryResult<CompiledFunctionDefinition>? indexer, out PossibleDiagnostic? notFoundError))
         {
             SetStatementType(index, type = GeneralType.TryInsertTypeParameters(indexer.Function.Type, indexer.TypeArguments));
             return true;
         }
+
+        if (!FindStatementType(index.Object, out GeneralType? prevType, diagnostics)) return false;
+        if (!FindStatementType(index.Index, out GeneralType? indexType, diagnostics)) return false;
 
         if (prevType.Is(out ArrayType? arrayType))
         {
@@ -2123,7 +2124,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return true;
         }
 
-        diagnostics.Add(notFoundError.ToError(index));
+        diagnostics.Add(notFoundError.ToError(index, false));
         return false;
     }
     bool FindStatementType(FunctionCallExpression functionCall, [NotNullWhen(true)] out GeneralType? type, DiagnosticsCollection diagnostics)
@@ -2691,7 +2692,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return true;
         }
 
-        while (prevStatementType.Is(out PointerType? pointerType))
+        while (prevStatementType.Is(out IReferenceType? pointerType))
         { prevStatementType = pointerType.To; }
 
         if (prevStatementType.Is(out StructType? structType))

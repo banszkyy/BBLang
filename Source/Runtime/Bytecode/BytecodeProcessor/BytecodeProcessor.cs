@@ -47,6 +47,19 @@ public class BytecodeProcessor
         ScopedExternalFunctions = !scopedExternalFunctions.IsDefaultOrEmpty ? scopedExternalFunctions : ImmutableArray<ExternalFunctionScopedSync>.Empty;
     }
 
+    public BytecodeProcessor(
+        BytecodeProcessor other,
+        byte[]? memory)
+    {
+        DebugInformation = other.DebugInformation;
+        Settings = other.Settings;
+        ExternalFunctions = other.ExternalFunctions;
+        Code = other.Code;
+        Memory = memory ?? new byte[other.Settings.HeapSize + other.Settings.StackSize];
+        Registers.StackPointer = StackStart - ProcessorState.StackDirection;
+        ScopedExternalFunctions = other.ScopedExternalFunctions;
+    }
+
     public ProcessorState GetState() => new(
         Settings,
         Registers,
@@ -173,10 +186,7 @@ public class BytecodeProcessor
             // Push the absolute global address
             state.Push(globalVariablesAddress, Register.StackPointer.BitWidth());
         }
-        // Push the previous base pointer
-        state.Push(state.Registers.BasePointer, Register.BasePointer.BitWidth());
 
-        state.Registers.BasePointer = state.Registers.StackPointer;
         state.Registers.CodePointer = userCall.Function.InstructionOffset;
     }
 
@@ -199,10 +209,7 @@ public class BytecodeProcessor
             // Push the absolute global address
             state.Push(globalVariablesAddress, Register.StackPointer.BitWidth());
         }
-        // Push the previous base pointer
-        state.Push(state.Registers.BasePointer, Register.BasePointer.BitWidth());
 
-        state.Registers.BasePointer = state.Registers.StackPointer;
         state.Registers.CodePointer = userCall.Function.InstructionOffset;
     }
 

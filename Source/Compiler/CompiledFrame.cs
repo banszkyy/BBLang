@@ -11,7 +11,6 @@ class CompiledFrame
     public required ImmutableArray<CompiledParameter> CompiledParameters { get; init; }
     public required ImmutableArray<CompiledLabelDeclaration> InstructionLabels { get; init; }
     public required Stack<Scope> Scopes { get; init; }
-    public required CompiledGeneratorContext? CompiledGeneratorContext { get; init; }
     public required GeneralType? CurrentReturnType { get; set; }
     public required bool IsTopLevel { get; set; }
     public HashSet<CompiledVariableDefinition> CapturedVariables { get; } = new();
@@ -28,7 +27,6 @@ class CompiledFrame
         CompiledParameters = ImmutableArray<CompiledParameter>.Empty,
         InstructionLabels = ImmutableArray<CompiledLabelDeclaration>.Empty,
         Scopes = new(),
-        CompiledGeneratorContext = null,
         CurrentReturnType = BuiltinType.Void,
         IsTopLevel = false,
     };

@@ -421,6 +421,18 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
             Code.Emit(Opcode.Crash, Register.StackPointer);
         }
+        else if (throwValue is CompiledStackString stackString)
+        {
+            Push(new InstructionOperand('\0', InstructionOperandType.Immediate16));
+            for (int i = stackString.Value.Length - 1; i >= 0; i--)
+            {
+                Push(new InstructionOperand(
+                    stackString.Value[i],
+                    InstructionOperandType.Immediate16
+                ));
+            }
+            Code.Emit(Opcode.Crash, Register.StackPointer);
+        }
         else
         {
             GenerateCodeForStatement(throwValue);
@@ -1712,6 +1724,43 @@ public partial class CodeGeneratorForMain : CodeGenerator
             Code.Emit(Opcode.FTo, (InstructionOperand)StackTop, (InstructionOperand)StackTop);
             return;
         }
+
+        // TODO
+        /*
+        // u32 -> i32
+        if (statementType.SameAs(BuiltinType.U32) &&
+            targetType.SameAs(BuiltinType.I32))
+        {
+            GenerateCodeForStatement(typeCast.Value);
+            using (RegisterUsage.Auto reg = Registers.GetFree(BitWidth._32))
+            {
+                Code.Emit(Opcode.Move, reg.Register, (InstructionOperand)StackTop);
+                Code.Emit(Opcode.BitsAND, new InstructionOperand(0b_10000000_00000000_00000000_00000000));
+                Code.Emit(Opcode.Compare, reg.Register, new InstructionOperand(0));
+                InstructionLabel l = Code.DefineLabel();
+                Code.Emit(Opcode.JumpIfEqual, new PreparationInstructionOperand(l, false));
+
+                GenerateCodeForStatement(new CompiledCrash()
+                {
+                    Value = new CompiledStackString()
+                    {
+                        Value = "mew",
+                        IsNullTerminated = true,
+                        IsASCII = false,
+                        Location = typeCast.Location,
+                        SaveValue = true,
+                        Type = new ArrayType(BuiltinType.Char, "mew".Length + 1),
+                    },
+                    Location = typeCast.Location,
+                });
+
+                Code.MarkLabel(l);
+                PopTo(reg.Register);
+                Code.Emit(Opcode.BitsAND, new InstructionOperand(0b_01111111_11111111_11111111_11111111));
+            }
+            return;
+        }
+        */
 
         if (statementType.Is(out FunctionType? functionTypeFrom)
             && targetType.Is(out FunctionType? functionTypeTo))

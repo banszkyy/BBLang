@@ -98,15 +98,6 @@ public partial class StatementCompiler
         public Action<TemplateInstance<TFunction>>? AddCompilable { get; init; }
         public Func<TArgument, GeneralType> Converter { get; init; }
         public FunctionQueryIdentifierMatcher<TIdentifier, TDefinedIdentifier>? IdentifierMatcher { get; init; }
-
-        public string ToReadable()
-        {
-            string identifier = Identifier?.ToString() ?? "?";
-            IEnumerable<string?>? arguments = Arguments?.Select(v => v?.ToString()) ?? (ArgumentCount.HasValue ? Enumerable.Repeat(default(string), ArgumentCount.Value) : null);
-            return CompiledFunctionDefinition.ToReadable(identifier, arguments, ReturnType?.ToString());
-        }
-
-        public override string ToString() => ToReadable();
     }
 
     public class FunctionQueryResult<TFunction> where TFunction : notnull
@@ -240,7 +231,7 @@ public partial class StatementCompiler
     public static bool GetFunction<TFunction, TPassedIdentifier, TDefinedIdentifier, TArgument>(
         Functions<TFunction> functions,
         string kindName,
-        string? readableName,
+        string readableName,
 
         FunctionQuery<TFunction, TPassedIdentifier, TDefinedIdentifier, TArgument> query,
 
@@ -262,8 +253,6 @@ public partial class StatementCompiler
         }
 
         FunctionMatch<TFunction> best;
-
-        readableName = query.ToReadable() ?? readableName;
 
         if (functionMatches.Count > 0)
         {
@@ -326,7 +315,7 @@ public partial class StatementCompiler
 
             if (functionMatches.Count > 1 && functionMatches[0].CompareTo(functionMatches[1]) == 0)
             {
-                error = new PossibleDiagnostic($"Multiple functions matched ({string.Join(", ", functionMatches.Select(v => v.ToString()))})");
+                error = new PossibleDiagnostic($"Multiple functions matched ({string.Join(", ", functionMatches.Select(v => v.Function.ToReadable()))})");
                 foreach (FunctionMatch<TFunction> functionMatch in functionMatches)
                 {
                     if (functionMatch.Function is FunctionThingDefinition f)

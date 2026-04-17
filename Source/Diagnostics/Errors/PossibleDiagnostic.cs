@@ -59,9 +59,7 @@ public class PossibleDiagnostic
     public virtual PossibleDiagnostic Populated(ILocated location) => IsPopulated ? this : new PossibleDiagnostic(Message, location, SubErrors, RelatedInformation, false);
     public virtual PossibleDiagnostic Populated(IPositioned position, Uri file) => IsPopulated ? this : new PossibleDiagnostic(Message, new Location(position.Position, file), SubErrors, RelatedInformation, false);
 
-    public virtual PossibleDiagnostic WithRelatedInfo(DiagnosticRelatedInformation? relatedInfo) => relatedInfo is null ? this : new(Message, SubErrors, ImmutableArray.Create(relatedInfo), false);
-    public virtual PossibleDiagnostic WithRelatedInfo(params DiagnosticRelatedInformation?[] relatedInfo) => WithRelatedInfo(relatedInfo.Where(v => v is not null).ToImmutableArray()!);
-    public virtual PossibleDiagnostic WithRelatedInfo(IEnumerable<DiagnosticRelatedInformation?> relatedInfo) => WithRelatedInfo(relatedInfo.Where(v => v is not null).ToImmutableArray()!);
+    public virtual PossibleDiagnostic WithRelatedInfo(DiagnosticRelatedInformation? relatedInfo) => relatedInfo is null ? this : new(Message, SubErrors, RelatedInformation.Add(relatedInfo), false);
     public virtual PossibleDiagnostic WithRelatedInfo(ImmutableArray<DiagnosticRelatedInformation> relatedInfo) => relatedInfo.IsDefaultOrEmpty ? this : new(Message, SubErrors, RelatedInformation.AddRange(relatedInfo), false);
 
     public void Throw()

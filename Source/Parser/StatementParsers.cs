@@ -63,12 +63,6 @@ public sealed partial class Parser
             return true;
         }
 
-        if (ExpectKeywordCall(StatementKeywords.Yield, 0, 1, out KeywordCallStatement? keywordCallYield, diagnostics))
-        {
-            statement = keywordCallYield;
-            return true;
-        }
-
         if (ExpectKeywordCall(StatementKeywords.Goto, 1, out KeywordCallStatement? keywordCallGoto, diagnostics))
         {
             statement = keywordCallGoto;

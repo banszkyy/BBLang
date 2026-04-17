@@ -79,4 +79,13 @@ public class Diagnostic : IEquatable<Diagnostic>
     public override bool Equals(object? obj) => obj is Diagnostic other && Equals(other);
 
     public override int GetHashCode() => Message.GetHashCode();
+
+    public static IEnumerable<Diagnostic> EnumerateAll(Diagnostic diagnostic)
+    {
+        yield return diagnostic;
+        foreach (Diagnostic sub in diagnostic.SubErrors.SelectMany(EnumerateAll))
+        {
+            yield return sub;
+        }
+    }
 }

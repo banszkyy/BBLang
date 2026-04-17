@@ -439,91 +439,6 @@ public partial class StatementCompiler
         }
         Frames.Last.CapturesGlobalVariables = null;
 
-        if (GeneralType.TryInsertTypeParameters(callee.Type, typeArguments).Is(out StructType? returnStructType) &&
-            Utils.ReferenceEquals(returnStructType.Struct, GeneratorStructDefinition?.Struct))
-        {
-            if (!CompileAllocation(CompiledTypeExpression.CreateAnonymous(new StructType(GetGeneratorState(callee.Definition).Struct, caller.File), caller), out CompiledExpression? allocation))
-            {
-                compiledStatement = null;
-                return false;
-            }
-
-            TemplateInstance<CompiledConstructorDefinition> compliableTemplate = AddCompilable(new TemplateInstance<CompiledConstructorDefinition>(
-                GeneratorStructDefinition!.Constructor,
-                returnStructType.TypeArguments
-            ));
-
-            FunctionType calleeFunctionType = new(GeneralType.TryInsertTypeParameters(callee.Type, typeArguments), callee.Parameters.ToImmutableArray(v => GeneralType.TryInsertTypeParameters(v.Type, typeArguments)), false);
-
-            compiledStatement = new CompiledConstructorCall()
-            {
-                Object = new CompiledStackAllocation()
-                {
-                    TypeExpression = CompiledTypeExpression.CreateAnonymous(GeneralType.TryInsertTypeParameters(callee.Type, typeArguments), caller.Location),
-                    Type = GeneralType.TryInsertTypeParameters(callee.Type, typeArguments),
-                    Location = caller.Location,
-                    SaveValue = true,
-                },
-                Function = compliableTemplate,
-                Arguments = ImmutableArray.Create(
-                    new CompiledArgument()
-                    {
-                        Value = new CompiledFunctionReference()
-                        {
-                            Function = TemplateInstance.New<ICompiledFunctionDefinition>(callee, typeArguments),
-                            Type = calleeFunctionType,
-                            Location = caller.Location,
-                            SaveValue = true,
-                        },
-                        Cleanup = new CompiledCleanup()
-                        {
-                            Location = callee.Location,
-                            TrashType = calleeFunctionType,
-                        },
-                        Type = calleeFunctionType,
-                        Location = caller.Location,
-                        SaveValue = true,
-                    },
-                    new CompiledArgument()
-                    {
-                        Value = new CompiledReinterpretation()
-                        {
-                            Value = allocation,
-                            TypeExpression = CompiledTypeExpression.CreateAnonymous(PointerType.Any, caller.Location),
-                            Type = PointerType.Any,
-                            Location = caller.Location,
-                            SaveValue = true,
-                        },
-                        Cleanup = new CompiledCleanup()
-                        {
-                            Location = callee.Location,
-                            TrashType = PointerType.Any,
-                        },
-                        Type = PointerType.Any,
-                        Location = caller.Location,
-                        SaveValue = true,
-                    }
-                ),
-                Type = GeneralType.TryInsertTypeParameters(callee.Type, typeArguments),
-                Location = caller.Location,
-                SaveValue = caller.SaveValue,
-            };
-            GeneratorStructDefinition.Constructor.AddReference(
-                new ConstructorCallExpression(
-                    Token.CreateAnonymous(StatementKeywords.New),
-                    new TypeInstanceSimple(
-                        Token.CreateAnonymous(GeneratorStructDefinition.Struct.Identifier),
-                        caller.Location.File
-                    ),
-                    ArgumentListExpression.CreateAnonymous(caller.File),
-                    caller.File
-                ),
-                caller.Location
-            );
-
-            return true;
-        }
-
         compiledStatement = null;
         SetStatementType(caller, GeneralType.TryInsertTypeParameters(callee.Type, typeArguments));
 
@@ -548,54 +463,6 @@ public partial class StatementCompiler
         }
 
         if (!CompileArguments(argumentExpressions, compiledArgumentExpressions, callee, typeArguments, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
-
-        if (callee is IInContext<CompiledStruct> calleeInContext &&
-            calleeInContext.Context is not null &&
-            Utils.ReferenceEquals(calleeInContext.Context, GeneratorStructDefinition?.Struct))
-        {
-            CompiledGeneratorState stateStruct = GetGeneratorState(callee.Definition);
-            List<CompiledArgument> modifiedArguments = new(compiledArguments.Length)
-            {
-                new()
-                {
-                    Value = new CompiledFieldAccess()
-                    {
-                        Field = GeneratorStructDefinition!.StateField,
-                        Object = compiledArguments[0].Value,
-                        Type = GeneratorStructDefinition.StateField.Type,
-                        Location = caller.Location,
-                        SaveValue = true,
-                    },
-                    Cleanup = new CompiledCleanup()
-                    {
-                        Location = caller.Location,
-                        TrashType = GeneratorStructDefinition.StateField.Type,
-                    },
-                    Location = caller.Location,
-                    SaveValue = true,
-                    Type = GeneratorStructDefinition.StateField.Type,
-                }
-            };
-            modifiedArguments.AddRange(compiledArguments[1..]);
-            compiledStatement = new CompiledRuntimeCall()
-            {
-                Function = new CompiledFieldAccess()
-                {
-                    Field = GeneratorStructDefinition.FunctionField,
-                    Object = compiledArguments[0].Value,
-                    // fixme: dirty ahh
-                    Type = GeneralType.InsertTypeParameters(GeneratorStructDefinition.FunctionField.Type, ((StructType)((PointerType)callee.Parameters[0].Type).To).TypeArguments),
-                    Location = caller.Location,
-                    SaveValue = true,
-                },
-                Arguments = modifiedArguments.ToImmutableArray(),
-                Location = callee.Location,
-                SaveValue = caller.SaveValue,
-                Type = GeneralType.TryInsertTypeParameters(callee.Type, typeArguments),
-            };
-            //Debugger.Break();
-            return true;
-        }
 
         if (callee.ExternalFunctionName is not null)
         {
@@ -1460,7 +1327,6 @@ public partial class StatementCompiler
             InstructionLabels = localInstructionLabels.ToImmutable(),
             Scopes = new(),
             CurrentReturnType = functionType?.ReturnType,
-            CompiledGeneratorContext = null,
             IsTopLevel = false,
         }))
         {
@@ -1478,7 +1344,7 @@ public partial class StatementCompiler
             }
             else if (_body is CompiledExpression _compiledStatementWithValue)
             {
-                if (frame.Value.CurrentReturnType is null || frame.Value.CurrentReturnType.SameAs(BuiltinType.Void))
+                if (frame.Value.CurrentReturnType is not null && frame.Value.CurrentReturnType.SameAs(BuiltinType.Void))
                 {
                     _compiledStatementWithValue.SaveValue = false;
                     block = new CompiledBlock()
@@ -1499,7 +1365,12 @@ public partial class StatementCompiler
                             Value = _compiledStatementWithValue,
                         }),
                     };
-                    if (!frame.Value.CurrentReturnType.SameAs(_compiledStatementWithValue.Type))
+
+                    if (frame.Value.CurrentReturnType is null)
+                    {
+                        frame.Value.CurrentReturnType = _compiledStatementWithValue.Type;
+                    }
+                    else if (!frame.Value.CurrentReturnType.SameAs(_compiledStatementWithValue.Type))
                     {
                         Diagnostics.Add(DiagnosticAt.Error($"Lambda expression value's type ({_compiledStatementWithValue.Type}) doesn't match the return type {frame.Value.CurrentReturnType}", _compiledStatementWithValue));
                     }
@@ -1569,6 +1440,8 @@ public partial class StatementCompiler
 
             if (!frame.Value.CapturesGlobalVariables.HasValue) Frames.Last.CapturesGlobalVariables = null;
             else if (frame.Value.CapturesGlobalVariables.Value) Frames.Last.CapturesGlobalVariables = true;
+
+            SetStatementType(lambdaStatement, functionType);
 
             compiledStatement = new CompiledLambda(
                 functionType.ReturnType,
@@ -1799,7 +1672,7 @@ public partial class StatementCompiler
                         Location = literal.Location,
                         SaveValue = true,
                         Type = expectedType,
-                        IsNullTerminated = arrayType3.Length.HasValue && arrayType3.Length.Value > stringLiteral.Value.Length,
+                        IsNullTerminated = !arrayType3.Length.HasValue || arrayType3.Length.Value > stringLiteral.Value.Length,
                     };
                     return true;
                 }
@@ -1816,7 +1689,7 @@ public partial class StatementCompiler
                         Location = literal.Location,
                         SaveValue = true,
                         Type = expectedType,
-                        IsNullTerminated = arrayType4.Length.HasValue && arrayType4.Length.Value > stringLiteral.Value.Length,
+                        IsNullTerminated = !arrayType4.Length.HasValue || arrayType4.Length.Value > stringLiteral.Value.Length,
                     };
                     return true;
                 }
@@ -2100,39 +1973,6 @@ public partial class StatementCompiler
             if (val.IsGlobal)
             { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get local variable \"{val.Identifier}\" but it was compiled as a global variable.", variable)); }
 
-            if (Frames.Last.CompiledGeneratorContext is not null)
-            {
-                //Debugger.Break();
-                if (GeneratorStructDefinition is null)
-                {
-                    Diagnostics.Add(DiagnosticAt.Error($"No struct found with an [{AttributeConstants.BuiltinIdentifier}(\"generator\")] attribute.", variable));
-                    return false;
-                }
-
-                CompiledField field = Frames.Last.CompiledGeneratorContext.State.AddVariable(val.Identifier, val.Type);
-                if (!GetParameter("this", out CompiledParameter? thisParameter, out parameterNotFoundError))
-                {
-                    Diagnostics.Add(parameterNotFoundError.ToError(variable));
-                    return false;
-                }
-
-                compiledStatement = new CompiledFieldAccess()
-                {
-                    Field = field,
-                    Object = new CompiledParameterAccess()
-                    {
-                        Parameter = thisParameter,
-                        Type = thisParameter.Type,
-                        SaveValue = true,
-                        Location = variable.Location,
-                    },
-                    Type = field.Type,
-                    SaveValue = variable.SaveValue,
-                    Location = variable.Location,
-                };
-                return true;
-            }
-
             compiledStatement = new CompiledVariableAccess()
             {
                 Variable = val,
@@ -2233,12 +2073,6 @@ public partial class StatementCompiler
 
                 if (outerLocal.IsGlobal)
                 { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get local variable \"{outerLocal.Identifier}\" but it was compiled as a global variable.", variable)); }
-
-                if (Frames.Last.CompiledGeneratorContext is not null)
-                {
-                    Diagnostics.Add(DiagnosticAt.Internal($"aaaaaaa", variable));
-                    return false;
-                }
 
                 compiledStatement = new CompiledVariableAccess()
                 {

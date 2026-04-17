@@ -483,282 +483,6 @@ public partial class StatementCompiler
         return false;
     }
 
-    bool IsGeneratorStruct(CompiledStruct @struct)
-    {
-        if (!@struct.Definition.Attributes.TryGetAttribute(AttributeConstants.BuiltinIdentifier, out AttributeUsage? builtinAttribute)) return false;
-        if (!builtinAttribute.TryGetValue(out string? v)) return false;
-        if (v != "generator") return false;
-
-        return true;
-    }
-
-    bool CompileGeneratorStruct(CompiledStruct @struct)
-    {
-        if (!IsGeneratorStruct(@struct)) return false;
-
-        if (@struct.Definition.Template is null)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Generator struct should be generic", @struct.Definition.Identifier.Position, @struct.Definition.File));
-            return true;
-        }
-
-        if (@struct.Definition.Template.Parameters.Length != 1)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Generator struct should have one generic parameter", new Location(@struct.Definition.Template.Position, @struct.Definition.File)));
-            return true;
-        }
-
-        CompiledFunctionDefinition? nextFunction = null;
-
-        Token genericParameter = @struct.Definition.Template.Parameters[0];
-        GenericType generatorType = new(genericParameter, @struct.Definition.File);
-        genericParameter.AnalyzedType = TokenAnalyzedType.TypeParameter;
-
-        using StackAuto<ImmutableArray<Token>> _ = GenericParameters.PushAuto(@struct.Definition.Template!.Parameters);
-
-        foreach (FunctionDefinition method in @struct.Definition.Functions)
-        {
-            if (!method.Attributes.TryGetAttribute(AttributeConstants.BuiltinIdentifier, out AttributeUsage? builtinAttribute) || !builtinAttribute.TryGetValue(out string? v) || v != "next")
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"Generator struct shouldn't have any methods other than one \"next\" method", method));
-                continue;
-            }
-
-            foreach (ParameterDefinition parameter in method.Parameters.Parameters)
-            {
-                if (parameter.Modifiers.Contains(ModifierKeywords.This))
-                { Diagnostics.Add(DiagnosticAt.Error($"Keyword \"{ModifierKeywords.This}\" is not valid in the current context", parameter.Identifier, @struct.Definition.File)); }
-            }
-
-            ImmutableArray<ParameterDefinition> parameters = method.Parameters.Parameters.Insert(0, new ParameterDefinition(
-                ImmutableArray.Create(Token.CreateAnonymous(ModifierKeywords.This)),
-                TypeInstancePointer.CreateAnonymous(TypeInstanceSimple.CreateAnonymous(@struct.Identifier, method.File, @struct.Definition.Template?.Parameters), method.File),
-                Token.CreateAnonymous(StatementKeywords.This),
-                null,
-                method.File
-            ));
-
-            FunctionDefinition copy = new(
-                method.Attributes,
-                method.Modifiers,
-                method.Type,
-                method.Identifier,
-                new ParameterDefinitionCollection(parameters, method.Parameters.Brackets, method.File),
-                method.Template,
-                method.Block,
-                method.File)
-            {
-                Context = method.Context,
-            };
-
-            if (!CompileFunctionDefinition(copy, @struct, out CompiledFunctionDefinition? compiledMethod))
-            {
-                continue;
-            }
-
-            if (CompiledFunctions.Any(compiledMethod.IsSame))
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"Function with name \"{compiledMethod.ToReadable()}\" already defined", method.Identifier, @struct.Definition.File));
-                continue;
-            }
-
-            if (nextFunction is not null)
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"Generator struct should only have only one \"next\" function", method.Identifier, @struct.Definition.File));
-                continue;
-            }
-
-            nextFunction = compiledMethod;
-
-            CompiledFunctions.Add(compiledMethod);
-        }
-
-        if (@struct.Definition.GeneralFunctions.Length > 0)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Generator struct shouldn't have any general functions", @struct.Definition.Identifier.Position, @struct.Definition.File));
-            return true;
-        }
-
-        if (@struct.Definition.Constructors.Length > 0)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Generator struct shouldn't have any constructors", @struct.Definition.Identifier.Position, @struct.Definition.File));
-            return true;
-        }
-
-        if (@struct.Fields.Length > 0)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Generator struct shouldn't have any fields", @struct.Definition.Identifier.Position, @struct.Definition.File));
-            return true;
-        }
-
-        if (nextFunction is null)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Generator struct should only have a \"next\" function", @struct.Definition.Identifier.Position, @struct.Definition.File));
-            return true;
-        }
-
-        CompiledField stateField;
-        CompiledField functionField;
-
-        @struct.SetFields(ImmutableArray.Create<CompiledField>(
-            stateField = new(
-                PointerType.Any,
-                @struct,
-                new FieldDefinition(
-                    Token.CreateAnonymous("_genstate"),
-                    null!,
-                    ImmutableArray<Token>.Empty,
-                    ImmutableArray<AttributeUsage>.Empty
-                )
-            ),
-            functionField = new(
-                new FunctionType(
-                    BuiltinType.U8,
-                    ImmutableArray.Create<GeneralType>(
-                        PointerType.Any,
-                        new PointerType(generatorType)
-                    ),
-                    false
-                ),
-                @struct,
-                new FieldDefinition(
-                    nextFunction.Definition.Identifier,
-                    null!,
-                    ImmutableArray<Token>.Empty,
-                    ImmutableArray<AttributeUsage>.Empty
-                )
-            )
-        ));
-
-        if (!nextFunction.Type.SameAs(BuiltinType.U8))
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"The \"next\" function should return {BuiltinType.U8}", nextFunction.Definition.Type));
-        }
-
-        if (nextFunction.Definition.Parameters.Length != 2)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"The \"next\" function should have one parameter of type \"{new PointerType(generatorType)}\"", nextFunction.Definition, nextFunction.File));
-        }
-
-        if (!nextFunction.Parameters[1].Type.SameAs(new PointerType(generatorType)))
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"The \"next\" function should have one parameter of type \"{new PointerType(generatorType)}\"", nextFunction.Definition.Parameters[1].Type, nextFunction.File));
-        }
-
-        if (nextFunction.Definition.Block is not null)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"The \"next\" function should not have a body", nextFunction.Definition.Block));
-        }
-
-        if (GeneratorStructDefinition is not null)
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"A generator struct is already defined somewhere", @struct.Definition.Identifier.Position, @struct.Definition.File));
-        }
-
-        ImmutableArray<CompiledParameter> _parameters = ImmutableArray.Create<CompiledParameter>(
-            new CompiledParameter(
-                new PointerType(new StructType(@struct, @struct.Definition.File)),
-                new ParameterDefinition(
-                    ImmutableArray.Create<Token>(Token.CreateAnonymous(ModifierKeywords.This)),
-                    new TypeInstancePointer(new TypeInstanceSimple(Token.CreateAnonymous(@struct.Identifier), @struct.Definition.File), Token.CreateAnonymous("*"), @struct.Definition.File),
-                    Token.CreateAnonymous("this"),
-                    null,
-                    @struct.Definition.File
-                )
-            ),
-            new CompiledParameter(
-                new FunctionType(BuiltinType.U8, ImmutableArray.Create<GeneralType>(
-                    PointerType.Any,
-                    new PointerType(generatorType)
-                ), false),
-                new ParameterDefinition(
-                    ImmutableArray<Token>.Empty,
-                    new TypeInstanceFunction(
-                        new TypeInstanceSimple(Token.CreateAnonymous(TypeKeywords.U8, TokenType.Identifier), @struct.Definition.File),
-                        ImmutableArray.Create<TypeInstance>(
-                            new TypeInstancePointer(new TypeInstanceSimple(Token.CreateAnonymous(TypeKeywords.Any), @struct.Definition.File), Token.CreateAnonymous("*", TokenType.Operator), @struct.Definition.File),
-                            new TypeInstancePointer(new TypeInstanceSimple(genericParameter, @struct.Definition.File), Token.CreateAnonymous("*", TokenType.Operator), @struct.Definition.File)
-                        ),
-                        null,
-                        @struct.Definition.File,
-                        TokenPair.CreateAnonymous("(", ")")),
-                    Token.CreateAnonymous("func"),
-                    null,
-                    @struct.Definition.File
-                )
-            ),
-            new CompiledParameter(
-                PointerType.Any,
-                new ParameterDefinition(
-                    ImmutableArray<Token>.Empty,
-                    new TypeInstancePointer(new TypeInstanceSimple(Token.CreateAnonymous(TypeKeywords.Any), @struct.Definition.File), Token.CreateAnonymous("*"), @struct.Definition.File),
-                    Token.CreateAnonymous("state"),
-                    null,
-                    @struct.Definition.File
-                )
-            )
-        );
-
-        CompiledConstructorDefinition constructor = new(
-            new StructType(@struct, @struct.Definition.File),
-            _parameters,
-            @struct,
-            new ConstructorDefinition(
-                new TypeInstanceSimple(@struct.Definition.Identifier, @struct.Definition.File, ImmutableArray.Create<TypeInstance>(new TypeInstanceSimple(genericParameter, @struct.Definition.File)), TokenPair.CreateAnonymous("<", ">")),
-                ImmutableArray<Token>.Empty,
-                new ParameterDefinitionCollection(
-                    _parameters.As<ParameterDefinition>(),
-                    TokenPair.CreateAnonymous("(", ")"),
-                    @struct.Definition.File
-                ),
-                new Block(
-                    ImmutableArray.Create<Statement>(
-                        new SimpleAssignmentStatement(
-                            Token.CreateAnonymous("="),
-                            new FieldExpression(
-                                new IdentifierExpression(Token.CreateAnonymous("this"), @struct.Definition.File),
-                                Token.CreateAnonymous("_genstate"),
-                                @struct.Definition.File
-                            ),
-                            new IdentifierExpression(Token.CreateAnonymous("state"), @struct.Definition.File),
-                            @struct.Definition.File
-                        ),
-                        new SimpleAssignmentStatement(
-                            Token.CreateAnonymous("="),
-                            new FieldExpression(
-                                new IdentifierExpression(Token.CreateAnonymous("this"), @struct.Definition.File),
-                                nextFunction.Definition.Identifier,
-                                @struct.Definition.File
-                            ),
-                            new IdentifierExpression(Token.CreateAnonymous("func"), @struct.Definition.File),
-                            @struct.Definition.File
-                        )
-                    ),
-                    TokenPair.CreateAnonymous("{", "}"),
-                    @struct.Definition.File
-                ),
-                @struct.Definition.File
-            )
-            {
-                Context = @struct.Definition,
-            })
-        {
-            Context = @struct,
-        };
-
-        GeneratorStructDefinition = new CompiledGeneratorStructDefinition(
-            @struct,
-            nextFunction,
-            stateField,
-            functionField,
-            constructor
-        );
-
-        CompiledConstructors.Add(constructor);
-
-        return true;
-    }
-
     void CompileDefinitions(Uri file, ImmutableArray<ParsedFile> parsedFiles)
     {
         // First compile the structs without fields
@@ -777,19 +501,18 @@ public partial class StatementCompiler
 
         foreach (AliasDefinition aliasDefinition in AliasDefinitions)
         {
-            if (IsSymbolDefined(@aliasDefinition))
+            if (IsSymbolDefined(aliasDefinition))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{@aliasDefinition.Identifier}\" already exists", @aliasDefinition.Identifier, @aliasDefinition.File));
+                Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{aliasDefinition.Identifier}\" already exists", aliasDefinition.Identifier, aliasDefinition.File));
                 continue;
             }
 
-            if (!CompileType(aliasDefinition.Value, out GeneralType? aliasType, Diagnostics)) continue;
+            if (!CompileStatement(aliasDefinition.Value, out CompiledTypeExpression? aliasValue, Diagnostics)) continue;
 
-            CompiledAlias alias = new(
-                aliasType,
+            CompiledAliases.Add(new CompiledAlias(
+                aliasValue,
                 aliasDefinition
-            );
-            CompiledAliases.Add(alias);
+            ));
         }
 
         foreach (EnumDefinition enumDefinition in EnumDefinitions)
@@ -1015,11 +738,6 @@ public partial class StatementCompiler
             }
         }
 
-        foreach (CompiledStruct compiledStruct in CompiledStructs)
-        {
-            CompileGeneratorStruct(compiledStruct);
-        }
-
         foreach (FunctionDefinition @operator in OperatorDefinitions)
         {
             if (!CompileOperatorDefinition(@operator, null, out CompiledOperatorDefinition? compiled))
@@ -1054,8 +772,6 @@ public partial class StatementCompiler
 
         foreach (CompiledStruct compiledStruct in CompiledStructs)
         {
-            if (IsGeneratorStruct(compiledStruct)) continue;
-
             if (compiledStruct.Definition.Template is not null)
             {
                 GenericParameters.Push(compiledStruct.Definition.Template.Parameters);

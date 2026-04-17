@@ -10,14 +10,14 @@ public class CompiledAlias :
     ICompiledDefinition<AliasDefinition>
 {
     public AliasDefinition Definition { get; }
-    public GeneralType Value { get; }
+    public CompiledTypeExpression Value { get; }
     public List<Reference<TypeInstance>> References { get; }
 
     public string Identifier => Definition.Identifier.Content;
     public Uri File => Definition.File;
     public Location Location => new(Definition.Position, Definition.File);
 
-    public CompiledAlias(GeneralType value, AliasDefinition definition)
+    public CompiledAlias(CompiledTypeExpression value, AliasDefinition definition)
     {
         Definition = definition;
         Value = value;

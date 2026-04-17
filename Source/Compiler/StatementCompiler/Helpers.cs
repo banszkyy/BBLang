@@ -22,8 +22,6 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     readonly DiagnosticsCollection Diagnostics;
 
-    public const int InvalidFunctionAddress = int.MinValue;
-
     readonly ImmutableArray<IExternalFunction> ExternalFunctions;
     readonly ImmutableArray<ExternalConstant> ExternalConstants;
     readonly ImmutableDictionary<string, GeneralType> InternalConstants;
@@ -36,8 +34,6 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     readonly CompilerSettings Settings;
     readonly List<CompiledFunction> GeneratedFunctions = new();
-
-    public BitWidth PointerBitWidth => (BitWidth)PointerSize;
 
     readonly List<TemplateInstance<CompiledFunctionDefinition>> CompilableFunctions = new();
     readonly List<TemplateInstance<CompiledOperatorDefinition>> CompilableOperators = new();
@@ -56,13 +52,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     readonly ImmutableArray<UserDefinedAttribute> UserDefinedAttributes;
     readonly ImmutableHashSet<string> PreprocessorVariables;
     readonly ImmutableArray<CompiledStatement>.Builder CompiledTopLevelStatements = ImmutableArray.CreateBuilder<CompiledStatement>();
-
-    readonly List<(FunctionThingDefinition Function, CompiledGeneratorState State)> GeneratorStates = new();
-
     readonly Stack<CompiledFrame> Frames;
-
-    CompiledGeneratorStructDefinition? GeneratorStructDefinition;
-
     readonly ILogger? Logger;
 
     #endregion
@@ -190,21 +180,6 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         explicitly = default;
         return false;
-    }
-
-    CompiledGeneratorState GetGeneratorState(FunctionThingDefinition function)
-    {
-        foreach ((FunctionThingDefinition _function, CompiledGeneratorState state) in GeneratorStates)
-        {
-            if (Utils.ReferenceEquals(_function.Identifier, function.Identifier) &&
-                _function.Location == function.Location)
-            {
-                return state;
-            }
-        }
-        CompiledGeneratorState result = new();
-        GeneratorStates.Add((function, result));
-        return result;
     }
 
     public static bool AllowDeallocate(GeneralType type) => type.Is<PointerType>() || (type.Is(out FunctionType? functionType) && functionType.HasClosure);
@@ -450,7 +425,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         return GetFunction<CompiledFunctionDefinition, string, string, CompiledExpression>(
             GetFunctions(),
             "function",
-            null,
+            CompiledFunctionDefinition.ToReadable(BuiltinFunctionIdentifiers.IndexerGet, arguments.Select(v => v.Type.ToString()), null),
 
             query,
 
@@ -474,7 +449,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         return GetFunction<CompiledFunctionDefinition, string, string, CompiledExpression>(
             GetFunctions(),
             "function",
-            null,
+            CompiledFunctionDefinition.ToReadable(BuiltinFunctionIdentifiers.IndexerSet, arguments.Select(v => v.Type.ToString()), null),
 
             query,
 
@@ -537,7 +512,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         return GetFunction<CompiledOperatorDefinition, string, string, CompiledExpression>(
             GetOperators(),
             "operator",
-            null,
+            CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.Type.ToString()), null),
 
             query,
 
@@ -571,7 +546,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 Compilable = compilableGeneralFunctionsInContext,
             },
             "general function",
-            null,
+            CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.ToString()), null),
 
             FunctionQuery.Create<CompiledGeneralFunctionDefinition, string, string>(identifier, arguments, relevantFile, null, addCompilable),
 
@@ -591,6 +566,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         {
             return GetFunction(
                 FunctionQuery.Create<CompiledFunctionDefinition, string, string>(identifier),
+                CompiledFunctionDefinition.ToReadable(identifier, null, null),
                 out result,
                 out error
             );
@@ -598,6 +574,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         return GetFunction(
             FunctionQuery.Create<CompiledFunctionDefinition, string, string>(identifier, functionType.Parameters, null, functionType.ReturnType, addCompilable),
+            CompiledFunctionDefinition.ToReadable(identifier, functionType.Parameters.Select(v => v.ToString()), functionType.ReturnType.ToString()),
             out result,
             out error
         );
@@ -620,6 +597,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             addCompilable);
         return GetFunction<CompiledExpression>(
             query,
+            CompiledFunctionDefinition.ToReadable(identifier, arguments.Select(v => v.Type.ToString()), null),
             out result,
             out error
         );
@@ -627,6 +605,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     bool GetFunction<TArgument>(
         FunctionQuery<CompiledFunctionDefinition, string, string, TArgument> query,
+        string readableName,
 
         [NotNullWhen(true)] out FunctionQueryResult<CompiledFunctionDefinition>? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -634,7 +613,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         => GetFunction<CompiledFunctionDefinition, string, string, TArgument>(
             GetFunctions(),
             "function",
-            null,
+            readableName,
 
             query,
             out result,
@@ -1593,121 +1572,6 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     #region Find Type
 
-    bool FindType(Token name, Uri relevantFile, [NotNullWhen(true)] out GeneralType? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
-    {
-        if (TypeKeywords.BasicTypes.TryGetValue(name.Content, out BasicType builtinType))
-        {
-            result = new BuiltinType(builtinType);
-            error = null;
-            return true;
-        }
-
-        if (Frames.Last.TypeArguments.TryGetValue(name.Content, out GeneralType? typeArgument))
-        {
-            result = typeArgument;
-            error = null;
-            return true;
-        }
-
-        {
-            int i = Frames.Last.TypeParameters.IndexOf(name.Content);
-            if (i != -1)
-            {
-                result = new GenericType(Frames.Last.TypeParameters[i], relevantFile);
-                error = null;
-                return true;
-            }
-        }
-
-        for (int i = 0; i < GenericParameters.Count; i++)
-        {
-            for (int j = 0; j < GenericParameters[i].Length; j++)
-            {
-                if (GenericParameters[i][j].Content == name.Content)
-                {
-                    GenericParameters[i][j].AnalyzedType = TokenAnalyzedType.TypeParameter;
-                    result = new GenericType(GenericParameters[i][j], relevantFile);
-                    error = null;
-                    return true;
-                }
-            }
-        }
-
-        if (GetAlias(name.Content, relevantFile, out CompiledAlias? alias, out PossibleDiagnostic? aliasError))
-        {
-            name.AnalyzedType = alias.Value.FinalValue switch
-            {
-                BuiltinType => TokenAnalyzedType.BuiltinType,
-                StructType => TokenAnalyzedType.Struct,
-                GenericType => TokenAnalyzedType.TypeParameter,
-                AliasType => TokenAnalyzedType.TypeAlias,
-                EnumType => TokenAnalyzedType.Enum,
-                _ => TokenAnalyzedType.Type,
-            };
-            alias.AddReference(new TypeInstanceSimple(name, relevantFile));
-
-            // HERE
-            result = new AliasType(alias.Value, alias);
-            error = null;
-            return true;
-        }
-
-        if (GetEnum(name.Content, relevantFile, out CompiledEnum? @enum, out PossibleDiagnostic? enumType))
-        {
-            name.AnalyzedType = @enum.Type.FinalValue switch
-            {
-                BuiltinType => TokenAnalyzedType.BuiltinType,
-                StructType => TokenAnalyzedType.Struct,
-                GenericType => TokenAnalyzedType.TypeParameter,
-                AliasType => TokenAnalyzedType.TypeAlias,
-                EnumType => TokenAnalyzedType.Enum,
-                _ => TokenAnalyzedType.Type,
-            };
-            @enum.AddReference(new TypeInstanceSimple(name, relevantFile));
-
-            result = new EnumType(@enum);
-            error = null;
-            return true;
-        }
-
-        if (GetStruct(name.Content, relevantFile, out CompiledStruct? @struct, out PossibleDiagnostic? structError))
-        {
-            name.AnalyzedType = TokenAnalyzedType.Struct;
-            @struct.AddReference(new TypeInstanceSimple(name, relevantFile));
-
-            result = new StructType(@struct, relevantFile);
-            error = null;
-            return true;
-        }
-
-        /*
-        if (GetFunction(FunctionQuery.Create<CompiledFunctionDefinition, string, Token>(name.Content, null, null, relevantFile), out FunctionQueryResult<CompiledFunctionDefinition>? function, out var functionError))
-        {
-            name.AnalyzedType = TokenAnalyzedType.FunctionName;
-            function.Function.AddReference(new Reference<StatementWithValue?>(new Identifier(name, relevantFile), relevantFile));
-
-            result = new FunctionType(function.Function);
-            error = null;
-            return true;
-        }
-
-        if (GetGlobalVariable(name.Content, relevantFile, out CompiledVariableDeclaration? globalVariable, out var globalVariableError))
-        {
-            name.AnalyzedType = TokenAnalyzedType.VariableName;
-
-            result = globalVariable.Type;
-            error = null;
-            return true;
-        }
-        */
-
-        result = null;
-        error = new PossibleDiagnostic($"Can't find type `{name.Content}`", ImmutableArray.Create(
-            aliasError,
-            structError
-        ));
-        return false;
-    }
     bool FindType(Token name, Uri relevantFile, [NotNullWhen(true)] out CompiledTypeExpression? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         if (TypeKeywords.BasicTypes.TryGetValue(name.Content, out BasicType builtinType))
@@ -1752,22 +1616,21 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         {
             name.AnalyzedType = alias.Value.FinalValue switch
             {
-                BuiltinType => TokenAnalyzedType.BuiltinType,
-                StructType => TokenAnalyzedType.Struct,
-                GenericType => TokenAnalyzedType.TypeParameter,
-                AliasType => TokenAnalyzedType.TypeAlias,
-                EnumType => TokenAnalyzedType.Enum,
+                CompiledBuiltinTypeExpression => TokenAnalyzedType.BuiltinType,
+                CompiledStructTypeExpression => TokenAnalyzedType.Struct,
+                CompiledGenericTypeExpression => TokenAnalyzedType.TypeParameter,
+                CompiledEnumTypeExpression => TokenAnalyzedType.Enum,
                 _ => TokenAnalyzedType.Type,
             };
             alias.AddReference(new TypeInstanceSimple(name, relevantFile));
 
-            // HERE
-            result = new CompiledAliasTypeExpression(CompiledTypeExpression.CreateAnonymous(alias.Value, alias.Definition.Value), alias, new Location(name.Position, relevantFile));
+            // TODO
+            result = new CompiledAliasTypeExpression(alias.Value, alias, new Location(name.Position, relevantFile));
             error = null;
             return true;
         }
 
-        if (GetEnum(name.Content, relevantFile, out CompiledEnum? @enum, out PossibleDiagnostic? enumType))
+        if (GetEnum(name.Content, relevantFile, out CompiledEnum? @enum, out PossibleDiagnostic? enumError))
         {
             name.AnalyzedType = @enum.Type.FinalValue switch
             {
@@ -1798,22 +1661,20 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         result = null;
         error = new PossibleDiagnostic($"Can't find type `{name.Content}`", ImmutableArray.Create(
             aliasError,
-            structError
+            structError,
+            enumError
         ));
         return false;
     }
 
-    bool GetLiteralType(LiteralType literal, [NotNullWhen(true)] out GeneralType? type, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    bool GetLiteralType(LiteralType literal, [NotNullWhen(true)] out GeneralType? type, [NotNullWhen(false)] out PossibleDiagnostic? error) => GetUsedBy(literal switch
     {
-        return GetUsedBy(literal switch
-        {
-            LiteralType.Integer => InternalTypes.Integer,
-            LiteralType.Float => InternalTypes.Float,
-            LiteralType.String => InternalTypes.String,
-            LiteralType.Char => InternalTypes.Char,
-            _ => throw new UnreachableException(),
-        }, out type, out error);
-    }
+        LiteralType.Integer => InternalTypes.Integer,
+        LiteralType.Float => InternalTypes.Float,
+        LiteralType.String => InternalTypes.String,
+        LiteralType.Char => InternalTypes.Char,
+        _ => throw new UnreachableException(),
+    }, out type, out error);
 
     bool GetUsedBy(string by, [NotNullWhen(true)] out GeneralType? type, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
@@ -1840,7 +1701,13 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                         error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute);
                         return false;
                     }
-                    type = new AliasType(alias.Value, alias);
+
+                    if (!CompileType(alias.Value, out GeneralType? aliasValue, out error))
+                    {
+                        return false;
+                    }
+
+                    type = new AliasType(aliasValue, alias);
                 }
             }
         }
@@ -4057,51 +3924,11 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     #region Visit
 
-    static IEnumerable<CompiledStatement> Visit(IEnumerable<GeneralType> type)
-    {
-        foreach (GeneralType v in type)
-        {
-            foreach (CompiledStatement v2 in Visit(v)) yield return v2;
-        }
-    }
-
     static IEnumerable<CompiledStatement> Visit(IEnumerable<CompiledTypeExpression> type)
     {
         foreach (CompiledTypeExpression v in type)
         {
             foreach (CompiledStatement v2 in Visit(v)) yield return v2;
-        }
-    }
-
-    static IEnumerable<CompiledStatement> Visit(GeneralType? type)
-    {
-        switch (type)
-        {
-            case BuiltinType:
-                break;
-            case AliasType v:
-                foreach (CompiledStatement v2 in Visit(v.Value)) yield return v2;
-                break;
-            case EnumType v:
-                break;
-            case PointerType v:
-                foreach (CompiledStatement v2 in Visit(v.To)) yield return v2;
-                break;
-            case ReferenceType v:
-                foreach (CompiledStatement v2 in Visit(v.To)) yield return v2;
-                break;
-            case FunctionType v:
-                foreach (CompiledStatement v2 in Visit(v.ReturnType)) yield return v2;
-                foreach (CompiledStatement v2 in Visit(v.Parameters)) yield return v2;
-                break;
-            case GenericType:
-                break;
-            case StructType v:
-                foreach (CompiledStatement v2 in Visit(v.TypeArguments.Values)) yield return v2;
-                break;
-            case ArrayType v:
-                foreach (CompiledStatement v2 in Visit(v.Of)) yield return v2;
-                break;
         }
     }
 
@@ -4156,7 +3983,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 {
                     foreach (CompiledStatement v2 in Visit(v.InitialValue)) yield return v2;
                 }
-                foreach (CompiledStatement v2 in Visit(v.Type)) yield return v2;
+                foreach (CompiledStatement v2 in Visit(v.TypeExpression)) yield return v2;
                 foreach (CompiledStatement v2 in Visit(v.Cleanup)) yield return v2;
                 break;
             case CompiledSizeof v:
@@ -4262,16 +4089,16 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 break;
             case CompiledStackAllocation v:
                 yield return v;
-                foreach (CompiledStatement v2 in Visit(v.Type)) yield return v2;
+                foreach (CompiledStatement v2 in Visit(v.TypeExpression)) yield return v2;
                 break;
             case CompiledConstructorCall v:
                 yield return v;
-                foreach (CompiledStatement v2 in Visit(v.Type)) yield return v2;
+                foreach (CompiledStatement v2 in Visit(v.Object)) yield return v2;
                 foreach (CompiledStatement v2 in Visit(v.Arguments)) yield return v2;
                 break;
             case CompiledCast v:
                 yield return v;
-                foreach (CompiledStatement v2 in Visit(v.Type)) yield return v2;
+                foreach (CompiledStatement v2 in Visit(v.TypeExpression)) yield return v2;
                 foreach (CompiledStatement v2 in Visit(v.Value)) yield return v2;
                 break;
             case CompiledReinterpretation v:

@@ -55,21 +55,6 @@ public class CompiledFunctionTypeExpression : CompiledTypeExpression,
 
         return result.ToString();
     }
-    public override string Stringify(int depth = 0)
-    {
-        StringBuilder result = new();
-        if (HasClosure) result.Append('@');
-        result.Append(ReturnType.Stringify(depth));
-        result.Append('(');
-        for (int i = 0; i < Parameters.Length; i++)
-        {
-            if (i > 0) result.Append(", ");
-            result.Append(Parameters[i].Stringify(depth));
-        }
-        result.Append(')');
-
-        return result.ToString();
-    }
 
     public static CompiledFunctionTypeExpression CreateAnonymous(FunctionType type, ILocated location)
     {

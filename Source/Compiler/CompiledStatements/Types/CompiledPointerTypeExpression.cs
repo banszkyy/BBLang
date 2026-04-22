@@ -30,7 +30,6 @@ public class CompiledPointerTypeExpression : CompiledTypeExpression,
     }
     public override int GetHashCode() => HashCode.Combine(To);
     public override string ToString() => $"{To}*";
-    public override string Stringify(int depth = 0) => $"{To.Stringify(depth)}*";
 
     public static CompiledPointerTypeExpression CreateAnonymous(PointerType type, ILocated location)
     {

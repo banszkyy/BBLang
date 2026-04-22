@@ -14,10 +14,10 @@ public class CompoundAssignmentStatement : AssignmentStatement, IReferenceableTo
     /// This should always starts with <c>"="</c>
     /// </summary>
     public Token Operator { get; }
-    public Expression Left { get; }
-    public Expression Right { get; }
+    public Expression Target { get; }
+    public Expression Value { get; }
 
-    public override Position Position => new(Operator, Left, Right);
+    public override Position Position => new(Operator, Target, Value);
 
     public CompoundAssignmentStatement(
         Token @operator,
@@ -26,28 +26,28 @@ public class CompoundAssignmentStatement : AssignmentStatement, IReferenceableTo
         Uri file) : base(file)
     {
         Operator = @operator;
-        Left = left;
-        Right = right;
+        Target = left;
+        Value = right;
     }
 
     public override string ToString()
     {
         StringBuilder result = new();
 
-        if (result.Length + Left.ToString().Length > Stringify.CozyLength)
+        if (result.Length + Target.ToString().Length > Stringify.CozyLength)
         {
             result.Append($"... {Operator} ...");
         }
         else
         {
-            result.Append(Left);
+            result.Append(Target);
             result.Append(' ');
             result.Append(Operator);
             result.Append(' ');
-            if (result.Length + Right.ToString().Length > Stringify.CozyLength)
+            if (result.Length + Value.ToString().Length > Stringify.CozyLength)
             { result.Append("..."); }
             else
-            { result.Append(Right); }
+            { result.Append(Value); }
         }
 
         result.Append(Semicolon);
@@ -58,11 +58,11 @@ public class CompoundAssignmentStatement : AssignmentStatement, IReferenceableTo
     {
         BinaryOperatorCallExpression statementToAssign = new(
             Token.CreateAnonymous(Operator.Content.Replace("=", string.Empty, StringComparison.Ordinal), TokenType.Operator, Operator.Position),
-            ArgumentExpression.Wrap(Left),
-            ArgumentExpression.Wrap(Right),
+            ArgumentExpression.Wrap(Target),
+            ArgumentExpression.Wrap(Value),
             File
         );
         Token assignmentOperator = Token.CreateAnonymous("=", TokenType.Operator, Operator.Position);
-        return new SimpleAssignmentStatement(assignmentOperator, Left, statementToAssign, File);
+        return new SimpleAssignmentStatement(assignmentOperator, Target, statementToAssign, File);
     }
 }

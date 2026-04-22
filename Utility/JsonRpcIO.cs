@@ -86,7 +86,7 @@ public sealed class JsonRpcIO : IO, IDisposable
         }));
     }
 
-    public void Dispose()
+    public override void Dispose()
     {
         Flush();
         FlushTimer.Dispose();

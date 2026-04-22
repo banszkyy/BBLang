@@ -29,7 +29,5 @@ public class CompiledExternalFunctionCall : CompiledExpression
         _ => throw new NotImplementedException(),
     };
 
-    public override string Stringify(int depth = 0) => $"{FunctionToString()}({string.Join(", ", Arguments.Select(v => v.Stringify(depth + 1)))})";
-
     public override string ToString() => $"{FunctionToString()}({string.Join(", ", Arguments.Select(v => v.ToString()))})";
 }

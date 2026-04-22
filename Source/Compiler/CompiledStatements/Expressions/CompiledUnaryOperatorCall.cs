@@ -12,9 +12,7 @@ public class CompiledUnaryOperatorCall : CompiledExpression
     #endregion
 
     public required string Operator { get; init; }
-    public required CompiledExpression Left { get; init; }
+    public required CompiledExpression Expression { get; init; }
 
-    public override string Stringify(int depth = 0) => $"({Operator}{Left.Stringify(depth + 1)})";
-
-    public override string ToString() => $"{Operator}{Left}";
+    public override string ToString() => $"{Operator}{Expression}";
 }

@@ -1,6 +1,7 @@
 ﻿using LanguageCore.Compiler;
 using LanguageCore.Parser;
 using LanguageCore.Parser.Statements;
+using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Brainfuck.Generator;
 
@@ -662,7 +663,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             {
                 if (value is CompiledStackString literal)
                 {
-                    if (!literal.IsASCII)
+                    if (!literal.IsUTF8)
                     {
                         int size = Snippets.ARRAY_SIZE(literal.Length);
 
@@ -2134,7 +2135,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     {
         using DebugInfoBlock debugBlock = DebugBlock(statement);
 
-        using (Code.Block(this, $"Expression \"{statement.Left}\" \"{statement.Operator}\""))
+        using (Code.Block(this, $"Expression \"{statement.Expression}\" \"{statement.Operator}\""))
         {
             switch (statement.Operator)
             {
@@ -2142,7 +2143,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 {
                     int leftAddress = Stack.NextAddress;
                     using (Code.Block(this, "Compute left-side value"))
-                    { GenerateCodeForStatement(statement.Left); }
+                    { GenerateCodeForStatement(statement.Expression); }
 
                     Code.LOGIC_NOT(leftAddress, v => Stack.GetTemporaryAddress(v, statement));
 
@@ -2550,7 +2551,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     int GenerateCodeForLiteralString(CompiledString stringInstance)
     {
-        if (!stringInstance.IsASCII)
+        if (!stringInstance.IsUTF8)
         { throw new NotImplementedException(); }
 
         using DebugInfoBlock debugBlock = DebugBlock(stringInstance.Location);
@@ -2872,6 +2873,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                     TrashType = GeneralType.TryInsertTypeParameters(function.Type, typeArguments),
                     Location = function.Definition.Location,
                 },
+                Definition = new VariableDefinition(ImmutableArray<AttributeUsage>.Empty, ImmutableArray<Tokenizing.Token>.Empty, new MissingTypeInstance(function.Definition), new MissingToken(TokenType.Identifier, function.Definition.Position), null, function.File),
             };
             returnVariable = new BrainfuckVariable(Stack.PushVirtual(FindSize(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), function.Definition), callerPosition), false, false, null, FindSize(GeneralType.TryInsertTypeParameters(function.Type, typeArguments), function.Definition), variableDeclaration);
         }
@@ -3051,6 +3053,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                     TrashType = function.Type,
                     Location = function.Definition.Location,
                 },
+                Definition = new VariableDefinition(ImmutableArray<AttributeUsage>.Empty, ImmutableArray<Tokenizing.Token>.Empty, new MissingTypeInstance(function.Definition), new MissingToken(TokenType.Identifier, function.Definition.Position), null, function.File),
             };
             returnVariable = new BrainfuckVariable(Stack.PushVirtual(FindSize(function.Type, function.Definition.Type), callerPosition), false, false, null, FindSize(function.Type, function.Definition.Type), variableDeclaration);
         }
@@ -3179,6 +3182,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                     TrashType = function.Type,
                     Location = function.Definition.Location,
                 },
+                Definition = new VariableDefinition(ImmutableArray<AttributeUsage>.Empty, ImmutableArray<Tokenizing.Token>.Empty, new MissingTypeInstance(function.Definition), new MissingToken(TokenType.Identifier, function.Definition.Position), null, function.File),
             };
             GeneralType returnType = GeneralType.TryInsertTypeParameters(function.Type, typeArguments);
             returnVariable = new BrainfuckVariable(Stack.PushVirtual(FindSize(returnType, function.Definition), callerPosition), false, false, null, FindSize(returnType, function.Definition), variableDeclaration);
@@ -3298,6 +3302,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                     TrashType = newInstanceType,
                     Location = function.Location,
                 },
+                Definition = new VariableDefinition(ImmutableArray<AttributeUsage>.Empty, ImmutableArray<Tokenizing.Token>.Empty, new MissingTypeInstance(function.Definition), new MissingToken(TokenType.Identifier, function.Definition.Position), null, function.File),
             }));
         }
         else if (newInstanceType.Is<StructType>())
@@ -3315,6 +3320,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                     TrashType = new PointerType(newInstanceType),
                     Location = function.Location,
                 },
+                Definition = new VariableDefinition(ImmutableArray<AttributeUsage>.Empty, ImmutableArray<Tokenizing.Token>.Empty, new MissingTypeInstance(function.Definition), new MissingToken(TokenType.Identifier, function.Definition.Position), null, function.File),
             }));
         }
         else

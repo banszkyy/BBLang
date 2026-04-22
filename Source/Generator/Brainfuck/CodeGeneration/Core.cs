@@ -765,6 +765,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
                 Location = implicitReturnValueVariable.Location,
                 TrashType = ExitCodeType,
             },
+            Definition = implicitReturnValueVariable,
         }));
 
         IEnumerable<CompiledVariableDefinition> globalVariableDeclarations = compilerResult.Statements.OfType<CompiledVariableDefinition>();

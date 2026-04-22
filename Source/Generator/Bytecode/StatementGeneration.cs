@@ -402,41 +402,25 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         AddComment("}");
     }
-    void GenerateCodeForStatement(CompiledCrash keywordCall)
+    void GenerateCodeForStatement(CompiledCrash crashStatement)
     {
-        CompiledExpression throwValue = keywordCall.Value;
-        GeneralType throwType = throwValue.Type;
-
-        if (throwValue is CompiledString literalThrowValue && Settings.Optimizations.HasFlag(GeneratorOptimizationSettings.CrashStringOnStack))
+        if (crashStatement.Value is CompiledString literalThrowValue && Settings.Optimizations.HasFlag(GeneratorOptimizationSettings.CrashStringOnStack))
         {
             _statistics.Optimizations++;
-            Diagnostics.Add(DiagnosticAt.OptimizationNotice("String allocated on stack", throwValue));
-            Push(new InstructionOperand('\0', InstructionOperandType.Immediate16));
-            for (int i = literalThrowValue.Value.Length - 1; i >= 0; i--)
-            {
-                Push(new InstructionOperand(
-                    literalThrowValue.Value[i],
-                    InstructionOperandType.Immediate16
-                ));
-            }
+            Diagnostics.Add(DiagnosticAt.OptimizationNotice("String allocated on stack", crashStatement.Value));
+
+            GenerateCodeForStatement(literalThrowValue);
             Code.Emit(Opcode.Crash, Register.StackPointer);
         }
-        else if (throwValue is CompiledStackString stackString)
+        else if (crashStatement.Value is CompiledStackString stackString)
         {
-            Push(new InstructionOperand('\0', InstructionOperandType.Immediate16));
-            for (int i = stackString.Value.Length - 1; i >= 0; i--)
-            {
-                Push(new InstructionOperand(
-                    stackString.Value[i],
-                    InstructionOperandType.Immediate16
-                ));
-            }
+            GenerateCodeForStatement(stackString);
             Code.Emit(Opcode.Crash, Register.StackPointer);
         }
         else
         {
-            GenerateCodeForStatement(throwValue);
-            using (RegisterUsage.Auto reg = Registers.GetFree(FindBitWidth(throwType, throwValue)))
+            GenerateCodeForStatement(crashStatement.Value);
+            using (RegisterUsage.Auto reg = Registers.GetFree(FindBitWidth(crashStatement.Value.Type, crashStatement.Value)))
             {
                 PopTo(reg.Register);
                 Code.Emit(Opcode.Crash, reg.Register);
@@ -1003,14 +987,14 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForStatement(CompiledUnaryOperatorCall @operator)
     {
-        GeneralType leftType = @operator.Left.Type;
-        BitWidth bitWidth = FindBitWidth(leftType, @operator.Left);
+        GeneralType leftType = @operator.Expression.Type;
+        BitWidth bitWidth = FindBitWidth(leftType, @operator.Expression);
 
         switch (@operator.Operator)
         {
             case CompiledUnaryOperatorCall.LogicalNOT:
             {
-                GenerateCodeForStatement(@operator.Left);
+                GenerateCodeForStatement(@operator.Expression);
 
                 using (RegisterUsage.Auto reg = Registers.GetFree(bitWidth))
                 {
@@ -1030,7 +1014,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
             case CompiledUnaryOperatorCall.BinaryNOT:
             {
-                GenerateCodeForStatement(@operator.Left);
+                GenerateCodeForStatement(@operator.Expression);
 
                 using (RegisterUsage.Auto reg = Registers.GetFree(bitWidth))
                 {
@@ -1043,9 +1027,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
             case CompiledUnaryOperatorCall.UnaryMinus:
             {
-                GenerateCodeForStatement(@operator.Left);
+                GenerateCodeForStatement(@operator.Expression);
 
-                bool isFloat = @operator.Left.Type.SameAs(BasicType.F32);
+                bool isFloat = @operator.Expression.Type.SameAs(BasicType.F32);
 
                 using (RegisterUsage.Auto left = Registers.GetFree(bitWidth))
                 using (RegisterUsage.Auto right = Registers.GetFree(bitWidth))
@@ -1062,7 +1046,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
             case CompiledUnaryOperatorCall.UnaryPlus:
             {
-                GenerateCodeForStatement(@operator.Left);
+                GenerateCodeForStatement(@operator.Expression);
                 return;
             }
             default:
@@ -1081,10 +1065,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
         //Code.Emit(Opcode.Push, (InstructionOperand)GenerateString(stringInstance.Value, stringInstance.IsASCII));
         //return;
 
-        BuiltinType charType = stringInstance.IsASCII ? BuiltinType.U8 : BuiltinType.Char;
-        int charSize = FindSize(charType, stringInstance);
-        BitWidth charBw = (BitWidth)charSize;
-
         AddComment($"Create String \"{stringInstance.Value}\" {{");
 
         AddComment("Allocate String object {");
@@ -1100,17 +1080,23 @@ public partial class CodeGeneratorForMain : CodeGenerator
             // Save pointer
             Code.Emit(Opcode.Move, reg.Register, (InstructionOperand)StackTop);
 
-            if (stringInstance.IsASCII)
+            if (stringInstance.IsUTF8)
             {
-                for (int i = 0; i < stringInstance.Value.Length; i++)
+                byte[] bytes = Encoding.UTF8.GetBytes(stringInstance.Value);
+
+                for (int i = 0; i < bytes.Length; i++)
                 {
-                    Code.Emit(Opcode.Move, reg.Register.ToPtr(i * charSize, charBw), InstructionOperand.Immediate((byte)stringInstance.Value[i], BitWidth._8));
+                    Code.Emit(Opcode.Move, reg.Register.ToPtr(i, BitWidth._8), InstructionOperand.Immediate(bytes[i], BitWidth._8));
                 }
 
-                Code.Emit(Opcode.Move, reg.Register.ToPtr(stringInstance.Value.Length * charSize, charBw), InstructionOperand.Immediate((byte)'\0', BitWidth._8));
+                Code.Emit(Opcode.Move, reg.Register.ToPtr(bytes.Length, BitWidth._8), InstructionOperand.Immediate(0, BitWidth._8));
             }
             else
             {
+                BuiltinType charType = BuiltinType.Char;
+                int charSize = FindSize(charType, stringInstance);
+                BitWidth charBw = (BitWidth)charSize;
+
                 for (int i = 0; i < stringInstance.Value.Length; i++)
                 {
                     Code.Emit(Opcode.Move, reg.Register.ToPtr(i * charSize, charBw), InstructionOperand.Immediate(stringInstance.Value[i], BitWidth._16));
@@ -1124,17 +1110,24 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         AddComment("}");
     }
-    void GenerateCodeForStatement(CompiledStackString stringInstance)
+    void GenerateCodeForStatement(CompiledStackString stackString)
     {
-        if (stringInstance.IsNullTerminated)
+        if (stackString.IsUTF8)
         {
-            if (stringInstance.IsASCII) Push(new CompiledValue(default(byte)));
-            else Push(new CompiledValue(default(char)));
+            byte[] bytes = Encoding.UTF8.GetBytes(stackString.Value);
+            if (stackString.IsNullTerminated) Push(new CompiledValue(default(byte)));
+            for (int i = bytes.Length - 1; i >= 0; i--)
+            {
+                Push(new CompiledValue(bytes[i]));
+            }
         }
-        for (int i = stringInstance.Value.Length - 1; i >= 0; i--)
+        else
         {
-            if (stringInstance.IsASCII) Push(new CompiledValue((byte)stringInstance.Value[i]));
-            else Push(new CompiledValue(stringInstance.Value[i]));
+            if (stackString.IsNullTerminated) Push(new CompiledValue(default(char)));
+            for (int i = stackString.Value.Length - 1; i >= 0; i--)
+            {
+                Push(new CompiledValue(stackString.Value[i]));
+            }
         }
     }
     void GenerateCodeForStatement(CompiledLambda compiledLambda)
@@ -2051,7 +2044,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case CompiledUnaryOperatorCall.LogicalNOT:
             {
                 InstructionLabel subFalseLabel = Code.DefineLabel();
-                GenerateCodeForCondition(@operator.Left, subFalseLabel);
+                GenerateCodeForCondition(@operator.Expression, subFalseLabel);
 
                 Code.Emit(Opcode.Jump, falseLabel.Relative());
                 didJump = true;
@@ -2061,9 +2054,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
             case CompiledUnaryOperatorCall.BinaryNOT:
             {
-                BitWidth bitWidth = FindBitWidth(@operator.Left.Type, @operator.Left);
+                BitWidth bitWidth = FindBitWidth(@operator.Expression.Type, @operator.Expression);
 
-                GenerateCodeForStatement(@operator.Left);
+                GenerateCodeForStatement(@operator.Expression);
 
                 using (RegisterUsage.Auto reg = Registers.GetFree(bitWidth))
                 {
@@ -2505,17 +2498,31 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             AddComment("}");
         }
-        else if (newVariable.Type.Is(out ArrayType? arrayType) &&
-            arrayType.Of.SameAs(BasicType.U16) &&
-            newVariable.InitialValue is CompiledString literalStatement &&
-            arrayType.Length.HasValue &&
-            literalStatement.Value.Length == arrayType.Length.Value)
+        else if (newVariable.Type.Is(out ArrayType? arrayType1) &&
+            arrayType1.Of.SameAs(BasicType.U16) &&
+            newVariable.InitialValue is CompiledString literalStatement1 &&
+            arrayType1.Length.HasValue &&
+            literalStatement1.Value.Length == arrayType1.Length.Value)
         {
-            size = FindSize(arrayType, newVariable);
+            size = FindSize(arrayType1, newVariable);
 
-            for (int i = 0; i < literalStatement.Value.Length; i++)
+            for (int i = 0; i < literalStatement1.Value.Length; i++)
             {
-                Push(new CompiledValue(literalStatement.Value[i]));
+                Push(new CompiledValue(literalStatement1.Value[i]));
+            }
+        }
+        else if (newVariable.Type.Is(out ArrayType? arrayType2) &&
+            arrayType2.Of.SameAs(BasicType.U8) &&
+            newVariable.InitialValue is CompiledString literalStatement2 &&
+            arrayType2.Length.HasValue &&
+            Encoding.UTF8.GetByteCount(literalStatement2.Value) == arrayType2.Length.Value)
+        {
+            size = FindSize(arrayType2, newVariable);
+            byte[] bytes = Encoding.UTF8.GetBytes(literalStatement2.Value);
+
+            for (int i = 0; i < bytes.Length; i++)
+            {
+                Push(new CompiledValue(bytes[i]));
             }
         }
         else

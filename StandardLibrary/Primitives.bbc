@@ -15,7 +15,7 @@ export alias string char[]*;
 
 export alias byte u8;
 [InternalType("char")]
-export alias char u16;
+export alias char u8;
 [InternalType("integer")]
 export alias int i32;
 [InternalType("float")]

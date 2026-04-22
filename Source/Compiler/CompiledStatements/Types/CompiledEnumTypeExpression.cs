@@ -50,7 +50,6 @@ public class CompiledEnumTypeExpression : CompiledTypeExpression,
     }
     public override int GetHashCode() => Definition.GetHashCode();
     public override string ToString() => Definition.Identifier;
-    public override string Stringify(int depth = 0) => Definition.Identifier;
 
     public static CompiledEnumTypeExpression CreateAnonymous(EnumType type, ILocated location)
     {

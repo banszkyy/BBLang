@@ -64,5 +64,6 @@ public static class StatementConverters
             InitialValue = initialValue,
             Location = parameterDefinition.Location,
             IsGlobal = false,
+            Definition = new VariableDefinition(ImmutableArray<AttributeUsage>.Empty, parameterDefinition.Modifiers, parameterDefinition.Type, parameterDefinition.Identifier, parameterDefinition.DefaultValue, parameterDefinition.File),
         };
 }

@@ -54,7 +54,6 @@ public class CompiledArrayTypeExpression : CompiledTypeExpression,
     }
     public override int GetHashCode() => HashCode.Combine(Of, Length);
     public override string ToString() => $"{Of}[{Length?.ToString()}]";
-    public override string Stringify(int depth = 0) => $"{Of}[{Length?.Stringify(depth)}]";
 
     public static CompiledArrayTypeExpression CreateAnonymous(ArrayType type, ILocated location)
     {

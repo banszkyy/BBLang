@@ -55,7 +55,6 @@ public class CompiledGenericTypeExpression : CompiledTypeExpression,
     }
     public override int GetHashCode() => HashCode.Combine(Identifier);
     public override string ToString() => Identifier;
-    public override string Stringify(int depth = 0) => Identifier;
 
     public static CompiledGenericTypeExpression CreateAnonymous(GenericType type, ILocated location)
     {

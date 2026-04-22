@@ -13,27 +13,6 @@ public class CompiledBlock : CompiledStatement
             Statements = ImmutableArray.Create(statement),
         };
 
-    public override string Stringify(int depth = 0)
-    {
-        StringBuilder res = new();
-        res.AppendLine();
-        res.Append(' ', depth * Identation);
-        res.AppendLine("{");
-
-        foreach (CompiledStatement statement in Statements)
-        {
-            if (statement is CompiledEmptyStatement) continue;
-            res.Append(' ', (depth + 1) * Identation);
-            res.Append(statement.Stringify(depth + 1));
-            res.Append(';');
-            res.AppendLine();
-        }
-
-        res.Append(' ', depth * Identation);
-        res.Append('}');
-        return res.ToString();
-    }
-
     public override string ToString()
     {
         StringBuilder result = new();

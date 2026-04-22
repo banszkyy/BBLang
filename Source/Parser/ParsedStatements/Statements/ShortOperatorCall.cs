@@ -11,10 +11,10 @@ public class ShortOperatorCall : AssignmentStatement, IReferenceableTo<CompiledO
     public CompiledOperatorDefinition? Reference { get; set; }
 
     public Token Operator { get; }
-    public Expression Expression { get; }
+    public Expression Target { get; }
 
-    public ImmutableArray<Expression> Arguments => ImmutableArray.Create(Expression);
-    public override Position Position => new(Operator, Expression);
+    public ImmutableArray<Expression> Arguments => ImmutableArray.Create(Target);
+    public override Position Position => new(Operator, Target);
 
     public ShortOperatorCall(
         Token op,
@@ -22,17 +22,17 @@ public class ShortOperatorCall : AssignmentStatement, IReferenceableTo<CompiledO
         Uri file) : base(file)
     {
         Operator = op;
-        Expression = expression;
+        Target = expression;
     }
 
     public override string ToString()
     {
         StringBuilder result = new();
 
-        if (Expression is not null)
+        if (Target is not null)
         {
-            if (Expression.ToString().Length <= Stringify.CozyLength)
-            { result.Append(Expression); }
+            if (Target.ToString().Length <= Stringify.CozyLength)
+            { result.Append(Target); }
             else
             { result.Append("..."); }
 
@@ -51,11 +51,11 @@ public class ShortOperatorCall : AssignmentStatement, IReferenceableTo<CompiledO
         LiteralExpression one = IntLiteralExpression.CreateAnonymous(1, Operator.Position, File);
         BinaryOperatorCallExpression operatorCall = Operator.Content switch
         {
-            "++" => new BinaryOperatorCallExpression(Token.CreateAnonymous("+", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Expression), ArgumentExpression.Wrap(one), File),
-            "--" => new BinaryOperatorCallExpression(Token.CreateAnonymous("-", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Expression), ArgumentExpression.Wrap(one), File),
+            "++" => new BinaryOperatorCallExpression(Token.CreateAnonymous("+", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Target), ArgumentExpression.Wrap(one), File),
+            "--" => new BinaryOperatorCallExpression(Token.CreateAnonymous("-", TokenType.Operator, Operator.Position), ArgumentExpression.Wrap(Target), ArgumentExpression.Wrap(one), File),
             _ => throw new NotImplementedException(),
         };
         Token assignmentToken = Token.CreateAnonymous("=", TokenType.Operator, Operator.Position);
-        return new SimpleAssignmentStatement(assignmentToken, Expression, operatorCall, File);
+        return new SimpleAssignmentStatement(assignmentToken, Target, operatorCall, File);
     }
 }

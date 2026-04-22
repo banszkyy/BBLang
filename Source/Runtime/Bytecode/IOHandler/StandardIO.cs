@@ -8,6 +8,6 @@ public sealed class StandardIO : IO
     public override void Register(List<IExternalFunction> externalFunctions)
     {
         externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(ExternalFunctionNames.StdIn), ExternalFunctionNames.StdIn, static () => (char)Console.Read()));
-        externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(ExternalFunctionNames.StdOut), ExternalFunctionNames.StdOut, (Action<char>)Console.Write));
+        externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(ExternalFunctionNames.StdOut), ExternalFunctionNames.StdOut, static (char v) => Console.Write(v)));
     }
 }

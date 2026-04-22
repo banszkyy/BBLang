@@ -14,7 +14,6 @@ public class FunctionCallExpression : Expression, IReferenceableTo<CompiledFunct
     public ArgumentListExpression Arguments { get; }
     public ArgumentExpression? Object { get; }
 
-    public bool IsMethodCall => Object is not null;
     public ImmutableArray<ArgumentExpression> MethodArguments
     {
         get

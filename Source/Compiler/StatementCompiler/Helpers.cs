@@ -1458,8 +1458,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         if (value is CompiledStackString stackStringInstance)
         {
-            if (destination.Is(out ArrayType? destArrayType) &&
-                destArrayType.Of.SameAs(BasicType.U16))
+            if (destination.Is(out ArrayType? destArrayType) && destArrayType.Of.SameAs(BasicType.U16))
             {
                 if (destArrayType.Length is null)
                 {
@@ -1479,6 +1478,49 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                     return false;
                 }
 
+                assignedValue = new CompiledStackString()
+                {
+                    Value = stackStringInstance.Value,
+                    IsNullTerminated = false,
+                    IsUTF8 = false,
+                    Type = destination,
+                    Location = stackStringInstance.Location,
+                    SaveValue = stackStringInstance.SaveValue,
+                };
+                return true;
+            }
+
+            if (destination.Is(out ArrayType? destArrayType2) && destArrayType2.Of.SameAs(BasicType.U8))
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(stackStringInstance.Value);
+
+                if (destArrayType2.Length is null)
+                {
+                    error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (without length)", stackStringInstance);
+                    return false;
+                }
+
+                if (!destArrayType2.Length.HasValue)
+                {
+                    error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (with a non-constant length)", stackStringInstance);
+                    return false;
+                }
+
+                if (bytes.Length != destArrayType2.Length.Value)
+                {
+                    error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (length of {destArrayType2.Length.Value})", stackStringInstance);
+                    return false;
+                }
+
+                assignedValue = new CompiledStackString()
+                {
+                    Value = stackStringInstance.Value,
+                    IsNullTerminated = false,
+                    IsUTF8 = true,
+                    Type = destination,
+                    Location = stackStringInstance.Location,
+                    SaveValue = stackStringInstance.SaveValue,
+                };
                 return true;
             }
         }
@@ -1624,8 +1666,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             };
             alias.AddReference(new TypeInstanceSimple(name, relevantFile));
 
-            // TODO
-            result = new CompiledAliasTypeExpression(alias.Value, alias, new Location(name.Position, relevantFile));
+            result = new CompiledAliasTypeExpression(alias, new Location(name.Position, relevantFile));
             error = null;
             return true;
         }
@@ -1908,8 +1949,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         switch (statement)
         {
             case CompiledAliasTypeExpression v:
-                if (!Inline(v.Value, context, out CompiledTypeExpression? vInlined, out error)) return false;
-                inlined = new CompiledAliasTypeExpression(vInlined, v.Definition, v.Location);
+                inlined = v;
                 break;
             case CompiledEnumTypeExpression v:
                 inlined = v;
@@ -1991,11 +2031,11 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     static bool Inline(CompiledUnaryOperatorCall statement, InlineContext context, out CompiledExpression inlined, [NotNullWhen(false)] out DiagnosticAt? error)
     {
         inlined = statement;
-        if (!Inline(statement.Left, context, out CompiledExpression? inlinedLeft, out error)) return false;
+        if (!Inline(statement.Expression, context, out CompiledExpression? inlinedLeft, out error)) return false;
 
         inlined = new CompiledUnaryOperatorCall()
         {
-            Left = inlinedLeft,
+            Expression = inlinedLeft,
             Operator = statement.Operator,
             Type = statement.Type,
             Location = statement.Location,
@@ -2293,6 +2333,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         {
             InitialValue = inlinedValue,
             TypeExpression = inlinedType,
+            Definition = statement.Definition,
             Cleanup = statement.Cleanup,
             Identifier = statement.Identifier,
             IsGlobal = statement.IsGlobal,
@@ -2605,7 +2646,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         Block v => FindControlFlowUsage(v.Statements, true),
         KeywordCallStatement v => FindControlFlowUsage(v, inDepth),
         WhileLoopStatement v => FindControlFlowUsage(v.Body, true),
-        ForLoopStatement v => FindControlFlowUsage(v.Block.Statements, true),
+        ForLoopStatement v => FindControlFlowUsage(v.Body.Statements, true),
         IfBranchStatement v => FindControlFlowUsage(v.Body, true) | FindControlFlowUsage(v.Else, true),
         ElseBranchStatement v => FindControlFlowUsage(v.Body, true),
 
@@ -3019,7 +3060,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     }
     bool TryCompute(CompiledUnaryOperatorCall @operator, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        if (TryCompute(@operator.Left, context, out CompiledValue leftValue, out error)
+        if (TryCompute(@operator.Expression, context, out CompiledValue leftValue, out error)
             && TryComputeUnaryOperator(@operator.Operator, leftValue, out value, out error))
         {
             return true;
@@ -3169,19 +3210,95 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         if (indexCall.Base is CompiledString stringInstance)
         {
-            if (index == stringInstance.Value.Length)
-            { value = new CompiledValue('\0'); }
+            if (index.Type == RuntimeType.F32)
+            {
+                error = new PossibleDiagnostic($"Invalid index type {index.Type}");
+                value = CompiledValue.Null;
+                return false;
+            }
+
+            if (stringInstance.IsUTF8)
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(stringInstance.Value);
+                if (index == bytes.Length)
+                { value = new CompiledValue((byte)'\0'); }
+                else if (index >= 0 && index < bytes.Length)
+                { value = new CompiledValue(bytes[(int)index]); }
+                else
+                {
+                    error = new PossibleDiagnostic($"Index {index} out of range");
+                    value = CompiledValue.Null;
+                    return false;
+                }
+            }
             else
-            { value = new CompiledValue(stringInstance.Value[(int)index]); }
+            {
+                if (index == stringInstance.Value.Length)
+                { value = new CompiledValue('\0'); }
+                else if (index >= 0 && index < stringInstance.Value.Length)
+                { value = new CompiledValue(stringInstance.Value[(int)index]); }
+                else
+                {
+                    error = new PossibleDiagnostic($"Index {index} out of range");
+                    value = CompiledValue.Null;
+                    return false;
+                }
+            }
             return true;
         }
 
         if (indexCall.Base is CompiledStackString stackString)
         {
-            if (index == stackString.Value.Length)
-            { value = new CompiledValue('\0'); }
+            if (stackString.IsUTF8)
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(stackString.Value);
+                if (index == bytes.Length)
+                {
+                    if (!stackString.IsNullTerminated)
+                    {
+                        error = new PossibleDiagnostic($"Index {index} out of range");
+                        value = CompiledValue.Null;
+                        return false;
+                    }
+
+                    value = new CompiledValue((byte)'\0');
+                }
+                else if (index >= 0 && index < bytes.Length)
+                {
+                    value = new CompiledValue(bytes[(int)index]);
+                }
+                else
+                {
+                    error = new PossibleDiagnostic($"Index {index} out of range");
+                    value = CompiledValue.Null;
+                    return false;
+                }
+            }
             else
-            { value = new CompiledValue(stackString.Value[(int)index]); }
+            {
+                if (index == stackString.Value.Length)
+                {
+                    if (!stackString.IsNullTerminated)
+                    {
+                        error = new PossibleDiagnostic($"Index {index} out of range");
+                        value = CompiledValue.Null;
+                        return false;
+                    }
+
+                    value = new CompiledValue('\0');
+                }
+                else if (index >= 0 && index < stackString.Value.Length)
+                {
+                    value = new CompiledValue(stackString.Value[(int)index]);
+                }
+                else
+                {
+                    error = new PossibleDiagnostic($"Index {index} out of range");
+                    value = CompiledValue.Null;
+                    return false;
+                }
+            }
+
             return true;
         }
 
@@ -3895,7 +4012,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         CompiledSizeof v => GetStatementComplexity(v.Of),
         CompiledArgument v => GetStatementComplexity(v.Value) | ((v.Cleanup.Destructor is not null || v.Cleanup.Deallocator is not null) ? StatementComplexity.Complex | StatementComplexity.Volatile : StatementComplexity.None),
         CompiledBinaryOperatorCall v => GetStatementComplexity(v.Left) | GetStatementComplexity(v.Right) | StatementComplexity.Complex,
-        CompiledUnaryOperatorCall v => GetStatementComplexity(v.Left) | StatementComplexity.Complex,
+        CompiledUnaryOperatorCall v => GetStatementComplexity(v.Expression) | StatementComplexity.Complex,
         CompiledConstantValue => StatementComplexity.None,
         CompiledRegisterAccess => StatementComplexity.None,
         CompiledVariableAccess => StatementComplexity.None,
@@ -3941,7 +4058,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             case CompiledAliasTypeExpression v:
                 foreach (CompiledStatement v2 in Visit(v.Value)) yield return v2;
                 break;
-            case CompiledEnumTypeExpression v:
+            case CompiledEnumTypeExpression:
                 break;
             case CompiledPointerTypeExpression v:
                 foreach (CompiledStatement v2 in Visit(v.To)) yield return v2;
@@ -4020,7 +4137,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 break;
             case CompiledUnaryOperatorCall v:
                 yield return v;
-                foreach (CompiledStatement v2 in Visit(v.Left)) yield return v2;
+                foreach (CompiledStatement v2 in Visit(v.Expression)) yield return v2;
                 break;
             case CompiledConstantValue v:
                 yield return v;
@@ -4230,7 +4347,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         {
             CompiledArgument v => ReduceStatements(v.Value, diagnostics, didNotify),
             CompiledBinaryOperatorCall v => ReduceStatements(v.Left, diagnostics, didNotify).AddRange(ReduceStatements(v.Right, diagnostics, didNotify)),
-            CompiledUnaryOperatorCall v => ReduceStatements(v.Left, diagnostics, didNotify),
+            CompiledUnaryOperatorCall v => ReduceStatements(v.Expression, diagnostics, didNotify),
             CompiledElementAccess v => ReduceStatements(v.Base, diagnostics, didNotify).AddRange(ReduceStatements(v.Index, diagnostics, didNotify)),
             CompiledGetReference v => ReduceStatements(v.Of, diagnostics, didNotify),
             CompiledDereference v => ReduceStatements(v.Address, diagnostics, didNotify),

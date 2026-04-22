@@ -30,7 +30,6 @@ public class CompiledReferenceTypeExpression : CompiledTypeExpression,
     }
     public override int GetHashCode() => HashCode.Combine(To);
     public override string ToString() => $"{To}&";
-    public override string Stringify(int depth = 0) => $"{To.Stringify(depth)}&";
 
     public static CompiledReferenceTypeExpression CreateAnonymous(ReferenceType type, ILocated location)
     {

@@ -9,7 +9,7 @@ public class ForLoopStatement : StatementWithBlock
     public Expression? Condition { get; }
     public Statement? Step { get; }
 
-    public override Position Position => new(KeywordToken, Block);
+    public override Position Position => new(KeywordToken, Body);
 
     public ForLoopStatement(
         Token keyword,
@@ -27,5 +27,5 @@ public class ForLoopStatement : StatementWithBlock
     }
 
     public override string ToString()
-        => $"{KeywordToken} (...) {Block}{Semicolon}";
+        => $"{KeywordToken} (...) {Body}{Semicolon}";
 }

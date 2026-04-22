@@ -29,8 +29,6 @@ public class CompiledBinaryOperatorCall : CompiledExpression
     public required CompiledExpression Left { get; init; }
     public required CompiledExpression Right { get; init; }
 
-    public override string Stringify(int depth = 0) => $"({Left.Stringify(depth + 1)} {Operator} {Right.Stringify(depth + 1)})";
-
     public override string ToString()
     {
         StringBuilder result = new();

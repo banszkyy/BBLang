@@ -6,6 +6,5 @@ public class CompiledConstructorCall : CompiledExpression
     public required CompiledExpression Object { get; init; }
     public required ImmutableArray<CompiledArgument> Arguments { get; init; }
 
-    public override string Stringify(int depth = 0) => $"new {GeneralType.TryInsertTypeParameters(Function.Template.Type, Function.TypeArguments)}({string.Join(", ", Arguments.Select(v => v.Stringify(depth + 1)))})";
     public override string ToString() => $"new {GeneralType.TryInsertTypeParameters(Function.Template.Type, Function.TypeArguments)}({string.Join(", ", Arguments.Select(v => v.ToString()))})";
 }

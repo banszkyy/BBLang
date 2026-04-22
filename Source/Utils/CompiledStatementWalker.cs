@@ -300,7 +300,7 @@ public static partial class StatementWalker
     static bool Visit(CompiledUnaryOperatorCall statement, Func<CompiledStatement, bool> callback)
     {
         if (!callback(statement)) return false;
-        if (!Visit(statement.Left, callback)) return false;
+        if (!Visit(statement.Expression, callback)) return false;
         return true;
     }
     static bool Visit(CompiledConstantValue statement, Func<CompiledStatement, bool> callback)

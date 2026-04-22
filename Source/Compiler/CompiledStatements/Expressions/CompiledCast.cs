@@ -6,8 +6,6 @@ public class CompiledCast : CompiledExpression
     public required CompiledExpression Value { get; init; }
     public required CompiledTypeExpression TypeExpression { get; init; }
 
-    public override string Stringify(int depth = 0) => $"({Type}){Value.Stringify(depth + 1)}";
-
     public override string ToString() => $"({Type}){Value}";
 
     public static CompiledCast Wrap(CompiledExpression value, GeneralType type) => new()

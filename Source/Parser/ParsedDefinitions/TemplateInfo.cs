@@ -32,5 +32,24 @@ public class TemplateInfo : IPositioned
         return false;
     }
 
+    public bool OrderTypeArguments<TValue>(ImmutableDictionary<string, TValue> typeArguments, [NotNullWhen(true)] out ImmutableArray<TValue> result)
+    {
+        TValue[] _result = new TValue[Parameters.Length];
+
+        foreach (KeyValuePair<string, TValue> item in typeArguments)
+        {
+            if (!TryGetTypeArgumentIndex(item.Key, out int i))
+            {
+                result = default;
+                return false;
+            }
+
+            _result[i] = item.Value;
+        }
+
+        result = _result.AsImmutableUnsafe();
+        return true;
+    }
+
     public override string ToString() => $"{Brackets.Start}{string.Join(", ", Parameters)}{Brackets.End}";
 }

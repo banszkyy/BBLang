@@ -395,7 +395,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 Label labelFalse = il.DefineLabel();
                 Label labelEnd = il.DefineLabel();
 
-                EmitStatement(statement.Left, il, ref successful);
+                EmitStatement(statement.Expression, il, ref successful);
                 il.Emit(OpCodes.Brfalse, labelFalse);
 
                 il.Emit(OpCodes.Ldc_I4_0);
@@ -411,7 +411,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
             case "-":
             {
-                EmitStatement(statement.Left, il, ref successful);
+                EmitStatement(statement.Expression, il, ref successful);
                 il.Emit(OpCodes.Neg);
 
                 return;
@@ -419,14 +419,14 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
             case "+":
             {
-                EmitStatement(statement.Left, il, ref successful);
+                EmitStatement(statement.Expression, il, ref successful);
 
                 return;
             }
 
             case "~":
             {
-                EmitStatement(statement.Left, il, ref successful);
+                EmitStatement(statement.Expression, il, ref successful);
                 il.Emit(OpCodes.Not);
 
                 return;
@@ -1650,28 +1650,59 @@ public partial class CodeGeneratorForIL : CodeGenerator
             return;
         }
 
-        Type elementType = statement.IsASCII ? typeof(byte) : typeof(char);
-        int elementSize = statement.IsASCII ? sizeof(byte) : sizeof(char);
-
-        EmitValue(statement.Value.Length + 1, il);
-        il.Emit(OpCodes.Newarr, elementType);
-        EmitValue(0, il);
-        il.Emit(OpCodes.Ldelema, elementType);
-
-        for (int i = 0; i < statement.Value.Length; i++)
+        if (statement.IsUTF8)
         {
-            il.Emit(OpCodes.Dup);
-            if (i != 0)
+            Type elementType = typeof(byte);
+            int elementSize = sizeof(byte);
+            byte[] bytes = Encoding.UTF8.GetBytes(statement.Value);
+
+            EmitValue(bytes.Length + 1, il);
+            il.Emit(OpCodes.Newarr, elementType);
+            EmitValue(0, il);
+            il.Emit(OpCodes.Ldelema, elementType);
+
+            for (int i = 0; i < bytes.Length; i++)
             {
-                EmitValue(i * elementSize, il);
-                il.Emit(OpCodes.Add);
+                il.Emit(OpCodes.Dup);
+                if (i != 0)
+                {
+                    EmitValue(i * elementSize, il);
+                    il.Emit(OpCodes.Add);
+                }
+                EmitValue(bytes[i], il);
+                if (!StoreIndirect(elementType, il, out PossibleDiagnostic? storeIndirectError))
+                {
+                    Diagnostics.Add(storeIndirectError.ToError(statement));
+                    successful = false;
+                    return;
+                }
             }
-            EmitValue(statement.Value[i], il);
-            if (!StoreIndirect(elementType, il, out PossibleDiagnostic? storeIndirectError))
+        }
+        else
+        {
+            Type elementType = typeof(char);
+            int elementSize = sizeof(char);
+
+            EmitValue(statement.Value.Length + 1, il);
+            il.Emit(OpCodes.Newarr, elementType);
+            EmitValue(0, il);
+            il.Emit(OpCodes.Ldelema, elementType);
+
+            for (int i = 0; i < statement.Value.Length; i++)
             {
-                Diagnostics.Add(storeIndirectError.ToError(statement));
-                successful = false;
-                return;
+                il.Emit(OpCodes.Dup);
+                if (i != 0)
+                {
+                    EmitValue(i * elementSize, il);
+                    il.Emit(OpCodes.Add);
+                }
+                EmitValue(statement.Value[i], il);
+                if (!StoreIndirect(elementType, il, out PossibleDiagnostic? storeIndirectError))
+                {
+                    Diagnostics.Add(storeIndirectError.ToError(statement));
+                    successful = false;
+                    return;
+                }
             }
         }
     }

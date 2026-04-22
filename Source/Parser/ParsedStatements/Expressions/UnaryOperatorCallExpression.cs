@@ -41,14 +41,12 @@ public class UnaryOperatorCallExpression : Expression, IReferenceableTo<Compiled
         StringBuilder result = new();
         result.Append(SurroundingBrackets?.Start);
 
+        result.Append(Operator);
+
         if (Expression.ToString().Length < Stringify.CozyLength)
         { result.Append(Expression); }
         else
         { result.Append("..."); }
-
-        result.Append(' ');
-
-        result.Append(Operator);
 
         result.Append(SurroundingBrackets?.End);
         result.Append(Semicolon);

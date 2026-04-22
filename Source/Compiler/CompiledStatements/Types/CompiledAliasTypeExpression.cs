@@ -5,16 +5,15 @@ namespace LanguageCore.Compiler;
 public class CompiledAliasTypeExpression : CompiledTypeExpression,
     IEquatable<CompiledAliasTypeExpression>
 {
-    public CompiledTypeExpression Value { get; }
+    public CompiledTypeExpression Value => Definition.Value;
     public CompiledAlias Definition { get; }
 
     public override CompiledTypeExpression FinalValue => Value is CompiledAliasTypeExpression aliasType ? aliasType.FinalValue : Value;
     public string Identifier => Definition.Identifier;
 
     [SetsRequiredMembers]
-    public CompiledAliasTypeExpression(CompiledTypeExpression value, CompiledAlias definition, Location location) : base(location)
+    public CompiledAliasTypeExpression(CompiledAlias definition, Location location) : base(location)
     {
-        Value = value;
         Definition = definition;
     }
 
@@ -36,14 +35,9 @@ public class CompiledAliasTypeExpression : CompiledTypeExpression,
     public override int GetHashCode() => Value.GetHashCode();
 
     public override string ToString() => Identifier;
-    public override string Stringify(int depth = 0) => Identifier;
 
-    public static CompiledAliasTypeExpression CreateAnonymous(AliasType type, ILocated location)
-    {
-        return new(
-            CreateAnonymous(type.Value, location),
-            type.Definition,
-            location.Location
-        );
-    }
+    public static CompiledAliasTypeExpression CreateAnonymous(AliasType type, ILocated location) => new(
+        type.Definition,
+        location.Location
+    );
 }

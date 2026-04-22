@@ -752,7 +752,15 @@ public ref partial struct ProcessorState
 #else
                     //Debug.WriteLine($"CALLING {scopedExternalFunction} ({Convert.ToString(scope, 16)}) !!!");
 #endif
-                    scopedExternalFunction.Callback(scope, (nint)parametersPtr, (nint)returnValuePtr);
+                    try
+                    {
+                        scopedExternalFunction.Callback(scope, (nint)parametersPtr, (nint)returnValuePtr);
+                    }
+                    catch (InvalidProgramException ex)
+                    {
+                        StackTrace stackTrace = new(ex, true);
+                        int offset = stackTrace.GetFrame(0)!.GetILOffset();
+                    }
                 }
 
                 if ((scopedExternalFunction.Flags & ExternalFunctionScopedSyncFlags.MSILPointerMarshal) != default)

@@ -39,5 +39,4 @@ public class CompiledLambda : CompiledExpression,
     }
 
     public string ToReadable() => Type.ToString();
-    public override string Stringify(int depth = 0) => $"({string.Join(", ", Parameters.Select(v => $"{v.Type} {v.Identifier}"))}) => {Block.Stringify(depth)}";
 }

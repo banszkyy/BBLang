@@ -134,11 +134,20 @@ public sealed partial class Parser
         {
             string v = CurrentToken.Content;
             v = v.Replace("_", null, StringComparison.Ordinal);
+            int value;
 
-            if (!int.TryParse(v, out int value))
+            if (!long.TryParse(v, out long valueL))
             {
                 value = default;
                 Diagnostics.Add(DiagnosticAt.Error($"Invalid integer literal `{CurrentToken.Content}`", CurrentToken, File));
+            }
+            else
+            {
+                value = unchecked((int)valueL);
+                if (value != valueL)
+                {
+                    Diagnostics.Add(DiagnosticAt.Warning($"Invalid integer literal `{CurrentToken.Content}`", CurrentToken, File));
+                }
             }
 
             LiteralExpression literal = new IntLiteralExpression(value, CurrentToken, File);
@@ -420,9 +429,15 @@ public sealed partial class Parser
         return true;
     }
 
-    bool ExpectOneValue([NotNullWhen(true)] out Expression? statementWithValue, bool allowAsStatement = true)
+    bool ExpectOneValue([NotNullWhen(true)] out Expression? statementWithValue, bool allowAsStatement = true, bool allowUnaryOperator = true)
     {
         statementWithValue = null;
+
+        if (allowUnaryOperator && ExpectUnaryOperatorCall(out UnaryOperatorCallExpression? unaryOperatorCall))
+        {
+            statementWithValue = unaryOperatorCall;
+            return true;
+        }
 
         if (ExpectLambda(out LambdaExpression? lambdaStatement))
         {
@@ -515,7 +530,7 @@ public sealed partial class Parser
             return false;
         }
 
-        if (!ExpectOneValue(out Expression? value, false))
+        if (!ExpectOneValue(out Expression? value, false, false))
         {
             savepoint.Restore();
             return false;
@@ -616,7 +631,7 @@ public sealed partial class Parser
 
     bool ExpectStatementExpression([NotNullWhen(true)] out Expression? result)
     {
-        ParseRestorePoint savepoint = SavePoint();
+        //ParseRestorePoint savepoint = SavePoint();
 
         if (!ExpectOneValue(out result))
         {
@@ -636,29 +651,37 @@ public sealed partial class Parser
     {
         result = null;
 
-        if (ExpectUnaryOperatorCall(out UnaryOperatorCallExpression? unaryOperatorCall))
-        {
-            result = unaryOperatorCall;
-            return true;
-        }
-
         if (!ExpectOperatorArgument(out Expression? leftStatement, GeneralStatementModifiers)) return false;
 
         while (true)
         {
-            if (!ExpectOperator(BinaryOperators, out Token? binaryOperator)) break;
+            Token? binaryOperator;
+
+            SkipCrapTokens();
+            if (CurrentToken is not null
+                && CurrentToken.TokenType is TokenType.LiteralBinary or TokenType.LiteralFloat or TokenType.LiteralHex or TokenType.LiteralNumber
+                && CurrentToken.Content.StartsWith('-'))
+            {
+                (Token? newA, Token? newB) = CurrentToken.Slice(1);
+                if (newA is null || newB is null)
+                { throw new UnreachableException($"I failed at token splitting :("); }
+                PreparationToken fix = new(newA.Position)
+                {
+                    TokenType = PreparationTokenType.Operator,
+                };
+                fix.Content.Append(newA.Content);
+                binaryOperator = new Token(fix);
+                Tokens[CurrentTokenIndex] = newB;
+            }
+            else if (!ExpectOperator(BinaryOperators, out binaryOperator))
+            {
+                break;
+            }
 
             if (!ExpectOperatorArgument(out Expression? rightStatement, GeneralStatementModifiers))
             {
-                if (!ExpectUnaryOperatorCall(out UnaryOperatorCallExpression? rightUnaryOperatorCall))
-                {
-                    rightStatement = new MissingArgumentExpression(binaryOperator.Position.After(), File);
-                    Diagnostics.Add(DiagnosticAt.Error($"Expected value after binary operator `{binaryOperator}`", rightStatement, false));
-                }
-                else
-                {
-                    rightStatement = rightUnaryOperatorCall;
-                }
+                rightStatement = new MissingArgumentExpression(binaryOperator.Position.After(), File);
+                Diagnostics.Add(DiagnosticAt.Error($"Expected value after binary operator `{binaryOperator}`", rightStatement, false));
             }
 
             binaryOperator.AnalyzedType = TokenAnalyzedType.MathOperator;

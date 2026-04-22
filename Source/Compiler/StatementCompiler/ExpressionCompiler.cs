@@ -7,200 +7,23 @@ namespace LanguageCore.Compiler;
 
 public partial class StatementCompiler
 {
-    bool CompileArguments(IReadOnlyList<ArgumentExpression> arguments, ICompiledFunctionDefinition compiledFunction, ImmutableDictionary<string, GeneralType>? typeArguments, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments, int alreadyPassed = 0)
+    bool CompileArguments(ImmutableArray<ArgumentExpression> arguments, ImmutableArray<CompiledExpression> compiledArgumentExpressions, FunctionType function, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments)
     {
-        compiledArguments = ImmutableArray<CompiledArgument>.Empty;
+        ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(arguments.Length);
 
-        ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(arguments.Count);
-
-        // int partial = 0;
-        // for (int i = 0; i < compiledFunction.Parameters.Count; i++)
-        // {
-        //     if (compiledFunction.Parameters[i].DefaultValue is null) partial = i + 1;
-        //     else break;
-        // }
-
-        // todo:
-        // if (arguments.Count < partial)
-        // {
-        //     Diagnostics.Add(Diagnostic.Error($"Wrong number of arguments passed to function \"{callee.ToReadable()}\": required {compiledFunction.ParameterCount} passed {arguments.Count}", caller));
-        //     return false;
-        // }
-
-        // todo: A hint if the passed value is the same as the default value
-
-        for (int i = 0; i < arguments.Count; i++)
-        {
-            CompiledParameter parameter = compiledFunction.Parameters[i + alreadyPassed];
-            ArgumentExpression argument = arguments[i];
-            GeneralType parameterType = GeneralType.TryInsertTypeParameters(parameter.Type, typeArguments);
-
-            if (!CompileExpression(argument, out CompiledExpression? compiledArgument, parameterType)) return false;
-
-            if (parameterType.Is<PointerType>() &&
-                parameter.Definition.Modifiers.Any(v => v.Content == ModifierKeywords.This) &&
-                !compiledArgument.Type.Is<PointerType>())
-            {
-                if (!CompileExpression(new GetReferenceExpression(
-                    Token.CreateAnonymous("&", TokenType.Operator, argument.Position.Before()),
-                    argument,
-                    argument.File
-                ), out compiledArgument, parameterType))
-                { return false; }
-            }
-
-            if (!CanCastImplicitly(compiledArgument, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error))
-            { Diagnostics.Add(error.ToError(argument)); }
-            compiledArgument = assignedArgument;
-
-            if (!FindSize(compiledArgument.Type, out int argumentSize, out PossibleDiagnostic? argumentSizeError, this))
-            { Diagnostics.Add(argumentSizeError.ToError(compiledArgument)); }
-            else if (!FindSize(parameterType, out int parameterSize, out PossibleDiagnostic? parameterSizeError, this))
-            { Diagnostics.Add(parameterSizeError.ToError(parameter.Definition)); }
-            else if (argumentSize != parameterSize)
-            { Diagnostics.Add(DiagnosticAt.Internal($"Bad argument type passed: expected \"{parameterType}\" ({parameterSize} bytes) passed \"{compiledArgument.Type}\" ({argumentSize} bytes)", argument)); }
-
-            bool typeAllowsTemp = AllowDeallocate(compiledArgument.Type);
-
-            bool calleeAllowsTemp = parameter.Definition.Modifiers.Contains(ModifierKeywords.Temp);
-
-            bool callerAllowsTemp = StatementCanBeDeallocated(argument, out bool explicitDeallocate);
-
-            if (callerAllowsTemp)
-            {
-                if (explicitDeallocate && !calleeAllowsTemp)
-                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a \"{ModifierKeywords.Temp}\" modifier", argument)); }
-                if (explicitDeallocate && !typeAllowsTemp)
-                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this type", argument)); }
-            }
-            else
-            {
-                if (explicitDeallocate)
-                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value", argument)); }
-            }
-
-            CompiledCleanup? compiledCleanup = null;
-            if (calleeAllowsTemp && callerAllowsTemp && typeAllowsTemp)
-            {
-                CompileCleanup(compiledArgument.Type, argument.Location, out compiledCleanup);
-            }
-
-            result.Add(new CompiledArgument()
-            {
-                Value = compiledArgument,
-                Type = compiledArgument.Type,
-                Cleanup = compiledCleanup ?? new CompiledCleanup()
-                {
-                    Location = compiledArgument.Location,
-                    TrashType = compiledArgument.Type,
-                },
-                Location = compiledArgument.Location,
-                SaveValue = compiledArgument.SaveValue,
-            });
-        }
-
-        int remaining = compiledFunction.Parameters.Length - arguments.Count - alreadyPassed;
-
-        ImmutableArray<Scope> savedScopes = Frames.Last.Scopes.ToImmutableArray();
-        Frames.Last.Scopes.Clear();
-        try
-        {
-            for (int i = 0; i < remaining; i++)
-            {
-                CompiledParameter parameter = compiledFunction.Parameters[arguments.Count + i + alreadyPassed];
-                Expression? argument = parameter.Definition.DefaultValue;
-                GeneralType parameterType = GeneralType.TryInsertTypeParameters(parameter.Type, typeArguments);
-
-                if (argument is null)
-                {
-                    Diagnostics.Add(DiagnosticAt.Internal($"Can't explain this error", parameter.Definition));
-                    return false;
-                }
-                else
-                {
-                    Diagnostics.Add(DiagnosticAt.Warning($"WIP", argument));
-                }
-
-                if (!CompileExpression(argument, out CompiledExpression? compiledArgument, parameterType)) return false;
-
-                if (!CanCastImplicitly(compiledArgument, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error))
-                { Diagnostics.Add(error.ToError(argument)); }
-                compiledArgument = assignedArgument;
-
-                if (!FindSize(compiledArgument.Type, out int argumentSize, out PossibleDiagnostic? argumentSizeError, this))
-                { Diagnostics.Add(argumentSizeError.ToError(compiledArgument)); }
-                else if (!FindSize(parameterType, out int parameterSize, out PossibleDiagnostic? parameterSizeError, this))
-                { Diagnostics.Add(parameterSizeError.ToError(parameter.Definition)); }
-                else if (argumentSize != parameterSize)
-                { Diagnostics.Add(DiagnosticAt.Internal($"Bad argument type passed: expected \"{parameterType}\" ({parameterSize} bytes) passed \"{compiledArgument.Type}\" ({argumentSize} bytes)", argument)); }
-
-                bool typeAllowsTemp = AllowDeallocate(compiledArgument.Type);
-
-                bool calleeAllowsTemp = parameter.Definition.Modifiers.Contains(ModifierKeywords.Temp);
-
-                bool callerAllowsTemp = StatementCanBeDeallocated(ArgumentExpression.Wrap(argument), out bool explicitDeallocate);
-
-                if (callerAllowsTemp)
-                {
-                    if (explicitDeallocate && !calleeAllowsTemp)
-                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a \"{ModifierKeywords.Temp}\" modifier", argument)); }
-                    if (explicitDeallocate && !typeAllowsTemp)
-                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this type", argument)); }
-                }
-                else
-                {
-                    if (explicitDeallocate)
-                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value", argument)); }
-                }
-
-                CompiledCleanup? compiledCleanup = null;
-                if (calleeAllowsTemp && callerAllowsTemp && typeAllowsTemp)
-                {
-                    CompileCleanup(compiledArgument.Type, argument.Location, out compiledCleanup);
-                }
-
-                result.Add(new CompiledArgument()
-                {
-                    Value = compiledArgument,
-                    Type = compiledArgument.Type,
-                    Cleanup = compiledCleanup ?? new CompiledCleanup()
-                    {
-                        Location = compiledArgument.Location,
-                        TrashType = compiledArgument.Type,
-                    },
-                    Location = compiledArgument.Location,
-                    SaveValue = compiledArgument.SaveValue,
-                });
-            }
-        }
-        finally
-        {
-            Frames.Last.Scopes.AddRange(savedScopes);
-        }
-
-        compiledArguments = result.ToImmutable();
-        return true;
-    }
-    bool CompileArguments(IReadOnlyList<Expression> arguments, FunctionType function, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments)
-    {
-        compiledArguments = ImmutableArray<CompiledArgument>.Empty;
-
-        ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(arguments.Count);
-
-        for (int i = 0; i < arguments.Count; i++)
+        for (int i = 0; i < arguments.Length; i++)
         {
             Expression argument = arguments[i];
+            CompiledExpression compiledArgumentExpression = compiledArgumentExpressions[i];
             GeneralType parameterType = function.Parameters[i];
 
-            if (!CompileExpression(argument, out CompiledExpression? compiledArgument, parameterType)) return false;
-
-            if (!CanCastImplicitly(compiledArgument, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error))
-            { Diagnostics.Add(error.ToError(compiledArgument)); }
-            compiledArgument = assignedArgument;
+            if (!CanCastImplicitly(compiledArgumentExpression, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error))
+            { Diagnostics.Add(error.ToError(compiledArgumentExpression)); }
+            compiledArgumentExpression = assignedArgument;
 
             bool canDeallocate = true; // temp type maybe?
 
-            canDeallocate = canDeallocate && AllowDeallocate(compiledArgument.Type);
+            canDeallocate = canDeallocate && AllowDeallocate(compiledArgumentExpression.Type);
 
             if (StatementCanBeDeallocated(ArgumentExpression.Wrap(argument), out bool explicitDeallocate))
             {
@@ -210,56 +33,40 @@ public partial class StatementCompiler
             else
             {
                 if (explicitDeallocate)
-                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value", compiledArgument)); }
+                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value", compiledArgumentExpression)); }
                 canDeallocate = false;
             }
 
             CompiledCleanup? compiledCleanup = null;
             if (canDeallocate)
             {
-                CompileCleanup(compiledArgument.Type, compiledArgument.Location, out compiledCleanup);
+                CompileCleanup(compiledArgumentExpression.Type, compiledArgumentExpression.Location, out compiledCleanup);
             }
 
             result.Add(new CompiledArgument()
             {
-                Value = compiledArgument,
-                Type = compiledArgument.Type,
+                Value = compiledArgumentExpression,
+                Type = compiledArgumentExpression.Type,
                 Cleanup = compiledCleanup ?? new CompiledCleanup()
                 {
-                    Location = compiledArgument.Location,
-                    TrashType = compiledArgument.Type,
+                    Location = compiledArgumentExpression.Location,
+                    TrashType = compiledArgumentExpression.Type,
                 },
-                Location = compiledArgument.Location,
-                SaveValue = compiledArgument.SaveValue,
+                Location = compiledArgumentExpression.Location,
+                SaveValue = compiledArgumentExpression.SaveValue,
             });
         }
 
         compiledArguments = result.ToImmutable();
         return true;
     }
-    bool CompileArguments(IReadOnlyList<ArgumentExpression> arguments, IReadOnlyList<CompiledExpression> compiledArgumentExpressions, ICompiledFunctionDefinition compiledFunction, ImmutableDictionary<string, GeneralType>? typeArguments, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments, int alreadyPassed = 0)
+    bool CompileArguments(ImmutableArray<ArgumentExpression> arguments, ImmutableArray<CompiledExpression> compiledArgumentExpressions, ICompiledFunctionDefinition compiledFunction, ImmutableDictionary<string, GeneralType>? typeArguments, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments, int alreadyPassed = 0)
     {
         compiledArguments = ImmutableArray<CompiledArgument>.Empty;
 
-        ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(arguments.Count);
+        ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(arguments.Length);
 
-        // int partial = 0;
-        // for (int i = 0; i < compiledFunction.Parameters.Count; i++)
-        // {
-        //     if (compiledFunction.Parameters[i].DefaultValue is null) partial = i + 1;
-        //     else break;
-        // }
-
-        // todo:
-        // if (arguments.Count < partial)
-        // {
-        //     Diagnostics.Add(Diagnostic.Error($"Wrong number of arguments passed to function \"{callee.ToReadable()}\": required {compiledFunction.ParameterCount} passed {arguments.Count}", caller));
-        //     return false;
-        // }
-
-        // todo: A hint if the passed value is the same as the default value
-
-        for (int i = 0; i < arguments.Count; i++)
+        for (int i = 0; i < arguments.Length; i++)
         {
             CompiledParameter parameter = compiledFunction.Parameters[i + alreadyPassed];
             ArgumentExpression argument = arguments[i];
@@ -282,12 +89,14 @@ public partial class StatementCompiler
             { Diagnostics.Add(error.ToError(argument)); }
             compiledArgumentExpression = assignedArgument;
 
-            if (!FindSize(compiledArgumentExpression.Type, out int argumentSize, out PossibleDiagnostic? argumentSizeError, this))
-            { Diagnostics.Add(argumentSizeError.ToError(compiledArgumentExpression)); }
-            else if (!FindSize(parameterType, out int parameterSize, out PossibleDiagnostic? parameterSizeError, this))
-            { Diagnostics.Add(parameterSizeError.ToError(parameter.Definition)); }
-            else if (argumentSize != parameterSize)
-            { Diagnostics.Add(DiagnosticAt.Internal($"Bad argument type passed: expected \"{parameterType}\" ({parameterSize} bytes) passed \"{compiledArgumentExpression.Type}\" ({argumentSize} bytes)", argument)); }
+            if (compiledArgumentExpression is CompiledConstantValue meow3
+                && parameter.Definition.DefaultValue is not null
+                && CompileExpression(parameter.Definition.DefaultValue, out CompiledExpression? meow)
+                && meow is CompiledConstantValue meow2
+                && meow3.Value.Equals(meow2.Value))
+            {
+                Diagnostics.Add(DiagnosticAt.Hint($"Passed argument is the same as the default value", argument));
+            }
 
             bool typeAllowsTemp = AllowDeallocate(compiledArgumentExpression.Type);
 
@@ -328,7 +137,7 @@ public partial class StatementCompiler
             });
         }
 
-        int remaining = compiledFunction.Parameters.Length - arguments.Count - alreadyPassed;
+        int remaining = compiledFunction.Parameters.Length - arguments.Length - alreadyPassed;
 
         ImmutableArray<Scope> savedScopes = Frames.Last.Scopes.ToImmutableArray();
         Frames.Last.Scopes.Clear();
@@ -336,7 +145,7 @@ public partial class StatementCompiler
         {
             for (int i = 0; i < remaining; i++)
             {
-                CompiledParameter parameter = compiledFunction.Parameters[arguments.Count + i + alreadyPassed];
+                CompiledParameter parameter = compiledFunction.Parameters[arguments.Length + i + alreadyPassed];
                 Expression? argument = parameter.Definition.DefaultValue;
                 GeneralType parameterType = GeneralType.TryInsertTypeParameters(parameter.Type, typeArguments);
 
@@ -699,6 +508,30 @@ public partial class StatementCompiler
         {
             if (!CompileExpression(functionCall.MethodArguments.Select(v => v.Value), out compiledArgumentExpressions))
             {
+                if (GetFunction(GetFunctions(), "function", CompiledFunctionDefinition.ToReadable(functionCall.Identifier.Content, null, null), new FunctionQuery<CompiledFunctionDefinition, string, string, object>()
+                {
+                    ArgumentCount = functionCall.MethodArguments.Length,
+                    Arguments = null,
+                    RelevantFile = functionCall.File,
+                    Identifier = functionCall.Identifier.Content,
+                    Converter = v => BuiltinType.Any,
+                    AddCompilable = null,
+                    IdentifierMatcher = null,
+                    ReturnType = null,
+                }, out FunctionQueryResult<CompiledFunctionDefinition>? result2, out _))
+                {
+                    if (anyCall.Expression is IdentifierExpression _identifier2)
+                    { _identifier2.AnalyzedType = TokenAnalyzedType.FunctionName; }
+
+                    if (anyCall.Expression is FieldExpression _field)
+                    { _field.Identifier.AnalyzedType = TokenAnalyzedType.FunctionName; }
+
+                    SetStatementReference(anyCall, result2.Function);
+                    TrySetStatementReference(anyCall.Expression, result2);
+                    SetStatementType(anyCall, result2.Function.Type);
+
+                    result2.Function.AddReference(anyCall, anyCall.Location);
+                }
                 return false;
             }
 
@@ -771,7 +604,7 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (!CompileArguments(anyCall.Arguments.Arguments, functionType, out ImmutableArray<CompiledArgument> compiledArguments))
+        if (!CompileArguments(anyCall.Arguments.Arguments, compiledArgumentExpressions, functionType, out ImmutableArray<CompiledArgument> compiledArguments))
         {
             Diagnostics.Add(notFound?.ToError(anyCall));
             return false;
@@ -1127,7 +960,12 @@ public partial class StatementCompiler
                 return false;
             }
 
-            if (!CompileArguments(@operator.Arguments.ToImmutableArray(ArgumentExpression.Wrap), operatorDefinition.Function, operatorDefinition.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
+            if (!CompileExpression(@operator.Arguments, out ImmutableArray<CompiledExpression> compiledArgumentExpressions))
+            {
+                return false;
+            }
+
+            if (!CompileArguments(@operator.Arguments.ToImmutableArray(ArgumentExpression.Wrap), compiledArgumentExpressions, operatorDefinition.Function, operatorDefinition.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
 
             if (operatorDefinition.Function.ExternalFunctionName is not null)
             {
@@ -1176,7 +1014,7 @@ public partial class StatementCompiler
                 {
                     compiledStatement = new CompiledUnaryOperatorCall()
                     {
-                        Left = left,
+                        Expression = left,
                         Location = @operator.Location,
                         Operator = @operator.Operator.Content,
                         SaveValue = @operator.SaveValue,
@@ -1201,7 +1039,7 @@ public partial class StatementCompiler
                 {
                     compiledStatement = new CompiledUnaryOperatorCall()
                     {
-                        Left = left,
+                        Expression = left,
                         Location = @operator.Location,
                         Operator = @operator.Operator.Content,
                         SaveValue = @operator.SaveValue,
@@ -1226,7 +1064,7 @@ public partial class StatementCompiler
                 {
                     compiledStatement = new CompiledUnaryOperatorCall()
                     {
-                        Left = left,
+                        Expression = left,
                         Location = @operator.Location,
                         Operator = @operator.Operator.Content,
                         SaveValue = @operator.SaveValue,
@@ -1251,7 +1089,7 @@ public partial class StatementCompiler
                 {
                     compiledStatement = new CompiledUnaryOperatorCall()
                     {
-                        Left = left,
+                        Expression = left,
                         Location = @operator.Location,
                         Operator = @operator.Operator.Content,
                         SaveValue = @operator.SaveValue,
@@ -1621,12 +1459,14 @@ public partial class StatementCompiler
                     {
                         Diagnostics.Add(sizeError.ToError(literal));
                     }
-                    if (!CompileAllocation((1 + stringLiteral.Value.Length) * charSize, literal.Location, out CompiledExpression? allocator)) return false;
+                    int byteCount = Encoding.UTF8.GetByteCount(stringLiteral.Value);
+
+                    if (!CompileAllocation((1 + byteCount) * charSize, literal.Location, out CompiledExpression? allocator)) return false;
 
                     compiledStatement = new CompiledString()
                     {
                         Value = stringLiteral.Value,
-                        IsASCII = true,
+                        IsUTF8 = true,
                         Location = literal.Location,
                         SaveValue = true,
                         Type = expectedType,
@@ -1651,7 +1491,7 @@ public partial class StatementCompiler
                     compiledStatement = new CompiledString()
                     {
                         Value = stringLiteral.Value,
-                        IsASCII = false,
+                        IsUTF8 = false,
                         Location = literal.Location,
                         SaveValue = true,
                         Type = expectedType,
@@ -1668,11 +1508,11 @@ public partial class StatementCompiler
                     compiledStatement = new CompiledStackString()
                     {
                         Value = stringLiteral.Value,
-                        IsASCII = true,
+                        IsUTF8 = true,
                         Location = literal.Location,
                         SaveValue = true,
                         Type = expectedType,
-                        IsNullTerminated = !arrayType3.Length.HasValue || arrayType3.Length.Value > stringLiteral.Value.Length,
+                        IsNullTerminated = !arrayType3.Length.HasValue || arrayType3.Length.Value > Encoding.UTF8.GetByteCount(stringLiteral.Value),
                     };
                     return true;
                 }
@@ -1685,7 +1525,7 @@ public partial class StatementCompiler
                     compiledStatement = new CompiledStackString()
                     {
                         Value = stringLiteral.Value,
-                        IsASCII = false,
+                        IsUTF8 = false,
                         Location = literal.Location,
                         SaveValue = true,
                         Type = expectedType,
@@ -1715,7 +1555,7 @@ public partial class StatementCompiler
                     compiledStatement = new CompiledString()
                     {
                         Value = stringLiteral.Value,
-                        IsASCII = false,
+                        IsUTF8 = false,
                         Location = literal.Location,
                         SaveValue = true,
                         Type = stringType,
@@ -1916,6 +1756,7 @@ public partial class StatementCompiler
                 compiledStatement = new CompiledCompilerVariableAccess()
                 {
                     Identifier = constant.Definition.InternalConstantName,
+                    Definition = constant,
                     Type = constant.Type,
                     Location = variable.Location,
                     SaveValue = variable.SaveValue,

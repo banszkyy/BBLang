@@ -22,49 +22,8 @@ public readonly struct CompilerResult
     public readonly bool IsExpression;
 
     public readonly ImmutableArray<CompiledStatement> Statements;
+    public readonly ImmutableArray<CompiledVariableConstant> CompiledConstants;
     public readonly ImmutableArray<CompiledFunction> Functions;
-
-    public readonly string Stringify()
-    {
-        StringBuilder res = new();
-
-        foreach ((ICompiledFunctionDefinition function, CompiledBlock body) in Functions)
-        {
-            res.Append(function.Type.ToString());
-            res.Append(' ');
-            res.Append(function switch
-            {
-                CompiledFunctionDefinition v => v.Identifier,
-                CompiledOperatorDefinition v => v.Identifier,
-                CompiledGeneralFunctionDefinition v => v.Identifier,
-                CompiledConstructorDefinition v => v.Type.ToString(),
-                _ => "???",
-            });
-            res.Append('(');
-            for (int i = 0; i < function.Parameters.Length; i++)
-            {
-                if (i > 0) res.Append(", ");
-                res.Append(function.Parameters[i].Type.ToString());
-                res.Append(' ');
-                res.Append(function.Parameters[i].Identifier);
-            }
-            res.Append(')');
-            res.Append(body.Stringify(0));
-            res.AppendLine();
-            res.AppendLine();
-        }
-
-        res.AppendLine("// Top level statements");
-        foreach (CompiledStatement statement in Statements)
-        {
-            if (statement is CompiledEmptyStatement) continue;
-            res.Append(statement.Stringify(0));
-            res.Append(';');
-            res.AppendLine();
-        }
-
-        return res.ToString();
-    }
 
     public readonly IEnumerable<Statement> StatementsIn(Uri file)
     {
@@ -108,6 +67,7 @@ public readonly struct CompilerResult
         file,
         false,
         ImmutableArray<CompiledStatement>.Empty,
+        ImmutableArray<CompiledVariableConstant>.Empty,
         ImmutableArray<CompiledFunction>.Empty);
 
     public CompilerResult(
@@ -124,6 +84,7 @@ public readonly struct CompilerResult
         Uri file,
         bool isExpression,
         ImmutableArray<CompiledStatement> compiledStatements,
+        ImmutableArray<CompiledVariableConstant> compiledConstants,
         ImmutableArray<CompiledFunction> functions2)
     {
         RawTokens = tokens;
@@ -139,6 +100,7 @@ public readonly struct CompilerResult
         File = file;
         IsExpression = isExpression;
         Statements = compiledStatements;
+        CompiledConstants = compiledConstants;
         Functions = functions2;
     }
 }

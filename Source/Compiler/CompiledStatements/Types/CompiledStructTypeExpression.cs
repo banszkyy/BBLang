@@ -120,19 +120,6 @@ public class CompiledStructTypeExpression : CompiledTypeExpression,
 
         return result.ToString();
     }
-    public override string Stringify(int depth = 0)
-    {
-        StringBuilder result = new();
-        result.Append(Struct.Identifier);
-
-        if (!TypeArguments.IsEmpty)
-        { result.Append($"<{string.Join(", ", TypeArguments.Values.Select(v => v.Stringify(depth)))}>"); }
-        else if (Struct.Definition.Template is not null)
-        { result.Append($"<{string.Join(", ", Struct.Definition.Template.Parameters)}>"); }
-
-        return result.ToString();
-    }
-
     public static CompiledStructTypeExpression CreateAnonymous(StructType type, ILocated location)
     {
         return new(

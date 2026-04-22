@@ -1,0 +1,5 @@
+using System;
+
+u16[] a = "hey";
+
+return a.Length;

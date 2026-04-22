@@ -448,7 +448,8 @@ public partial class StatementCompiler
                         }
                         else if (arrayType.Of.SameAs(BasicType.U8))
                         {
-                            int length = literalStatement.Value.Length + 1;
+                            int byteCount = Encoding.UTF8.GetByteCount(literalStatement.Value);
+                            int length = byteCount + 1;
 
                             if (arrayType.Length.HasValue)
                             {
@@ -459,10 +460,10 @@ public partial class StatementCompiler
                                 length = arrayType.Length.Value;
                             }
 
-                            if (length != literalStatement.Value.Length &&
-                                length != literalStatement.Value.Length + 1)
+                            if (length != byteCount &&
+                                length != byteCount + 1)
                             {
-                                Diagnostics.Add(DiagnosticAt.Error($"String literal's length ({literalStatement.Value.Length}) doesn't match with the type's length ({length})", literalStatement));
+                                Diagnostics.Add(DiagnosticAt.Error($"String literal's length ({byteCount}) doesn't match with the type's length ({length})", literalStatement));
                             }
 
                             type = new ArrayType(arrayType.Of, length);
@@ -607,6 +608,7 @@ public partial class StatementCompiler
                 TrashType = type,
             },
             IsGlobal = isGlobal,
+            Definition = newVariable,
         };
 
         SetStatementReference(newVariable, compiledVariable);
@@ -803,7 +805,7 @@ public partial class StatementCompiler
         {
             if (forLoop.Initialization is not null && !CompileStatement(forLoop.Initialization, out initialization)) return false;
             if (forLoop.Condition is not null && !CompileExpression(forLoop.Condition, out condition)) return false;
-            if (!CompileStatement(forLoop.Block, out body)) return false;
+            if (!CompileStatement(forLoop.Body, out body)) return false;
             if (forLoop.Step is not null && !CompileStatement(forLoop.Step, out step)) return false;
         }
 

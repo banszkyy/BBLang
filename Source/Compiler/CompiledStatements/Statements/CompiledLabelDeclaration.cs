@@ -6,6 +6,5 @@ public class CompiledLabelDeclaration : CompiledStatement
     public required string Identifier { get; init; }
     public HashSet<CompiledLabelReference> Getters { get; } = new();
 
-    public override string Stringify(int depth = 0) => $"{Identifier}:";
     public override string ToString() => $"{Identifier}:";
 }

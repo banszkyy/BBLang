@@ -84,14 +84,14 @@ public static partial class StatementWalker
                 foreach (Statement w in Visit(v.Expression, callback)) yield return w;
                 break;
             case ShortOperatorCall v:
-                foreach (Statement w in Visit(v.Expression, callback)) yield return w;
+                foreach (Statement w in Visit(v.Target, callback)) yield return w;
                 break;
             case Block v:
                 foreach (Statement w in Visit(v.Statements, callback)) yield return w;
                 break;
             case CompoundAssignmentStatement v:
-                foreach (Statement w in Visit(v.Left, callback)) yield return w;
-                foreach (Statement w in Visit(v.Right, callback)) yield return w;
+                foreach (Statement w in Visit(v.Target, callback)) yield return w;
+                foreach (Statement w in Visit(v.Value, callback)) yield return w;
                 break;
             case IfBranchStatement v:
                 foreach (Statement w in Visit(v.Condition, callback)) yield return w;
@@ -105,7 +105,7 @@ public static partial class StatementWalker
                 foreach (Statement w in Visit(v.Initialization, callback)) yield return w;
                 foreach (Statement w in Visit(v.Condition, callback)) yield return w;
                 foreach (Statement w in Visit(v.Step, callback)) yield return w;
-                foreach (Statement w in Visit(v.Block, callback)) yield return w;
+                foreach (Statement w in Visit(v.Body, callback)) yield return w;
                 break;
             case InstructionLabelDeclaration v:
                 break;

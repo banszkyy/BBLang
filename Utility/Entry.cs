@@ -1,4 +1,6 @@
 ﻿using System.IO;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using System.Text;
 using CommandLine;
@@ -204,12 +206,43 @@ public static class Entry
                 logger.LogDebug($"Executing \"{arguments.Source}\" ...");
 
                 List<IExternalFunction> externalFunctions = new();
-                IO io = arguments.Debug ? new VirtualIO() : StandardIO.Instance;
+                using IO io = arguments.Debug ? new VirtualIO() : new StreamedStandardIO();
                 io.Register(externalFunctions);
                 BytecodeProcessor.AddStaticExternalFunctions(externalFunctions);
 
-                BBLangGeneratorResult generatedCode;
+                BytecodeProcessor interpreter = default!;
+                BBLangGeneratorResult generatedCode = default!;
                 DiagnosticsCollection diagnostics = new();
+
+                externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(), "meow", () =>
+                {
+                    Debugger.Break();
+
+                    if (HeapUtils.AnalyzeMemorySync(interpreter, generatedCode.ExposedFunctions!, out ImmutableArray<HeapUtils.HeapBlock> blocks, out string? error))
+                    {
+                        Debugger.Break();
+                    }
+                    else
+                    {
+                        Debugger.Break();
+                    }
+
+                    if (HeapUtils.AnalyzeMemoryTask.Create(interpreter, generatedCode.ExposedFunctions!, out HeapUtils.AnalyzeMemoryTask? task, out error))
+                    {
+                        Debugger.Break();
+
+                        while (!task.Tick(100))
+                        {
+
+                        }
+
+                        Debugger.Break();
+                    }
+                    else
+                    {
+                        Debugger.Break();
+                    }
+                }));
 
                 List<ExternalConstant> externalConstants = new()
                 {
@@ -238,12 +271,12 @@ public static class Entry
                     CheckNullPointers = !arguments.NoNullcheck,
                     Optimizations = arguments.DontOptimize ? GeneratorOptimizationSettings.None : GeneratorOptimizationSettings.All,
                     StackSize = arguments.StackSize ?? MainGeneratorSettings.Default.StackSize,
-                    ILGeneratorSettings = new IL.Generator.ILGeneratorSettings()
-                    {
-                        AllowCrash = true,
-                        // AllowHeap = true,
-                        AllowPointers = true,
-                    },
+                    //ILGeneratorSettings = new IL.Generator.ILGeneratorSettings()
+                    //{
+                    //    AllowCrash = true,
+                    //    // AllowHeap = true,
+                    //    AllowPointers = true,
+                    //},
                 };
                 BytecodeInterpreterSettings bytecodeInterpreterSettings = new(BytecodeInterpreterSettings.Default)
                 {
@@ -259,9 +292,85 @@ public static class Entry
                     if (arguments.IntermediateOutput is not null)
                     {
                         using StreamWriter f = new(arguments.IntermediateOutput);
-                        f.WriteLine(compiled.Stringify());
+                        Stringifier.BuilderBase res = new Stringifier.BuilderStream(f)
+                        {
+                            Minimize = true,
+                        };
+
+                        List<CompiledFunction> functions = compiled.Functions.ToList();
+
+                        foreach (CompiledStruct @struct in compiled.Structs)
+                        {
+                            res.NewLine();
+                            res.NewLine();
+                            List<CompiledFunction> methods = new();
+                            for (int i = 0; i < functions.Count; i++)
+                            {
+                                if (functions[i].Function.Parameters.Length > 0
+                                    && functions[i].Function.Parameters[0].Identifier == StatementKeywords.This
+                                    && functions[i].Function.Parameters[0].Definition.IsThis)
+                                {
+                                    if (functions[i].Function.Parameters[0].Type.Is(out IReferenceType? referenceType)
+                                        && referenceType.To.Is(out StructType? structType)
+                                        && structType.Struct == @struct)
+                                    {
+                                        methods.Add(functions[i]);
+                                        functions.RemoveAt(i--);
+                                    }
+                                }
+                            }
+                            Stringifier.Stringify(@struct, methods, res);
+                        }
+
+                        foreach (CompiledEnum @enum in compiled.Enums)
+                        {
+                            res.NewLine();
+                            res.NewLine();
+                            Stringifier.Stringify(@enum, res);
+                        }
+
+                        foreach (CompiledAlias alias in compiled.Aliases)
+                        {
+                            res.NewLine();
+                            res.NewLine();
+                            Stringifier.Stringify(alias, res);
+                        }
+
+                        foreach (CompiledFunction function in functions)
+                        {
+                            res.NewLine();
+                            res.NewLine();
+                            Stringifier.Stringify(function.Function, function.Body, res);
+                        }
+
+                        res.NewLine();
+                        res.NewLine();
+                        res.Append("/* Top level statements */");
+                        res.NewLine();
+
+                        foreach (CompiledVariableConstant statement in compiled.CompiledConstants)
+                        {
+                            res.NewLine();
+                            Stringifier.Stringify(statement, res);
+                            res.Append(';');
+                        }
+
+                        foreach (CompiledStatement statement in compiled.Statements)
+                        {
+                            if (statement is CompiledEmptyStatement) continue;
+                            res.NewLine();
+                            Stringifier.Stringify(statement, res);
+                            if (Stringifier.NeedsSemicolon(statement)) res.Append(';');
+                        }
+
+                        f.WriteLine();
+
                         if (!generatedCode.ILGeneratorBuilders.IsDefault)
                         {
+                            f.WriteLine();
+                            f.WriteLine("/* MSIL */");
+                            f.WriteLine();
+
                             foreach (string builder in generatedCode.ILGeneratorBuilders)
                             {
                                 f.WriteLine(builder);
@@ -467,7 +576,7 @@ public static class Entry
 #endif
                 }
 
-                BytecodeProcessor interpreter = new(
+                interpreter = new(
                     bytecodeInterpreterSettings,
                     generatedCode.Code,
                     null,
@@ -570,8 +679,37 @@ public static class Entry
                 {
                     string output = Path.GetFullPath(arguments.Output, Environment.CurrentDirectory);
                     Console.WriteLine($"Writing to \"{output}\" ...");
-                    StringBuilder builder = new();
-                    res.Stringify(builder);
+                    Stringifier.Builder builder = new();
+
+                    ImmutableArray<DynamicMethod> methods = res.Methods;
+                    foreach (Type type in res.Module.GetTypes())
+                    {
+                        builder.NewLine();
+                        builder.NewLine();
+                        Stringifier.Stringify(type, builder);
+                    }
+                    foreach (MethodInfo method in res.Module.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance).Where(v => !methods.Any(w => v.Equals(w))))
+                    {
+                        builder.NewLine();
+                        builder.NewLine();
+                        Stringifier.Stringify(method, builder);
+                    }
+                    foreach (FieldInfo field in res.Module.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance))
+                    {
+                        builder.NewLine();
+                        builder.NewLine();
+                        Stringifier.Stringify(field, builder);
+                    }
+                    foreach (DynamicMethod method in methods)
+                    {
+                        builder.NewLine();
+                        builder.NewLine();
+                        Stringifier.Stringify(method, builder);
+                    }
+                    builder.NewLine();
+                    builder.NewLine();
+                    Stringifier.Stringify(res.EntryPoint, builder);
+
                     File.WriteAllText(output, builder.ToString());
                 }
 

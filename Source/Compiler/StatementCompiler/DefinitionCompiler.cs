@@ -1106,6 +1106,7 @@ public partial class StatementCompiler
             file,
             Settings.IsExpression,
             CompiledTopLevelStatements.ToImmutable(),
+            CompiledGlobalConstants.ToImmutableArray(),
             GeneratedFunctions.ToImmutableArray()
         );
     }

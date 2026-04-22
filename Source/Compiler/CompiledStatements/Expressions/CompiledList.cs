@@ -4,8 +4,6 @@ public class CompiledList : CompiledExpression
 {
     public required ImmutableArray<CompiledExpression> Values { get; init; }
 
-    public override string Stringify(int depth = 0) => $"[{string.Join(", ", Values.Select(v => v.Stringify(depth + 1)))}]";
-
     public override string ToString()
     {
         StringBuilder result = new();

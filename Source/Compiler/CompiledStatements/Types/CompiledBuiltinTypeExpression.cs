@@ -62,7 +62,6 @@ public class CompiledBuiltinTypeExpression : CompiledTypeExpression,
         BasicType.F32 => TypeKeywords.F32,
         _ => throw new UnreachableException(),
     };
-    public override string Stringify(int depth = 0) => ToString();
 
     public static CompiledBuiltinTypeExpression CreateAnonymous(BuiltinType type, ILocated location)
     {

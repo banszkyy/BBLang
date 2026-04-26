@@ -1556,6 +1556,20 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             }
         }
 
+        if (value is CompiledConstantValue constantValue
+            && destination.Is(out BuiltinType? builtinDstType)
+            && constantValue.Value.TryCast(builtinDstType.RuntimeType, out CompiledValue assignedConstValue))
+        {
+            assignedValue = new CompiledConstantValue()
+            {
+                Value = assignedConstValue,
+                Type = destination,
+                Location = value.Location,
+                SaveValue = value.SaveValue,
+            };
+            return true;
+        }
+
         error = new($"Can't cast `{value.Type.FinalValue}` to `{destination.FinalValue}` implicitly", value);
         return false;
     }

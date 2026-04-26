@@ -752,15 +752,15 @@ public class InterpreterRenderer
                             case BuiltinType v:
                                 switch (v.Type)
                                 {
-                                    case BasicType.U8: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<byte>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.I8: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<sbyte>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.U16: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<ushort>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.I16: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<short>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.U32: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<uint>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.I32: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<int>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.U64: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<ulong>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.I64: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<long>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.F32: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<float>(i).ToString(), AnsiColor.BrightBlue); break;
+                                    case BasicType.U8: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet<byte>(i, out byte w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.I8: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet<sbyte>(i, out sbyte w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.U16: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet<ushort>(i, out ushort w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.I16: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet<short>(i, out short w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.U32: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet<uint>(i, out uint w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.I32: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet<int>(i, out int w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.U64: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet<ulong>(i, out ulong w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.I64: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet<long>(i, out long w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.F32: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet<float>(i, out float w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
                                 }
                                 break;
                         }
@@ -785,7 +785,7 @@ public class InterpreterRenderer
                     if (item.Kind == StackElementKind.Internal) continue;
                     if (!item.Type.Is(out PointerType? pointerType)) continue;
                     int pointerAddress = item.AbsoluteAddress(processor.Registers.BasePointer, processor.StackStart);
-                    int valueAddress = processor.Memory.AsSpan().Get<int>(pointerAddress);
+                    if (!processor.Memory.AsSpan().TryGet<int>(pointerAddress, out int valueAddress)) continue;
                     if (valueAddress <= 0) continue;
 
                     if (!StatementCompiler.FindSize(pointerType.To, out int valueSize, out _, new RuntimeInfoProvider()
@@ -818,15 +818,15 @@ public class InterpreterRenderer
                             case BuiltinType v:
                                 switch (v.Type)
                                 {
-                                    case BasicType.U8: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<byte>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.I8: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<sbyte>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.U16: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<ushort>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.I16: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<short>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.U32: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<uint>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.I32: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<int>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.U64: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<ulong>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.I64: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<long>(i).ToString(), AnsiColor.BrightBlue); break;
-                                    case BasicType.F32: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<float>(i).ToString(), AnsiColor.BrightBlue); break;
+                                    case BasicType.U8: t.Write(" = "); { t.Write(processor.Memory.AsSpan().TryGet(i, out byte w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.I8: t.Write(" = "); { t.Write(processor.Memory.AsSpan().TryGet(i, out sbyte w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.U16: t.Write(" = "); { t.Write(processor.Memory.AsSpan().TryGet(i, out ushort w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.I16: t.Write(" = "); { t.Write(processor.Memory.AsSpan().TryGet(i, out short w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.U32: t.Write(" = "); { t.Write(processor.Memory.AsSpan().TryGet(i, out uint w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.I32: t.Write(" = "); { t.Write(processor.Memory.AsSpan().TryGet(i, out int w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.U64: t.Write(" = "); { t.Write(processor.Memory.AsSpan().TryGet(i, out ulong w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.I64: t.Write(" = "); { t.Write(processor.Memory.AsSpan().TryGet(i, out long w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                    case BasicType.F32: t.Write(" = "); { t.Write(processor.Memory.AsSpan().TryGet(i, out float w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
                                 }
                                 break;
                         }
@@ -899,7 +899,7 @@ public class InterpreterRenderer
                 if (item.Kind == StackElementKind.Internal) continue;
                 if (!item.Type.Is(out PointerType? pointerType)) continue;
                 int pointerAddress = item.AbsoluteAddress(processor.Registers.BasePointer, processor.StackStart);
-                int valueAddress = processor.Memory.AsSpan().Get<int>(pointerAddress);
+                if (!processor.Memory.AsSpan().TryGet<int>(pointerAddress, out int valueAddress)) continue;
                 if (valueAddress <= 0) continue;
 
                 if (!StatementCompiler.FindSize(pointerType.To, out int valueSize, out _, new RuntimeInfoProvider()
@@ -932,15 +932,15 @@ public class InterpreterRenderer
                         case BuiltinType v:
                             switch (v.Type)
                             {
-                                case BasicType.U8: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<byte>(i).ToString(), AnsiColor.BrightBlue); break;
-                                case BasicType.I8: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<sbyte>(i).ToString(), AnsiColor.BrightBlue); break;
-                                case BasicType.U16: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<ushort>(i).ToString(), AnsiColor.BrightBlue); break;
-                                case BasicType.I16: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<short>(i).ToString(), AnsiColor.BrightBlue); break;
-                                case BasicType.U32: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<uint>(i).ToString(), AnsiColor.BrightBlue); break;
-                                case BasicType.I32: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<int>(i).ToString(), AnsiColor.BrightBlue); break;
-                                case BasicType.U64: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<ulong>(i).ToString(), AnsiColor.BrightBlue); break;
-                                case BasicType.I64: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<long>(i).ToString(), AnsiColor.BrightBlue); break;
-                                case BasicType.F32: t.Write(" = "); t.Write(processor.Memory.AsSpan().Get<float>(i).ToString(), AnsiColor.BrightBlue); break;
+                                case BasicType.U8: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet(i, out byte w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                case BasicType.I8: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet(i, out sbyte w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                case BasicType.U16: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet(i, out ushort w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                case BasicType.I16: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet(i, out short w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                case BasicType.U32: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet(i, out uint w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                case BasicType.I32: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet(i, out int w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                case BasicType.U64: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet(i, out ulong w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                case BasicType.I64: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet(i, out long w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
+                                case BasicType.F32: { t.Write(" = "); t.Write(processor.Memory.AsSpan().TryGet(i, out float w) ? w.ToString() : "?", AnsiColor.BrightBlue); break; }
                             }
                             break;
                     }

@@ -423,7 +423,19 @@ public class RuntimeException : LanguageException
             if (colored) result.SetGraphics(Ansi.BrightForegroundYellow);
             if (function is CompiledFunctionDefinition compiledFunctionDefinition1)
             {
-                result.Append(compiledFunctionDefinition1.Identifier.ToString());
+                result.Append(compiledFunctionDefinition1.Identifier);
+            }
+            else if (function is CompiledOperatorDefinition compiledOperatorDefinition)
+            {
+                result.Append(compiledOperatorDefinition.Identifier);
+            }
+            else if (function is CompiledGeneralFunctionDefinition compiledGeneralFunctionDefinition)
+            {
+                result.Append(compiledGeneralFunctionDefinition.Identifier);
+            }
+            else if (function is CompiledConstructorDefinition compiledConstructorDefinition)
+            {
+                result.Append(compiledConstructorDefinition.Type.ToString());
             }
             else if (function is CompiledLambda)
             {

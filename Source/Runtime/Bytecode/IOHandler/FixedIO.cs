@@ -4,20 +4,24 @@ namespace LanguageCore.Runtime;
 
 public sealed class FixedIO : IO
 {
-    readonly string Input;
+    readonly ImmutableArray<byte> Input;
     int InputPosition;
-    public readonly StringBuilder Output;
+    public readonly AsciiBuilder Output;
 
-    public FixedIO(string input, StringBuilder? output = null)
+    public FixedIO(string input, AsciiBuilder? output = null)
+        : this(Encoding.UTF8.GetBytes(input).AsImmutableUnsafe(), output)
+    { }
+
+    public FixedIO(ImmutableArray<byte> input, AsciiBuilder? output = null)
     {
         Input = input;
         InputPosition = 0;
-        Output = output ?? new StringBuilder();
+        Output = output ?? new AsciiBuilder();
     }
 
     public override void Register(List<IExternalFunction> externalFunctions)
     {
-        externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(ExternalFunctionNames.StdIn), ExternalFunctionNames.StdIn, () =>
+        externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(ExternalFunctionNames.StdIn), ExternalFunctionNames.StdIn, byte () =>
         {
             if (InputPosition >= Input.Length)
             {
@@ -25,7 +29,7 @@ public sealed class FixedIO : IO
             }
             return Input[InputPosition++];
         }));
-        externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(ExternalFunctionNames.StdOut), ExternalFunctionNames.StdOut, (char v) =>
+        externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(ExternalFunctionNames.StdOut), ExternalFunctionNames.StdOut, (byte v) =>
         {
             Output.Append(v);
         }));

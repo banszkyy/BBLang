@@ -272,7 +272,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 
     static readonly BuiltinType ExitCodeType = BuiltinType.U8;
 
-    readonly ImmutableDictionary<ICompiledFunctionDefinition, CompiledStatement> FunctionBodies;
+    readonly ImmutableArray<CompiledFunction> FunctionBodies;
 
     readonly ILogger? Logger;
 
@@ -299,7 +299,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
         MaxRecursiveDepth = 4;
         Settings = brainfuckSettings;
 
-        FunctionBodies = compilerResult.Functions.Select(v => new KeyValuePair<ICompiledFunctionDefinition, CompiledStatement>(v.Function, v.Body)).ToImmutableDictionary();
+        FunctionBodies = compilerResult.Functions;
         Logger = logger;
     }
 

@@ -2,16 +2,16 @@ namespace LanguageCore.Runtime;
 
 public sealed class VirtualIO : IO
 {
-    public delegate void OnDataEventHandler(char data);
+    public delegate void OnDataEventHandler(byte data);
     public delegate void OnInputEventHandler();
 
     public event OnDataEventHandler? OnData;
     public event OnInputEventHandler? OnNeedInput;
 
     public bool IsAwaitingInput { get; private set; }
-    readonly Queue<char> InputBuffer = new();
+    readonly Queue<byte> InputBuffer = new();
 
-    public void SendKey(char key)
+    public void SendKey(byte key)
     {
         InputBuffer.Enqueue(key);
         IsAwaitingInput = false;
@@ -25,7 +25,7 @@ public sealed class VirtualIO : IO
             if (InputBuffer.Count == 0) OnNeedInput?.Invoke();
             return bool (ref ProcessorState processor, Span<byte> returnValue) =>
             {
-                if (InputBuffer.TryDequeue(out char consumedKey))
+                if (InputBuffer.TryDequeue(out byte consumedKey))
                 {
                     returnValue.Set(consumedKey);
                     IsAwaitingInput = false;
@@ -33,9 +33,9 @@ public sealed class VirtualIO : IO
                 }
                 return false;
             };
-        }, externalFunctions.GenerateId(ExternalFunctionNames.StdIn), ExternalFunctionNames.StdIn, 0, sizeof(char)));
+        }, externalFunctions.GenerateId(ExternalFunctionNames.StdIn), ExternalFunctionNames.StdIn, 0, sizeof(byte)));
 
-        externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(ExternalFunctionNames.StdOut), ExternalFunctionNames.StdOut, (char @char) =>
+        externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(ExternalFunctionNames.StdOut), ExternalFunctionNames.StdOut, (byte @char) =>
         {
             OnData?.Invoke(@char);
         }));

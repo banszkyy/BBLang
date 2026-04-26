@@ -63,6 +63,9 @@ public struct SinglePosition :
         return false;
     }
 
+    public static SinglePosition operator +(SinglePosition a, int b) => new(a.Line, a.Character + b);
+    public static SinglePosition operator +(SinglePosition a, SinglePosition b) => new(a.Line + b.Line, a.Character + b.Character);
+
     public static SinglePosition Max(SinglePosition a, SinglePosition b) => a > b ? a : b;
     public static SinglePosition Min(SinglePosition a, SinglePosition b) => a < b ? a : b;
 

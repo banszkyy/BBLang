@@ -56,14 +56,43 @@ public static unsafe class MemoryUtils
             Buffer.MemoryCopy(ptr, (void*)target, length, length);
         }
     }
-    public static T* GetPtr<T>(this Span<byte> memory, int ptr) where T : unmanaged => ptr >= 0 && ptr < memory.Length ? (T*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory[ptr..])) : throw new RuntimeException($"Memory access violation (pointer {ptr} was out of range)");
+    public static T* GetPtr<T>(this Span<byte> memory, int ptr) where T : unmanaged => ptr >= 0 && ptr + sizeof(T) <= memory.Length ? (T*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory[ptr..])) : throw new RuntimeException($"Memory access violation (pointer {ptr} was out of range)");
     public static T* GetPtr<T>(this Span<byte> memory) where T : unmanaged => (T*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory));
+
+    public static bool TryGetPtr<T>(this Span<byte> memory, int ptr, out T* result) where T : unmanaged
+    {
+        if (ptr >= 0 && ptr + sizeof(T) <= memory.Length)
+        {
+            result = (T*)Unsafe.AsPointer(ref MemoryMarshal.GetReference(memory[ptr..]));
+            return true;
+        }
+        else
+        {
+            result = null;
+            return false;
+        }
+    }
+
     public static void Set<T>(this Span<byte> memory, T data) where T : unmanaged => *GetPtr<T>(memory) = data;
     public static void Set<T>(this Span<byte> memory, int ptr, T data) where T : unmanaged => *GetPtr<T>(memory, ptr) = data;
     public static void Set(this Span<byte> memory, int ptr, ReadOnlySpan<byte> data) => data.CopyTo(memory[ptr..]);
 
     public static T To<T>(this Span<byte> memory) where T : unmanaged { fixed (byte* ptr = memory) return *(T*)ptr; }
     public static T Get<T>(this Span<byte> memory, int ptr) where T : unmanaged => *GetPtr<T>(memory, ptr);
+    public static bool TryGet<T>(this Span<byte> memory, int ptr, out T result) where T : unmanaged
+    {
+        if (TryGetPtr(memory, ptr, out T* resultPtr))
+        {
+            result = *resultPtr;
+            return true;
+        }
+        else
+        {
+            result = default;
+            return false;
+        }
+    }
+
     public static Span<byte> Get(this Span<byte> memory, int ptr, int size) => memory.Slice(ptr, size);
 
     #endregion

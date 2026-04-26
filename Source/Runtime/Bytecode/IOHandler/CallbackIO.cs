@@ -3,10 +3,10 @@ namespace LanguageCore.Runtime;
 
 public sealed class CallbackIO : IO
 {
-    readonly Action<char> Out;
-    readonly Func<char> In;
+    readonly Action<byte> Out;
+    readonly Func<byte> In;
 
-    public CallbackIO(Action<char> @out, Func<char> @in)
+    public CallbackIO(Action<byte> @out, Func<byte> @in)
     {
         Out = @out;
         In = @in;

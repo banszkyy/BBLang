@@ -2797,6 +2797,8 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateCodeForFunction_(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated callerPosition)
     {
+        CompiledFunction f = FunctionBodies.First(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+
         using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
 
         if (function.ExternalFunctionName == ExternalFunctionNames.StdOut)
@@ -2896,7 +2898,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             Location = new Runtime.SourceCodeLocation()
             {
                 Instructions = (Code.Length, Code.Length),
-                Location = FunctionBodies[function].Location,
+                Location = f.Body.Location,
             },
             Stack = new List<Runtime.StackElementInformation>(),
         };
@@ -2921,9 +2923,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             Type = v.Type,
         }));
 
-        ControlFlowBlock? returnBlock = BeginReturnBlock(new Location(function.Definition.Block.Brackets.Start.Position, function.Definition.Block.File), StatementCompiler.FindControlFlowUsage(FunctionBodies[function]));
+        ControlFlowBlock? returnBlock = BeginReturnBlock(new Location(function.Definition.Block.Brackets.Start.Position, function.Definition.Block.File), StatementCompiler.FindControlFlowUsage(f.Body));
 
-        GenerateCodeForStatement(FunctionBodies[function]);
+        GenerateCodeForStatement(f.Body);
 
         using (DebugBlock(function.Definition.Block.Brackets.End, function.Definition.Block.File))
         {
@@ -2977,6 +2979,8 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateCodeForFunction(CompiledOperatorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated callerPosition)
     {
+        CompiledFunction f = FunctionBodies.First(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+
         using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
 
         if (function.ExternalFunctionName == ExternalFunctionNames.StdOut)
@@ -3076,7 +3080,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             Location = new Runtime.SourceCodeLocation()
             {
                 Instructions = (Code.Length, Code.Length),
-                Location = FunctionBodies[function].Location,
+                Location = f.Body.Location,
             },
             Stack = new List<Runtime.StackElementInformation>(),
         };
@@ -3098,9 +3102,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             Type = v.Type,
         }));
 
-        ControlFlowBlock? returnBlock = BeginReturnBlock(new Location(function.Definition.Block.Brackets.Start.Position, function.Definition.Block.File), StatementCompiler.FindControlFlowUsage(FunctionBodies[function]));
+        ControlFlowBlock? returnBlock = BeginReturnBlock(new Location(function.Definition.Block.Brackets.Start.Position, function.Definition.Block.File), StatementCompiler.FindControlFlowUsage(f.Body));
 
-        GenerateCodeForStatement(FunctionBodies[function]);
+        GenerateCodeForStatement(f.Body);
 
         if (returnBlock is not null)
         {
@@ -3157,6 +3161,8 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateCodeForFunction(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated callerPosition)
     {
+        CompiledFunction f = FunctionBodies.First(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+
         using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
 
         if (function.Definition.ParameterCount != parameters.Length)
@@ -3207,9 +3213,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             return;
         }
 
-        ControlFlowBlock? returnBlock = BeginReturnBlock(new Location(function.Definition.Block.Brackets.Start.Position, function.Definition.Block.File), StatementCompiler.FindControlFlowUsage(FunctionBodies[function]));
+        ControlFlowBlock? returnBlock = BeginReturnBlock(new Location(function.Definition.Block.Brackets.Start.Position, function.Definition.Block.File), StatementCompiler.FindControlFlowUsage(f.Body));
 
-        GenerateCodeForStatement(FunctionBodies[function]);
+        GenerateCodeForStatement(f.Body);
 
         if (returnBlock is not null)
         {
@@ -3254,6 +3260,8 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateCodeForFunction(CompiledConstructorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, CompiledConstructorCall caller)
     {
+        CompiledFunction f = FunctionBodies.First(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+
         using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
 
         if (function.Definition.ParameterCount - 1 != parameters.Length)
@@ -3394,9 +3402,9 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         GeneratorStackFrame frame = PushStackFrame(typeArguments);
         CompiledVariables.PushRange(compiledParameters);
 
-        ControlFlowBlock? returnBlock = BeginReturnBlock(new Location(function.Definition.Block.Brackets.Start.Position, function.Definition.Block.File), StatementCompiler.FindControlFlowUsage(FunctionBodies[function]));
+        ControlFlowBlock? returnBlock = BeginReturnBlock(new Location(function.Definition.Block.Brackets.Start.Position, function.Definition.Block.File), StatementCompiler.FindControlFlowUsage(f.Body));
 
-        GenerateCodeForStatement(FunctionBodies[function]);
+        GenerateCodeForStatement(f.Body);
 
         if (returnBlock is not null)
         {

@@ -78,10 +78,8 @@ public static class Interactive
         { interpreter.Tick(); }
 
         {
-            int exitCode = interpreter.Memory.AsSpan().Get<int>(exitCodeAddress);
-
             Console.WriteLine();
-            Console.WriteLine($"Exit code: {exitCode}");
+            Console.WriteLine($"Exit code: {(interpreter.Memory.AsSpan().TryGet(exitCodeAddress, out int v) ? v.ToString() : "?")}");
         }
     }
 }

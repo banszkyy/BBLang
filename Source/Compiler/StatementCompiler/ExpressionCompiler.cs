@@ -1536,26 +1536,38 @@ public partial class StatementCompiler
                 else
                 {
                     compiledStatement = null;
-                    if (!FindSize(BuiltinType.Char, out int charSize, out PossibleDiagnostic? sizeError, this))
+
+                    if (!GetLiteralType(LiteralType.Char, out GeneralType? charType, out PossibleDiagnostic? charTypeError))
+                    {
+                        Diagnostics.Add(charTypeError.ToError(literal));
+                        return false;
+                    }
+
+                    if (!FindSize(charType, out int charSize, out PossibleDiagnostic? sizeError, this))
                     {
                         Diagnostics.Add(sizeError.ToError(literal));
+                        return false;
                     }
-                    if (!CompileAllocation((1 + stringLiteral.Value.Length) * charSize, literal.Location, out CompiledExpression? allocator)) return false;
+
+                    if (charSize is not 1 and not 2)
+                    {
+                        Diagnostics.Add(DiagnosticAt.Error($"Invalid character size {charSize}, expected 1 or 2", literal));
+                        return false;
+                    }
 
                     if (!GetLiteralType(LiteralType.String, out GeneralType? stringType, out _))
                     {
-                        if (!GetLiteralType(LiteralType.Char, out GeneralType? charType, out _))
-                        { charType = BuiltinType.Char; }
-
                         stringType = new PointerType(new ArrayType(charType, stringLiteral.Value.Length + 1));
                     }
+
+                    if (!CompileAllocation((1 + stringLiteral.Value.Length) * charSize, literal.Location, out CompiledExpression? allocator)) return false;
 
                     SetStatementType(literal, stringType);
 
                     compiledStatement = new CompiledString()
                     {
                         Value = stringLiteral.Value,
-                        IsUTF8 = false,
+                        IsUTF8 = charSize == 1,
                         Location = literal.Location,
                         SaveValue = true,
                         Type = stringType,
@@ -1669,8 +1681,26 @@ public partial class StatementCompiler
                     }
                 }
 
-                if (!GetLiteralType(LiteralType.Char, out GeneralType? literalType, out _))
-                { literalType = BuiltinType.Char; }
+                if (!GetLiteralType(LiteralType.Char, out GeneralType? literalType, out PossibleDiagnostic? literalTypeError))
+                {
+                    Diagnostics.Add(literalTypeError.ToError(literal));
+                    compiledStatement = default;
+                    return false;
+                }
+
+                if (!FindSize(literalType, out int charSize, out var sizeError, this))
+                {
+                    Diagnostics.Add(sizeError.ToError(literal));
+                    compiledStatement = default;
+                    return false;
+                }
+
+                if (charSize is not 1 and not 2 and not 4)
+                {
+                    Diagnostics.Add(DiagnosticAt.Error($"Invalid character size {charSize}", literal));
+                    compiledStatement = default;
+                    return false;
+                }
 
                 SetStatementType(literal, literalType);
                 compiledStatement = new CompiledConstantValue()
@@ -1678,7 +1708,13 @@ public partial class StatementCompiler
                     Location = literal.Location,
                     SaveValue = literal.SaveValue,
                     Type = literalType,
-                    Value = new CompiledValue((char)charLiteral.Value),
+                    Value = charSize switch
+                    {
+                        1 => new CompiledValue((byte)charLiteral.Value),
+                        2 => new CompiledValue((char)charLiteral.Value),
+                        4 => new CompiledValue((uint)charLiteral.Value),
+                        _ => throw new UnreachableException(),
+                    },
                 };
                 return true;
             }

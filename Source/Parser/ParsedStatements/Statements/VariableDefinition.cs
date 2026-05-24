@@ -36,6 +36,7 @@ public class VariableDefinition : Statement,
         new Position(Type, Identifier, InitialValue)
         .Union(Modifiers);
     public bool IsExported => Modifiers.Contains(ProtectionKeywords.Export);
+    public bool IsConst => Modifiers.Contains(ModifierKeywords.Const);
 
     CanUseOn IHaveAttributes.AttributeUsageKind => CanUseOn.Variable;
 

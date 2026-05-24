@@ -134,8 +134,11 @@ public partial class StatementCompiler
     {
         None,
         Promotion,
+        ImplicitCastRef,
         ImplicitCast,
+        SameRef,
         Same,
+        EqualsRef,
         Equals,
     }
 
@@ -228,7 +231,7 @@ public partial class StatementCompiler
         TDefinedIdentifier defined,
         out int badness);
 
-    public static bool GetFunction<TFunction, TPassedIdentifier, TDefinedIdentifier, TArgument>(
+    public bool GetFunction<TFunction, TPassedIdentifier, TDefinedIdentifier, TArgument>(
         Functions<TFunction> functions,
         string kindName,
         string readableName,
@@ -381,7 +384,7 @@ public partial class StatementCompiler
         }
     }
 
-    static FunctionMatch<TFunction> GetFunctionMatch<TFunction, TDefinedIdentifier, TPassedIdentifier, TArgument>(
+    FunctionMatch<TFunction> GetFunctionMatch<TFunction, TDefinedIdentifier, TPassedIdentifier, TArgument>(
         TFunction function,
         FunctionQuery<TFunction, TPassedIdentifier, TDefinedIdentifier, TArgument> query)
         where TFunction : ICompiledFunctionDefinition, IIdentifiable<TDefinedIdentifier>, ICompiledDefinition<FunctionThingDefinition>
@@ -482,23 +485,6 @@ public partial class StatementCompiler
             result.IsFileMatches = true;
         }
 
-        bool TryReplaceArgument(ref CompiledExpression? argument, GeneralType passedType, GeneralType definedType, ParameterDefinition definition, TArgument passed)
-        {
-            if (passed is not CompiledExpression passedExpression) return false;
-            if (!definition.Modifiers.Contains(ModifierKeywords.This)) return false;
-
-            if (!CanCastImplicitly(new PointerType(passedType), definedType, out _)) return false;
-
-            argument = new CompiledGetReference()
-            {
-                Of = passedExpression,
-                Location = passedExpression.Location,
-                SaveValue = passedExpression.SaveValue,
-                Type = new PointerType(passedExpression.Type),
-            };
-            return true;
-        }
-
         bool TryReplaceArgument2(ref CompiledExpression? argument, GeneralType passedType, GeneralType definedType, ParameterDefinition definition, TArgument passed, Dictionary<string, GeneralType> typeArguments)
         {
             if (passed is not CompiledExpression passedExpression) return false;
@@ -523,38 +509,87 @@ public partial class StatementCompiler
 
             PossibleDiagnostic? error = null;
 
+            /*
+            if (passed is CompiledExpression expression)
+            {
+                if (typeMatch >= TypeMatch.ImplicitCast
+                    && CanCastImplicitly(expression, definedType, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out CastLevel castLevel))
+                {
+                    switch (castLevel)
+                    {
+                        case CastLevel.Cast:
+                        case CastLevel.ReferenceDereference:
+                            if (typeMatch > TypeMatch.ImplicitCast) typeMatch = TypeMatch.ImplicitCast;
+                            compiledPassedArgument = assignedValue;
+                            break;
+                        case CastLevel.SameCast:
+                        case CastLevel.Same:
+                            if (typeMatch > TypeMatch.Same) typeMatch = TypeMatch.Same;
+                            compiledPassedArgument = assignedValue;
+                            break;
+                        case CastLevel.Equals:
+                            if (typeMatch > TypeMatch.Equals) typeMatch = TypeMatch.Equals;
+                            compiledPassedArgument = assignedValue;
+                            break;
+                        case CastLevel.None:
+                        default:
+                            typeMatch = TypeMatch.None;
+                            return;
+                    }
+                }
+            }
+            */
+
             if (typeMatch >= TypeMatch.ImplicitCast)
             {
-                GeneralType a = query.Converter.Invoke(passed);
+                GeneralType passedType = query.Converter.Invoke(passed);
 
-                if (typeMatch >= TypeMatch.Equals && a.Equals(definedType))
+                if (typeMatch >= TypeMatch.Equals && passedType.Equals(definedType))
                 {
                     typeMatch = TypeMatch.Equals;
                     return;
                 }
 
-                if (typeMatch >= TypeMatch.Same && a.SameAs(definedType))
+                if (typeMatch >= TypeMatch.Same && passedType.SameAs(definedType))
                 {
                     typeMatch = TypeMatch.Same;
                     return;
                 }
 
-                if (typeMatch >= TypeMatch.ImplicitCast && CanCastImplicitly(a, definedType, out error))
+                if (typeMatch >= TypeMatch.ImplicitCast && CanCastImplicitly(passedType, definedType, out error, out _))
                 {
                     typeMatch = TypeMatch.ImplicitCast;
                     return;
                 }
 
-                if (typeMatch >= TypeMatch.ImplicitCast && a.Is(out ReferenceType? ar) && ar.To.SameAs(definedType))
+                if (passedType.Is(out ReferenceType? ar))
                 {
-                    typeMatch = TypeMatch.ImplicitCast;
-                    return;
+                    if (typeMatch >= TypeMatch.EqualsRef && ar.To.Equals(definedType))
+                    {
+                        typeMatch = TypeMatch.EqualsRef;
+                        return;
+                    }
+
+                    if (typeMatch >= TypeMatch.SameRef && ar.To.SameAs(definedType))
+                    {
+                        typeMatch = TypeMatch.SameRef;
+                        return;
+                    }
                 }
 
-                if (typeMatch >= TypeMatch.ImplicitCast &&
-                    TryReplaceArgument(ref compiledPassedArgument, a, definedType, definition, passed))
+                if (typeMatch >= TypeMatch.ImplicitCast
+                    && passed is CompiledExpression passedExpression
+                    && definition.Modifiers.Contains(ModifierKeywords.This)
+                    && CanCastImplicitly(new PointerType(passedType), definedType, out _, out _))
                 {
-                    typeMatch = TypeMatch.ImplicitCast;
+                    compiledPassedArgument = new CompiledGetReference()
+                    {
+                        Of = passedExpression,
+                        Location = passedExpression.Location,
+                        SaveValue = passedExpression.SaveValue,
+                        Type = new PointerType(passedExpression.Type),
+                    };
+                    typeMatch = TypeMatch.ImplicitCastRef;
                     return;
                 }
             }
@@ -582,7 +617,7 @@ public partial class StatementCompiler
             {
                 return TypeMatch.Same;
             }
-            else if (CanCastImplicitly(current, target, out PossibleDiagnostic? error))
+            else if (CanCastImplicitly(current, target, out PossibleDiagnostic? error, out _))
             {
                 return TypeMatch.ImplicitCast;
             }

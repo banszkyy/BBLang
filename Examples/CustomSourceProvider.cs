@@ -75,7 +75,7 @@ public static class CustomSourceProvider
                 """
                 using "./stdlib/stdout";
 
-                u16[] message = "Hello";
+                u8[] message = "Hello";
                 print(&message);
                 """
             },
@@ -87,9 +87,9 @@ public static class CustomSourceProvider
                 // Content
                 """
                 [External("stdout")]
-                void print(u16 c);
+                void print(u8 c);
 
-                export void print(u16[]* message)
+                export void print(u8[]* message)
                 {
                     for (i32 i = 0; message[i]; i++)
                     {

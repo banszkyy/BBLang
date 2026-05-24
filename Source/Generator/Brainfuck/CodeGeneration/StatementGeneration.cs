@@ -167,7 +167,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 GetVariable(addressGetter.Of, out BrainfuckVariable? shadowingVariable, out _) &&
                 type.Is(out PointerType? pointerType))
             {
-                if (!StatementCompiler.CanCastImplicitly(pointerType.To, shadowingVariable.Type, null, out PossibleDiagnostic? castError))
+                if (!StatementCompiler.CanCastImplicitly(pointerType.To, shadowingVariable.Type, null, out PossibleDiagnostic? castError, out _))
                 { Diagnostics.Add(castError.ToError(variableDeclaration.InitialValue)); }
 
                 variables.Push(new BrainfuckVariable(shadowingVariable.Address, true, false, null, FindSize(type, variableDeclaration), variableDeclaration)
@@ -2220,10 +2220,77 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         if (branchDepth != Code.BranchDepth)
         { Diagnostics.Add(DiagnosticAt.Internal($"Unbalanced branches", block)); }
     }
+    StackAddress GenerateAddressResolver(Address address, ILocated location)
+    {
+        switch (address.Simplify())
+        {
+            case AddressPointer runtimePointer:
+            {
+                return PushFrom(runtimePointer.PointerAddress, PointerSize);
+            }
+            case AddressRegisterPointer: throw new UnreachableException();
+            case AddressOffset addressOffset:
+            {
+                StackAddress res = GenerateAddressResolver(addressOffset.Base, location);
+                CheckPointerNull(res);
+                Code.AddValue(res, addressOffset.Offset);
+                return res;
+            }
+            case AddressRuntimePointer runtimePointer:
+            {
+                int res = Stack.NextAddress;
+                GenerateCodeForStatement(runtimePointer.PointerValue);
+                return new StackAddress(Stack, res);
+            }
+            case AddressRuntimeIndex runtimeIndex:
+            {
+                StackAddress res = GenerateAddressResolver(runtimeIndex.Base, location);
+                CheckPointerNull(res);
+
+                GeneralType indexType = runtimeIndex.IndexValue.Type;
+
+                if (!indexType.Is<BuiltinType>())
+                {
+                    Diagnostics.Add(DiagnosticAt.Error($"Index type must be builtin (ie. \"int\") and not \"{indexType}\"", runtimeIndex.IndexValue));
+                    return default;
+                }
+
+                if (!Settings.DontOptimize
+                    && runtimeIndex.IndexValue is CompiledConstantValue evaluatedIndex)
+                {
+                    int indexValue = (int)evaluatedIndex.Value;
+                    Code.AddValue(res, indexValue * runtimeIndex.ElementSize);
+                }
+                else
+                {
+                    int indexValue = Stack.NextAddress;
+                    GenerateCodeForStatement(runtimeIndex.IndexValue);
+
+                    Code.MULTIPLY(indexValue, runtimeIndex.ElementSize, v => Stack.GetTemporaryAddress(v, location));
+                    Stack.PopAndAdd(res);
+                }
+
+                return res;
+            }
+            case AddressAbsolute absolute:
+            {
+                return Stack.Push(absolute.Value);
+            }
+            default: throw new NotImplementedException(address.GetType().Name);
+        }
+    }
     void GenerateCodeForStatement(CompiledGetReference addressGetter)
     {
-        Diagnostics.Add(DiagnosticAt.Error($"This is when pointers to the stack isn't work in brainfuck", addressGetter));
-        return;
+        if (TryGetAddress(addressGetter.Of, out Address? address, out _))
+        {
+            GenerateAddressResolver(address, addressGetter);
+        }
+        else
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Failed to get address of {addressGetter.Of}", addressGetter));
+        }
+        //Diagnostics.Add(DiagnosticAt.Error($"This is when pointers to the stack isn't work in brainfuck", addressGetter));
+        //return;
     }
     void GenerateCodeForStatement(CompiledDereference pointer)
     {
@@ -2390,20 +2457,26 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     }
     #endregion
 
-    void PushFrom(Address address, int size)
+    void CheckPointerNull(int address)
     {
-        switch (address.Simplify())
-        {
-            case AddressAbsolute v: PushFrom(v, size); break;
-            case AddressOffset v: PushFrom(v, size); break;
-            default: throw new NotImplementedException();
-        }
+        if (!Settings.CheckNullPointers) return;
+
+        Code.JumpStart(address);
+        Code.CRASH($"Null pointer at {address}");
+        Code.JumpEnd(address);
     }
-    void PushFrom(AddressAbsolute address, int size)
+
+    StackAddress PushFrom(Address address, int size) => address.Simplify() switch
     {
-        using (Code.Block(this, $"Load daata (from {address})"))
+        AddressAbsolute v => PushFrom(v, size),
+        AddressOffset v => PushFrom(v, size),
+        _ => throw new NotImplementedException(),
+    };
+    StackAddress PushFrom(AddressAbsolute address, int size)
+    {
+        using (Code.Block(this, $"Load data (from {address})"))
         {
-            int loadTarget = Stack.PushVirtual(size);
+            StackAddress loadTarget = Stack.PushVirtual(size);
 
             for (int offset = 0; offset < size; offset++)
             {
@@ -2418,9 +2491,11 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
                 Code.CopyValue(offsettedSourceAbs.Value, offsettedTargetAbs.Value);
             }
+
+            return loadTarget;
         }
     }
-    void PushFrom(AddressOffset address, int size)
+    StackAddress PushFrom(AddressOffset address, int size)
     {
         if (address.Base is AddressRuntimePointer runtimePointer2)
         {
@@ -2430,6 +2505,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 GenerateCodeForStatement(runtimePointer2.PointerValue);
                 Code.AddValue(pointerAddress, address.Offset);
                 Heap.Get(pointerAddress, pointerAddress);
+                return new StackAddress(Stack, pointerAddress);
             }
         }
         else
@@ -2797,7 +2873,12 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateCodeForFunction_(CompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated callerPosition)
     {
-        CompiledFunction f = FunctionBodies.First(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function \"{function.ToReadable(typeArguments)}\" not found", function.Definition));
+            return;
+        }
 
         using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
 
@@ -2979,7 +3060,12 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateCodeForFunction(CompiledOperatorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated callerPosition)
     {
-        CompiledFunction f = FunctionBodies.First(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function \"{function.ToReadable(typeArguments)}\" not found", function.Definition));
+            return;
+        }
 
         using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
 
@@ -3161,7 +3247,12 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateCodeForFunction(CompiledGeneralFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated callerPosition)
     {
-        CompiledFunction f = FunctionBodies.First(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function \"{function.ToReadable(typeArguments)}\" not found", function.Definition));
+            return;
+        }
 
         using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
 
@@ -3260,7 +3351,12 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
 
     void GenerateCodeForFunction(CompiledConstructorDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, CompiledConstructorCall caller)
     {
-        CompiledFunction f = FunctionBodies.First(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        CompiledFunction? f = FunctionBodies.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function body for function \"{function.ToReadable(typeArguments)}\" not found", function.Definition));
+            return;
+        }
 
         using DebugFunctionBlock debugFunction = FunctionBlock(function, typeArguments);
 

@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Text;
 using LanguageCore;
 using LanguageCore.BBLang.Generator;
 using LanguageCore.Compiler;
@@ -21,7 +20,7 @@ public class SourceProviderTests
                 using stdlib;
                 using stdlib;
 
-                u16[] message = "Hello world";
+                u8[] message = "Hello world";
                 Print(&message);
                 """
             },
@@ -29,9 +28,9 @@ public class SourceProviderTests
                 "/stdlib.bbc",
                 """
                 [External("stdout")]
-                void Print(u16 c);
+                void Print(u8 c);
 
-                export void Print(u16[]* message)
+                export void Print(u8[]* message)
                 {
                     for (i32 i = 0; message[i]; i++)
                     {
@@ -44,7 +43,7 @@ public class SourceProviderTests
 
         DiagnosticsCollection diagnostics = new();
 
-        StringBuilder output = new();
+        AsciiBuilder output = new();
 
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(new FixedIO(string.Empty, output));
 
@@ -85,7 +84,7 @@ public class SourceProviderTests
     {
         DiagnosticsCollection diagnostics = new();
 
-        StringBuilder output = new();
+        AsciiBuilder output = new();
 
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(new FixedIO(string.Empty, output));
 
@@ -131,7 +130,7 @@ public class SourceProviderTests
     {
         DiagnosticsCollection diagnostics = new();
 
-        StringBuilder output = new();
+        AsciiBuilder output = new();
 
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(new FixedIO(string.Empty, output));
 
@@ -175,7 +174,7 @@ public class SourceProviderTests
     {
         DiagnosticsCollection diagnostics = new();
 
-        StringBuilder output = new();
+        AsciiBuilder output = new();
 
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(new FixedIO(string.Empty, output));
 

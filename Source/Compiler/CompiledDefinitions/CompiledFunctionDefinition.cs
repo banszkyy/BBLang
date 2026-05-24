@@ -1,12 +1,11 @@
 ﻿using LanguageCore.Parser;
-using LanguageCore.Parser.Statements;
 
 namespace LanguageCore.Compiler;
 
 public class CompiledFunctionDefinition :
     ICompiledDefinition<FunctionDefinition>,
     ICompiledDefinition<FunctionThingDefinition>,
-    IReferenceable<Expression?>,
+    IReferenceable<ILocated>,
     IInContext<CompiledStruct?>,
     ICompiledFunctionDefinition,
     IExternalFunctionDefinition,
@@ -19,7 +18,7 @@ public class CompiledFunctionDefinition :
     public GeneralType Type { get; }
     public ImmutableArray<CompiledParameter> Parameters { get; }
     public CompiledStruct? Context { get; }
-    public List<Reference<Expression?>> References { get; }
+    public List<Reference<ILocated>> References { get; }
 
     FunctionThingDefinition ICompiledDefinition<FunctionThingDefinition>.Definition => Definition;
     public bool ReturnSomething => !Type.SameAs(BasicType.Void);
@@ -38,7 +37,7 @@ public class CompiledFunctionDefinition :
         Parameters = parameters;
 
         Context = context;
-        References = new List<Reference<Expression?>>();
+        References = new List<Reference<ILocated>>();
     }
 
     public CompiledFunctionDefinition(GeneralType type, ImmutableArray<CompiledParameter> parameters, CompiledFunctionDefinition other)
@@ -48,7 +47,7 @@ public class CompiledFunctionDefinition :
         Parameters = parameters;
 
         Context = other.Context;
-        References = new List<Reference<Expression?>>(other.References);
+        References = new List<Reference<ILocated>>(other.References);
     }
 
     public override string ToString()

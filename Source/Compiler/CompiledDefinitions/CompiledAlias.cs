@@ -23,4 +23,6 @@ public class CompiledAlias :
         Value = value;
         References = new List<Reference<TypeInstance>>();
     }
+
+    public override string ToString() => $"{DeclarationKeywords.Alias} {Identifier} = {Value}";
 }

@@ -1,22 +1,10 @@
-﻿using System.IO;
-using System.Runtime.CompilerServices;
-using CommandLine;
+﻿using CommandLine;
 using CommandLine.Text;
 
 namespace LanguageCore;
 
 public static class Program
 {
-    const string _thisFileName = nameof(Program) + ".cs";
-    public static string ProjectPath => field ??= GetProjectPath();
-
-    [SuppressMessage("Usage", "CA2201")]
-    static string GetProjectPath([CallerFilePath] string? callerFilePath = null)
-    {
-        if (callerFilePath is null || !callerFilePath.EndsWith(_thisFileName, StringComparison.Ordinal)) throw new Exception($"Failed to get the project path");
-        return Path.GetDirectoryName(callerFilePath[..^(_thisFileName.Length + 1)])!;
-    }
-
     public static void DisplayHelp<T>(ParserResult<T> result, IEnumerable<Error> errs)
     {
         HelpText? helpText = null;

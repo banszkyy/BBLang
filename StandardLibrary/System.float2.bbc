@@ -20,8 +20,8 @@ export void tofloat2(byte2* a, float2* b)
     int _y = (int)a.y;
     if (_x > 127) { _x = -256 + _x; }
     if (_y > 127) { _y = -256 + _y; }
-    b.x = (f32)_x;
-    b.y = (f32)_y;
+    b.x = (float)_x;
+    b.y = (float)_y;
 }
 
 export float distance(float2 a, float2 b)
@@ -73,14 +73,14 @@ export void normalise(float2* v)
     v.y /= d;
 }
 
-export void rotate(float2* v, f32 angle)
+export void rotate(float2* v, float angle)
 {
-    f32 tx = v.x;
+    float tx = v.x;
     v.x = v.x * cos(angle) - v.y * sin(angle);
     v.y = tx * sin(angle) + v.y * cos(angle);
 }
 
-export float2 rotate(float2 v, f32 angle)
+export float2 rotate(float2 v, float angle)
 {
     return new float2(
         v.x * cos(angle) - v.y * sin(angle),

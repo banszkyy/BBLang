@@ -713,7 +713,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             if (argument.Type.SameAs(parameter))
             { return true; }
 
-            if (StatementCompiler.CanCastImplicitly(argument.Type, parameter, null, out argumentError))
+            if (StatementCompiler.CanCastImplicitly(argument.Type, parameter, null, out argumentError, out _))
             { return true; }
 
             argumentError = argumentError.TrySetLocation(argument);
@@ -2588,14 +2588,31 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         CurrentContext = function;
         InFunction = true;
-        FunctionFlags f = function is CompiledLambda l ? l.Flags : Functions.First(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments)).Flags;
+        FunctionFlags functionFlags;
+        if (function is CompiledLambda l)
+        {
+            functionFlags = l.Flags;
+        }
+        else
+        {
+            CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, function) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, typeArguments));
+            if (f is null)
+            {
+                Diagnostics.Add(DiagnosticAt.Internal($"function {function.ToReadable()} not compiled", function));
+                functionFlags = FunctionFlags.None;
+            }
+            else
+            {
+                functionFlags = f.Flags;
+            }
+        }
 
         TypeArguments.Clear();
         CompiledParameters.Clear();
         CompiledLocalVariables.Clear();
         ReturnInstructions.Clear();
         ScopeSizes.Push(0);
-        HasCapturedGlobalVariables = f.HasFlag(FunctionFlags.CapturesGlobalVariables);
+        HasCapturedGlobalVariables = functionFlags.HasFlag(FunctionFlags.CapturesGlobalVariables);
         int savedInstructionLabelCount = CompiledInstructionLabels.Count;
 
         if (typeArguments is not null) TypeArguments.AddRange(typeArguments);

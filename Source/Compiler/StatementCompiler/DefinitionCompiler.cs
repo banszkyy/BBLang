@@ -7,52 +7,311 @@ namespace LanguageCore.Compiler;
 
 public partial class StatementCompiler
 {
-    CompiledStruct CompileStructNoFields(StructDefinition @struct)
+    readonly HashSet<object> CompilingDefinitionStack = new();
+
+    CompiledStruct CompileStruct(StructDefinition structDefinition)
     {
-        if (LanguageConstants.KeywordList.Contains(@struct.Identifier.Content))
-        { Diagnostics.Add(DiagnosticAt.Error($"Illegal struct name \"{@struct.Identifier.Content}\"", @struct.Identifier, @struct.File)); }
+        if (CompiledStructs.TryGetValue(v => Utils.ReferenceEquals(v.Definition, structDefinition), out CompiledStruct? compiled)) return compiled;
 
-        @struct.Identifier.AnalyzedType = TokenAnalyzedType.Struct;
-
-        if (@struct.Template is not null)
+        if (IsSymbolDefined(structDefinition))
         {
-            GenericParameters.Push(@struct.Template.Parameters);
-            foreach (Token typeParameter in @struct.Template.Parameters)
+            Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{structDefinition.Identifier}\" already exists", structDefinition.Identifier, structDefinition.File));
+        }
+
+        CompiledStruct result;
+
+        if (!CompilingDefinitionStack.Add(structDefinition))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Circular dependency", structDefinition));
+            result = new CompiledStruct(structDefinition.Fields.ToImmutableArray(v => new CompiledField(BuiltinType.Any, null!, v)), structDefinition);
+            CompiledStructs.Add(result);
+            return result;
+        }
+
+        if (LanguageConstants.KeywordList.Contains(structDefinition.Identifier.Content))
+        { Diagnostics.Add(DiagnosticAt.Error($"Illegal struct name \"{structDefinition.Identifier.Content}\"", structDefinition.Identifier, structDefinition.File)); }
+
+        structDefinition.Identifier.AnalyzedType = TokenAnalyzedType.Struct;
+
+        if (structDefinition.Template is not null)
+        {
+            GenericParameters.Push(structDefinition.Template.Parameters);
+            foreach (Token typeParameter in structDefinition.Template.Parameters)
             { typeParameter.AnalyzedType = TokenAnalyzedType.TypeParameter; }
         }
 
-        if (@struct.Template is not null)
-        { GenericParameters.Pop(); }
+        ImmutableArray<CompiledField>.Builder compiledFields = ImmutableArray.CreateBuilder<CompiledField>(structDefinition.Fields.Length);
 
-        // Oh no wtf
-        return new CompiledStruct(@struct.Fields.ToImmutableArray(v => new CompiledField(BuiltinType.Any, null!, v)), @struct);
-    }
-
-    void CompileStructFields(CompiledStruct @struct)
-    {
-        if (@struct.Definition.Template is not null)
+        for (int i = 0; i < structDefinition.Fields.Length; i++)
         {
-            GenericParameters.Push(@struct.Definition.Template.Parameters);
-            foreach (Token typeParameter in @struct.Definition.Template.Parameters)
-            { typeParameter.AnalyzedType = TokenAnalyzedType.TypeParameter; }
-        }
+            FieldDefinition field = structDefinition.Fields[i];
 
-        ImmutableArray<CompiledField>.Builder compiledFields = ImmutableArray.CreateBuilder<CompiledField>(@struct.Fields.Length);
+            foreach (AttributeUsage attribute in field.Attributes)
+            {
+                CompileUserAttribute(field, attribute);
+            }
 
-        for (int i = 0; i < @struct.Fields.Length; i++)
-        {
-            FieldDefinition field = @struct.Fields[i].Definition;
+            field.Identifier.AnalyzedType = TokenAnalyzedType.FieldName;
 
             if (!CompileType(field.Type, out GeneralType? fieldType, Diagnostics)) continue;
             compiledFields.Add(new CompiledField(fieldType, null! /* CompiledStruct constructor will set this */, field));
         }
 
-        if (@struct.Definition.Template is not null)
+        foreach (AttributeUsage attribute in structDefinition.Attributes)
+        {
+            CompileUserAttribute(structDefinition, attribute);
+        }
+
+        if (structDefinition.Template is not null)
         { GenericParameters.Pop(); }
 
-        if (compiledFields.Count != compiledFields.Capacity) return;
+        CompilingDefinitionStack.Remove(structDefinition);
 
-        @struct.SetFields(compiledFields.MoveToImmutable());
+        result = new CompiledStruct(compiledFields.ToImmutable(), structDefinition);
+        CompiledStructs.Add(result);
+        return result;
+    }
+
+    CompiledAlias CompileAlias(AliasDefinition aliasDefinition)
+    {
+        if (CompiledAliases.TryGetValue(v => Utils.ReferenceEquals(v.Definition, aliasDefinition), out CompiledAlias? compiled)) return compiled;
+
+        CompiledAlias result;
+
+        if (IsSymbolDefined(aliasDefinition))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{aliasDefinition.Identifier}\" already exists", aliasDefinition.Identifier, aliasDefinition.File));
+        }
+
+        if (!CompilingDefinitionStack.Add(aliasDefinition))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Circular dependency", aliasDefinition));
+            result = new CompiledAlias(new CompiledBuiltinTypeExpression(BasicType.Any, aliasDefinition.Value.Location), aliasDefinition);
+            CompiledAliases.Add(result);
+            return result;
+        }
+
+        if (!CompileStatement(aliasDefinition.Value, out CompiledTypeExpression? aliasValue, Diagnostics))
+        {
+            aliasValue = new CompiledBuiltinTypeExpression(BasicType.Any, aliasDefinition.Value.Location);
+        }
+
+        CompilingDefinitionStack.Remove(aliasDefinition);
+
+        result = new CompiledAlias(aliasValue, aliasDefinition);
+        CompiledAliases.Add(result);
+        return result;
+    }
+
+    CompiledEnum CompileEnum(EnumDefinition enumDefinition)
+    {
+        if (CompiledEnums.TryGetValue(v => Utils.ReferenceEquals(v.Definition, enumDefinition), out CompiledEnum? compiled)) return compiled;
+
+        CompiledEnum result;
+
+        if (IsSymbolDefined(enumDefinition))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{enumDefinition.Identifier}\" already exists", enumDefinition.Identifier, enumDefinition.File));
+        }
+
+        if (!CompilingDefinitionStack.Add(enumDefinition))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Circular dependency", enumDefinition));
+            result = new CompiledEnum(BuiltinType.Any, enumDefinition.Members.ToImmutableArray(v => new CompiledEnumMember(new CompiledConstantValue() { Location = v.Location, SaveValue = true, Type = BuiltinType.Any, Value = CompiledValue.Null }, v)), enumDefinition);
+            CompiledEnums.Add(result);
+            return result;
+        }
+
+        GeneralType? enumType = null;
+        if (enumDefinition.Type is not null && !CompileType(enumDefinition.Type, out enumType, Diagnostics))
+        {
+            enumType = null;
+        }
+
+        List<CompiledEnumMember> compiledMembers = new(enumDefinition.Members.Length);
+
+        bool? IsEnumMemberUnique(CompiledValue constantValue, out PossibleDiagnostic? warning)
+        {
+            foreach (CompiledEnumMember otherMember in compiledMembers)
+            {
+                if (otherMember.Value is not CompiledConstantValue otherConstantValue)
+                {
+                    warning = new PossibleDiagnostic($"Cannot check if the enum member is unique, because not all members has a numeric value",
+                        new PossibleDiagnostic($"Enum member \"{otherMember.Identifier}\" doesn't have a numeric value", otherMember));
+                    return null;
+                }
+
+                if (otherConstantValue.Value == constantValue)
+                {
+                    warning = new PossibleDiagnostic($"Enum member conflicts with \"{otherMember.Identifier}\"");
+                    return false;
+                }
+            }
+
+            warning = null;
+            return true;
+        }
+
+        CompiledExpression? lastValue = null;
+        foreach (EnumMemberDefinition member in enumDefinition.Members)
+        {
+            CompiledExpression? value;
+            if (member.Value is null)
+            {
+                if (lastValue is null)
+                {
+                    if (enumType is not null
+                        && enumType.Is(out BuiltinType? builtinEnumType)
+                        && builtinEnumType.RuntimeType != RuntimeType.Null)
+                    {
+                        lastValue = new CompiledConstantValue()
+                        {
+                            Value = builtinEnumType.RuntimeType switch
+                            {
+                                RuntimeType.Null => throw new UnreachableException(),
+                                RuntimeType.U8 => CompiledValue.CreateUnsafe(0, RuntimeType.U8),
+                                RuntimeType.I8 => CompiledValue.CreateUnsafe(0, RuntimeType.I8),
+                                RuntimeType.U16 => CompiledValue.CreateUnsafe(0, RuntimeType.U16),
+                                RuntimeType.I16 => CompiledValue.CreateUnsafe(0, RuntimeType.I16),
+                                RuntimeType.U32 => CompiledValue.CreateUnsafe(0, RuntimeType.U32),
+                                RuntimeType.I32 => CompiledValue.CreateUnsafe(0, RuntimeType.I32),
+                                RuntimeType.F32 => CompiledValue.CreateUnsafe(0, RuntimeType.F32),
+                                _ => throw new UnreachableException(),
+                            },
+                            Type = enumType,
+                            Location = member.Location,
+                            SaveValue = true,
+                        };
+                    }
+                    else
+                    {
+                        Diagnostics.Add(DiagnosticAt.Error($"Can't guess the enum member value, because there are no previous enum member values", member));
+                        continue;
+                    }
+                }
+
+                if (lastValue is not CompiledConstantValue lastConstValue)
+                {
+                    Diagnostics.Add(DiagnosticAt.Error($"Can't guess the next enum member value, because the previous one was not a numeric value", member));
+                    continue;
+                }
+
+                CompiledValue constLastValue = lastConstValue.Value;
+                RuntimeType constLastType = constLastValue.Type;
+
+                while (!IsEnumMemberUnique(constLastValue, out _) ?? false)
+                {
+                    constLastValue += 1;
+                }
+
+                if (!constLastValue.TryCast(constLastType, out CompiledValue castedConstLastValue))
+                {
+                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constLastValue} of type {constLastValue.Type} to {constLastType}", member));
+                }
+                else
+                {
+                    constLastValue = castedConstLastValue;
+                }
+
+                value = new CompiledConstantValue()
+                {
+                    Type = constLastValue.Type switch
+                    {
+                        RuntimeType.Null => BuiltinType.Void,
+                        RuntimeType.U8 => BuiltinType.U8,
+                        RuntimeType.I8 => BuiltinType.I8,
+                        RuntimeType.U16 => BuiltinType.Char,
+                        RuntimeType.I16 => BuiltinType.I16,
+                        RuntimeType.U32 => BuiltinType.U32,
+                        RuntimeType.I32 => BuiltinType.I32,
+                        RuntimeType.F32 => BuiltinType.F32,
+                        _ => throw new UnreachableException(),
+                    },
+                    Value = constLastValue,
+                    Location = member.Location.After(),
+                    SaveValue = true,
+                };
+            }
+            else if (!CompileExpression(member.Value, out value, enumType))
+            {
+                continue;
+            }
+
+            if (enumType is null)
+            {
+                enumType = value.Type;
+            }
+            else if (!CanCastImplicitly(value, enumType, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
+            {
+                Diagnostics.Add(castError.ToError(value));
+                value = assignedValue;
+            }
+
+            if (TryCompute(value, out CompiledValue constValue, out PossibleDiagnostic? evaluationError))
+            {
+                if (!enumType.Is(out BuiltinType? enumBuiltinType))
+                {
+                    Diagnostics.Add(DiagnosticAt.Error($"Const enum must have a built-in type", enumDefinition.Type?.Location ?? enumDefinition.Location));
+                }
+                else if (!constValue.TryCast(enumBuiltinType.RuntimeType, out CompiledValue castedConstantValue))
+                {
+                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constValue} of type {constValue.Type} to {enumBuiltinType}", value));
+                    value = new CompiledConstantValue()
+                    {
+                        Type = constValue.Type switch
+                        {
+                            RuntimeType.Null => BuiltinType.Void,
+                            RuntimeType.U8 => BuiltinType.U8,
+                            RuntimeType.I8 => BuiltinType.I8,
+                            RuntimeType.U16 => BuiltinType.Char,
+                            RuntimeType.I16 => BuiltinType.I16,
+                            RuntimeType.U32 => BuiltinType.U32,
+                            RuntimeType.I32 => BuiltinType.I32,
+                            RuntimeType.F32 => BuiltinType.F32,
+                            _ => throw new UnreachableException(),
+                        },
+                        Value = constValue,
+                        Location = value.Location,
+                        SaveValue = value.SaveValue,
+                    };
+                }
+                else
+                {
+                    constValue = castedConstantValue;
+                    value = new CompiledConstantValue()
+                    {
+                        Type = enumBuiltinType,
+                        Value = constValue,
+                        Location = value.Location,
+                        SaveValue = value.SaveValue,
+                    };
+                }
+
+                IsEnumMemberUnique(constValue, out PossibleDiagnostic? uniqueWarning);
+                if (uniqueWarning is not null) Diagnostics.Add(uniqueWarning.ToWarning(member));
+            }
+            else
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Enum member value must be a constant", value));
+                continue;
+            }
+
+            lastValue = value;
+
+            compiledMembers.Add(new CompiledEnumMember(value, member));
+        }
+
+        if (enumType is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Cannot guess the enum member type", enumDefinition));
+            enumType = BuiltinType.Any;
+        }
+
+        CompilingDefinitionStack.Remove(enumDefinition);
+
+        result = new CompiledEnum(enumType, compiledMembers.ToImmutableArray(), enumDefinition);
+        CompiledEnums.Add(result);
+        return result;
     }
 
     void CompileFunctionAttributes<TCompiledDefinition>(TCompiledDefinition function)
@@ -445,6 +704,7 @@ public partial class StatementCompiler
         StructDefinitions.AddRange(collectedAST.AST.Structs);
         AliasDefinitions.AddRange(collectedAST.AST.AliasDefinitions);
         EnumDefinitions.AddRange(collectedAST.AST.EnumDefinitions);
+        ConstantDefinitions.AddRange(collectedAST.AST.TopLevelStatements.OfType<VariableDefinition>().Where(v => v.IsConst));
     }
 
     static bool ThingEquality<TThing1, TThing2>(TThing1 a, TThing2 b)
@@ -483,259 +743,21 @@ public partial class StatementCompiler
         return false;
     }
 
-    void CompileDefinitions(Uri file, ImmutableArray<ParsedFile> parsedFiles)
+    void CompileDefinitions()
     {
-        // First compile the structs without fields
-        // so it can reference other structs that are
-        // not compiled but will be.
         foreach (StructDefinition @struct in StructDefinitions)
         {
-            if (IsSymbolDefined(@struct))
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{@struct.Identifier}\" already exists", @struct.Identifier, @struct.File));
-                continue;
-            }
-
-            CompiledStructs.Add(CompileStructNoFields(@struct));
+            CompileStruct(@struct);
         }
 
         foreach (AliasDefinition aliasDefinition in AliasDefinitions)
         {
-            if (IsSymbolDefined(aliasDefinition))
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{aliasDefinition.Identifier}\" already exists", aliasDefinition.Identifier, aliasDefinition.File));
-                continue;
-            }
-
-            if (!CompileStatement(aliasDefinition.Value, out CompiledTypeExpression? aliasValue, Diagnostics)) continue;
-
-            CompiledAliases.Add(new CompiledAlias(
-                aliasValue,
-                aliasDefinition
-            ));
+            CompileAlias(aliasDefinition);
         }
 
         foreach (EnumDefinition enumDefinition in EnumDefinitions)
         {
-            if (IsSymbolDefined(enumDefinition))
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{enumDefinition.Identifier}\" already exists", enumDefinition.Identifier, enumDefinition.File));
-                continue;
-            }
-
-            GeneralType? enumType = null;
-            if (enumDefinition.Type is not null && !CompileType(enumDefinition.Type, out enumType, Diagnostics))
-            {
-                enumType = null;
-            }
-
-            List<CompiledEnumMember> compiledMembers = new(enumDefinition.Members.Length);
-
-            bool? IsEnumMemberUnique(CompiledValue constantValue, out PossibleDiagnostic? warning)
-            {
-                foreach (CompiledEnumMember otherMember in compiledMembers)
-                {
-                    if (otherMember.Value is not CompiledConstantValue otherConstantValue)
-                    {
-                        warning = new PossibleDiagnostic($"Cannot check if the enum member is unique, because not all members has a numeric value",
-                            new PossibleDiagnostic($"Enum member \"{otherMember.Identifier}\" doesn't have a numeric value", otherMember));
-                        return null;
-                    }
-
-                    if (otherConstantValue.Value == constantValue)
-                    {
-                        warning = new PossibleDiagnostic($"Enum member conflicts with \"{otherMember.Identifier}\"");
-                        return false;
-                    }
-                }
-
-                warning = null;
-                return true;
-            }
-
-            CompiledExpression? lastValue = null;
-            foreach (EnumMemberDefinition member in enumDefinition.Members)
-            {
-                CompiledExpression? value;
-                if (member.Value is null)
-                {
-                    if (lastValue is null)
-                    {
-                        if (enumType is not null
-                            && enumType.Is(out BuiltinType? builtinEnumType)
-                            && builtinEnumType.RuntimeType != RuntimeType.Null)
-                        {
-                            lastValue = new CompiledConstantValue()
-                            {
-                                Value = builtinEnumType.RuntimeType switch
-                                {
-                                    RuntimeType.Null => throw new UnreachableException(),
-                                    RuntimeType.U8 => CompiledValue.CreateUnsafe(0, RuntimeType.U8),
-                                    RuntimeType.I8 => CompiledValue.CreateUnsafe(0, RuntimeType.I8),
-                                    RuntimeType.U16 => CompiledValue.CreateUnsafe(0, RuntimeType.U16),
-                                    RuntimeType.I16 => CompiledValue.CreateUnsafe(0, RuntimeType.I16),
-                                    RuntimeType.U32 => CompiledValue.CreateUnsafe(0, RuntimeType.U32),
-                                    RuntimeType.I32 => CompiledValue.CreateUnsafe(0, RuntimeType.I32),
-                                    RuntimeType.F32 => CompiledValue.CreateUnsafe(0, RuntimeType.F32),
-                                    _ => throw new UnreachableException(),
-                                },
-                                Type = enumType,
-                                Location = member.Location,
-                                SaveValue = true,
-                            };
-                        }
-                        else
-                        {
-                            Diagnostics.Add(DiagnosticAt.Error($"Can't guess the enum member value, because there are no previous enum member values", member));
-                            continue;
-                        }
-                    }
-
-                    if (lastValue is not CompiledConstantValue lastConstValue)
-                    {
-                        Diagnostics.Add(DiagnosticAt.Error($"Can't guess the next enum member value, because the previous one was not a numeric value", member));
-                        continue;
-                    }
-
-                    CompiledValue constLastValue = lastConstValue.Value;
-                    RuntimeType constLastType = constLastValue.Type;
-
-                    while (!IsEnumMemberUnique(constLastValue, out _) ?? false)
-                    {
-                        constLastValue += 1;
-                    }
-
-                    if (!constLastValue.TryCast(constLastType, out CompiledValue castedConstLastValue))
-                    {
-                        Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constLastValue} of type {constLastValue.Type} to {constLastType}", member));
-                    }
-                    else
-                    {
-                        constLastValue = castedConstLastValue;
-                    }
-
-                    value = new CompiledConstantValue()
-                    {
-                        Type = constLastValue.Type switch
-                        {
-                            RuntimeType.Null => BuiltinType.Void,
-                            RuntimeType.U8 => BuiltinType.U8,
-                            RuntimeType.I8 => BuiltinType.I8,
-                            RuntimeType.U16 => BuiltinType.Char,
-                            RuntimeType.I16 => BuiltinType.I16,
-                            RuntimeType.U32 => BuiltinType.U32,
-                            RuntimeType.I32 => BuiltinType.I32,
-                            RuntimeType.F32 => BuiltinType.F32,
-                            _ => throw new UnreachableException(),
-                        },
-                        Value = constLastValue,
-                        Location = member.Location.After(),
-                        SaveValue = true,
-                    };
-                }
-                else if (!CompileExpression(member.Value, out value, enumType))
-                {
-                    continue;
-                }
-
-                if (enumType is null)
-                {
-                    enumType = value.Type;
-                }
-                else if (!CanCastImplicitly(value, enumType, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError))
-                {
-                    Diagnostics.Add(castError.ToError(value));
-                    value = assignedValue;
-                }
-
-                if (TryCompute(value, out CompiledValue constValue, out PossibleDiagnostic? evaluationError))
-                {
-                    if (!enumType.Is(out BuiltinType? enumBuiltinType))
-                    {
-                        Diagnostics.Add(DiagnosticAt.Error($"Const enum must have a built-in type", enumDefinition.Type?.Location ?? enumDefinition.Location));
-                    }
-                    else if (!constValue.TryCast(enumBuiltinType.RuntimeType, out CompiledValue castedConstantValue))
-                    {
-                        Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constValue} of type {constValue.Type} to {enumBuiltinType}", value));
-                        value = new CompiledConstantValue()
-                        {
-                            Type = constValue.Type switch
-                            {
-                                RuntimeType.Null => BuiltinType.Void,
-                                RuntimeType.U8 => BuiltinType.U8,
-                                RuntimeType.I8 => BuiltinType.I8,
-                                RuntimeType.U16 => BuiltinType.Char,
-                                RuntimeType.I16 => BuiltinType.I16,
-                                RuntimeType.U32 => BuiltinType.U32,
-                                RuntimeType.I32 => BuiltinType.I32,
-                                RuntimeType.F32 => BuiltinType.F32,
-                                _ => throw new UnreachableException(),
-                            },
-                            Value = constValue,
-                            Location = value.Location,
-                            SaveValue = value.SaveValue,
-                        };
-                    }
-                    else
-                    {
-                        constValue = castedConstantValue;
-                        value = new CompiledConstantValue()
-                        {
-                            Type = enumBuiltinType,
-                            Value = constValue,
-                            Location = value.Location,
-                            SaveValue = value.SaveValue,
-                        };
-                    }
-
-                    IsEnumMemberUnique(constValue, out PossibleDiagnostic? uniqueWarning);
-                    if (uniqueWarning is not null) Diagnostics.Add(uniqueWarning.ToWarning(member));
-                }
-                else
-                {
-                    Diagnostics.Add(DiagnosticAt.Error($"Enum member value must be a constant", value));
-                    continue;
-                }
-
-                lastValue = value;
-
-                compiledMembers.Add(new CompiledEnumMember(value, member));
-            }
-
-            if (enumType is null)
-            {
-                Diagnostics.Add(DiagnosticAt.Error($"Cannot guess the enum member type", enumDefinition));
-                enumType = BuiltinType.Any;
-            }
-
-            CompiledEnums.Add(new CompiledEnum(
-                enumType,
-                compiledMembers.ToImmutableArray(),
-                enumDefinition
-            ));
-        }
-
-        // Now compile the fields. Now every struct is compiled
-        // so it can reference other structs.
-        foreach (CompiledStruct @struct in CompiledStructs)
-        {
-            CompileStructFields(@struct);
-        }
-
-        foreach (CompiledStruct @struct in CompiledStructs)
-        {
-            foreach (AttributeUsage attribute in @struct.Definition.Attributes)
-            {
-                CompileUserAttribute(@struct, attribute);
-            }
-
-            foreach (CompiledField field in @struct.Fields)
-            {
-                foreach (AttributeUsage attribute in field.Definition.Attributes)
-                {
-                    CompileUserAttribute(field, attribute);
-                }
-            }
+            CompileEnum(enumDefinition);
         }
 
         foreach (FunctionDefinition @operator in OperatorDefinitions)
@@ -980,6 +1002,13 @@ public partial class StatementCompiler
             if (compiledStruct.Definition.Template is not null)
             { GenericParameters.Pop(); }
         }
+
+        foreach (VariableDefinition variableDeclaration in ConstantDefinitions)
+        {
+            if (CompiledGlobalConstants.Any(v => Utils.ReferenceEquals(v.Definition, variableDeclaration))) continue;
+            if (!CompileConstant(variableDeclaration, out CompiledVariableConstant? result)) continue;
+            CompiledGlobalConstants.Add(result);
+        }
     }
 
     CompilerResult CompileMainFile(string file)
@@ -1076,7 +1105,7 @@ public partial class StatementCompiler
 #if UNITY
     static readonly Unity.Profiling.ProfilerMarker _m3 = new("LanguageCore.Compiler");
 #endif
-    CompilerResult CompileInternal(Uri file, ImmutableArray<ParsedFile> parsedFiles, bool compileDefinitions = true)
+    CompilerResult CompileInternal(Uri entryFile, ImmutableArray<ParsedFile> parsedFiles, bool compileDefinitions = true)
     {
 #if UNITY
         using var _1 = _m3.Auto();
@@ -1084,12 +1113,9 @@ public partial class StatementCompiler
 
         using (Frames.PushAuto(CompiledFrame.Empty))
         {
-            if (compileDefinitions) CompileDefinitions(file, parsedFiles);
+            if (compileDefinitions) CompileDefinitions();
 
-            GenerateCode(
-                parsedFiles,
-                file
-            );
+            GenerateCode(entryFile);
         }
 
         return new CompilerResult(
@@ -1103,7 +1129,7 @@ public partial class StatementCompiler
             ExternalFunctions,
             CompiledStructs.ToImmutableArray(),
             TopLevelStatements.ToImmutableArray(),
-            file,
+            entryFile,
             Settings.IsExpression,
             CompiledTopLevelStatements.ToImmutable(),
             CompiledGlobalConstants.ToImmutableArray(),

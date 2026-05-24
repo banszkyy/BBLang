@@ -76,17 +76,11 @@ public class DiagnosticsCollection : IReadOnlyDiagnosticsCollection
 
     public void Throw()
     {
-        for (int i = 0; i < _diagnostics.Count; i++)
-        {
-            if (_diagnostics[i].Level != DiagnosticsLevel.Error) continue;
-            _diagnostics[i].Throw();
-        }
-
-        for (int i = 0; i < _diagnosticsWithoutContext.Count; i++)
-        {
-            if (_diagnosticsWithoutContext[i].Level != DiagnosticsLevel.Error) continue;
-            _diagnosticsWithoutContext[i].Throw();
-        }
+        LanguageException[] exceptions = _diagnostics.Where(v => v.Level == DiagnosticsLevel.Error).Select(v => v.ToException())
+            .Concat(_diagnosticsWithoutContext.Where(v => v.Level == DiagnosticsLevel.Error).Select(v => v.ToException()))
+            .ToArray();
+        if (exceptions.Length == 0) return;
+        throw new AggregateException(exceptions);
     }
 
     public void Clear()

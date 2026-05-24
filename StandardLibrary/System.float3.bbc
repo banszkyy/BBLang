@@ -24,9 +24,9 @@ export void tofloat3(byte3* a, float3* b)
     if (_x > 127) { _x = -256 + _x; }
     if (_y > 127) { _y = -256 + _y; }
     if (_z > 127) { _z = -256 + _z; }
-    b.x = (f32)_x;
-    b.y = (f32)_y;
-    b.z = (f32)_z;
+    b.x = (float)_x;
+    b.y = (float)_y;
+    b.z = (float)_z;
 }
 
 export float distance(float3 a, float3 b)

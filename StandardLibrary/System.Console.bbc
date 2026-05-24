@@ -210,7 +210,7 @@ export void print(bool message)
     else print("false");
 }
 
-export inline void print(byte message) { print((u8)message); }
+export inline void print(byte message) { print(message as u8); }
 
 #if BRAINFUCK
 export inline void print(int message) { print(message as u8); }
@@ -299,17 +299,17 @@ export void print(i32 message)
         message = message * -1;
     }
     
-    int pow10 = find_max_pow_of_10(message);
+    i32 pow10 = find_max_pow_of_10(message);
     while (pow10)
     {
-        int digit = message / pow10;
+        i32 digit = message / pow10;
         print((char)(digit + '0'));
         message -= digit * pow10;
         pow10 /= 10;
     }
 }
 
-export void print(f32 message)
+export void print(float message)
 {
     if (message as i32 == POSITIVE_INFINITY as i32)
     {

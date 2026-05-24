@@ -45,6 +45,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     readonly List<StructDefinition> StructDefinitions = new();
     readonly List<AliasDefinition> AliasDefinitions = new();
     readonly List<EnumDefinition> EnumDefinitions = new();
+    readonly List<VariableDefinition> ConstantDefinitions = new();
 
     readonly List<(ImmutableArray<Statement> Statements, Uri File)> TopLevelStatements = new();
 
@@ -104,9 +105,9 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             }
         }
 
-        foreach (CompiledVariableConstant _constant in CompiledGlobalConstants)
+        foreach (VariableDefinition _constant in ConstantDefinitions)
         {
-            if (_constant.Identifier != identifier)
+            if (_constant.Identifier.Content != identifier)
             {
                 if (perfectus < ConstantPerfectus.Name ||
                     notFoundError is null)
@@ -115,7 +116,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             }
             perfectus = ConstantPerfectus.Name;
 
-            if (!_constant.Definition.CanUse(file))
+            if (!_constant.CanUse(file))
             {
                 if (perfectus < ConstantPerfectus.File ||
                     notFoundError is null)
@@ -132,7 +133,15 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 return false;
             }
 
-            constant = _constant;
+            if (!CompiledGlobalConstants.TryGetValue(v => Utils.ReferenceEquals(v.Definition, _constant), out constant))
+            {
+                if (!CompileConstant(_constant, out constant))
+                {
+                    continue;
+                }
+
+                CompiledGlobalConstants.Add(constant);
+            }
         }
 
         if (constant is null)
@@ -460,7 +469,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     bool TryGetBuiltinFunction(
         string builtinName,
-        ImmutableArray<GeneralType> arguments,
+        ImmutableArray<CompiledExpression> arguments,
         Uri relevantFile,
 
         [NotNullWhen(true)] out FunctionQueryResult<CompiledFunctionDefinition>? result,
@@ -475,17 +484,16 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             CompilableFunctions
             .Where(v => v.Template.Definition.BuiltinFunctionName == builtinName);
 
-        string readable = $"[{AttributeConstants.BuiltinIdentifier}(\"{builtinName}\")] ?({string.Join(", ", arguments)})";
-        FunctionQuery<CompiledFunctionDefinition, string, string, GeneralType> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(null as string, arguments, relevantFile, null, addCompilable);
+        FunctionQuery<CompiledFunctionDefinition, string, string, CompiledExpression> query = FunctionQuery.Create<CompiledFunctionDefinition, string, string>(null as string, arguments, relevantFile, null, addCompilable);
 
-        return GetFunction<CompiledFunctionDefinition, string, string, GeneralType>(
+        return GetFunction<CompiledFunctionDefinition, string, string, CompiledExpression>(
             new Functions<CompiledFunctionDefinition>()
             {
                 Compiled = builtinCompiledFunctions,
                 Compilable = builtinCompilableFunctions,
             },
             "builtin function",
-            readable,
+            $"[{AttributeConstants.BuiltinIdentifier}(\"{builtinName}\")] ?({string.Join(", ", arguments)})",
 
             query,
 
@@ -634,8 +642,14 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         result = null;
         variableDefinition.Identifier.AnalyzedType = TokenAnalyzedType.ConstantName;
 
-        if (GetConstant(variableDefinition.Identifier.Content, variableDefinition.File, out _, out _))
-        { Diagnostics.Add(DiagnosticAt.Error($"Constant \"{variableDefinition.Identifier}\" already defined", variableDefinition.Identifier, variableDefinition.File)); }
+        if (!CompilingDefinitionStack.Add(variableDefinition))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Circular reference", variableDefinition));
+            return false;
+        }
+
+        //if (GetConstant(variableDefinition.Identifier.Content, variableDefinition.File, out _, out _))
+        //{ Diagnostics.Add(DiagnosticAt.Error($"Constant \"{variableDefinition.Identifier}\" already defined", variableDefinition.Identifier, variableDefinition.File)); }
 
         CompileVariableAttributes(variableDefinition);
 
@@ -724,12 +738,14 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             if (!CompileType(constantValue.Type, out constantType, out PossibleDiagnostic? typeError))
             {
                 Diagnostics.Add(typeError.ToError(variableDefinition.InitialValue?.Location ?? variableDefinition.Location));
+                CompilingDefinitionStack.Remove(variableDefinition);
                 return false;
             }
         }
 
         result = new CompiledVariableConstant(constantValue, constantType, variableDefinition);
         SetStatementReference(variableDefinition, result);
+        CompilingDefinitionStack.Remove(variableDefinition);
         return true;
     }
 
@@ -763,10 +779,10 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         string structName,
         Uri relevantFile,
 
-        [NotNullWhen(true)] out CompiledStruct? result,
+        [NotNullWhen(true)] out StructDefinition? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
         => GetStruct(
-            CompiledStructs,
+            StructDefinitions,
 
             structName,
             relevantFile,
@@ -775,35 +791,35 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             out error);
 
     public static bool GetStruct(
-        IEnumerable<CompiledStruct> structs,
+        IEnumerable<StructDefinition> structs,
 
         string structName,
         Uri relevantFile,
 
-        [NotNullWhen(true)] out CompiledStruct? result,
+        [NotNullWhen(true)] out StructDefinition? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        CompiledStruct? result_ = default;
+        StructDefinition? result_ = default;
         PossibleDiagnostic? error_ = null;
 
         StructPerfectus perfectus = StructPerfectus.None;
 
         static StructPerfectus Max(StructPerfectus a, StructPerfectus b) => a > b ? a : b;
 
-        bool HandleIdentifier(CompiledStruct function)
+        bool HandleIdentifier(StructDefinition function)
         {
             if (structName is not null &&
-                function.Identifier != structName)
+                function.Identifier.Content != structName)
             { return false; }
 
             perfectus = Max(perfectus, StructPerfectus.Identifier);
             return true;
         }
 
-        bool HandleFile(CompiledStruct function)
+        bool HandleFile(StructDefinition function)
         {
             if (relevantFile is null ||
-                function.Definition.File != relevantFile)
+                function.File != relevantFile)
             {
                 // Not in the same file
                 return false;
@@ -820,7 +836,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return true;
         }
 
-        foreach (CompiledStruct function in structs)
+        foreach (StructDefinition function in structs)
         {
             if (!HandleIdentifier(function))
             { continue; }
@@ -879,10 +895,10 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         string aliasName,
         Uri relevantFile,
 
-        [NotNullWhen(true)] out CompiledAlias? result,
+        [NotNullWhen(true)] out AliasDefinition? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
         => GetAlias(
-            CompiledAliases,
+            AliasDefinitions,
 
             aliasName,
             relevantFile,
@@ -891,35 +907,35 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             out error);
 
     public static bool GetAlias(
-        IEnumerable<CompiledAlias> aliases,
+        IEnumerable<AliasDefinition> aliases,
 
         string aliasName,
         Uri relevantFile,
 
-        [NotNullWhen(true)] out CompiledAlias? result,
+        [NotNullWhen(true)] out AliasDefinition? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        CompiledAlias? result_ = default;
+        AliasDefinition? result_ = default;
         PossibleDiagnostic? error_ = null;
 
         AliasPerfectus perfectus = AliasPerfectus.None;
 
         static AliasPerfectus Max(AliasPerfectus a, AliasPerfectus b) => a > b ? a : b;
 
-        bool HandleIdentifier(CompiledAlias _alias)
+        bool HandleIdentifier(AliasDefinition _alias)
         {
             if (aliasName is not null &&
-                _alias.Identifier != aliasName)
+                _alias.Identifier.Content != aliasName)
             { return false; }
 
             perfectus = Max(perfectus, AliasPerfectus.Identifier);
             return true;
         }
 
-        bool HandleFile(CompiledAlias _alias)
+        bool HandleFile(AliasDefinition _alias)
         {
             if (relevantFile is null ||
-                _alias.Definition.File != relevantFile)
+                _alias.File != relevantFile)
             {
                 // Not in the same file
                 return false;
@@ -936,7 +952,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return true;
         }
 
-        foreach (CompiledAlias _alias in aliases)
+        foreach (AliasDefinition _alias in aliases)
         {
             if (!HandleIdentifier(_alias))
             { continue; }
@@ -967,7 +983,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     #endregion
 
-    #region GetAlias()
+    #region GetEnum()
 
     public enum EnumPerfectus
     {
@@ -997,8 +1013,30 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         [NotNullWhen(true)] out CompiledEnum? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        if (!GetEnum(
+                enumName,
+                relevantFile,
+
+                out EnumDefinition? result2,
+                out error))
+        {
+            result = null;
+            return false;
+        }
+
+        result = CompiledEnums.First(v => Utils.ReferenceEquals(v.Definition, result2));
+        return true;
+    }
+
+    bool GetEnum(
+        string enumName,
+        Uri relevantFile,
+
+        [NotNullWhen(true)] out EnumDefinition? result,
+        [NotNullWhen(false)] out PossibleDiagnostic? error)
         => GetEnum(
-            CompiledEnums,
+            EnumDefinitions,
 
             enumName,
             relevantFile,
@@ -1007,35 +1045,35 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             out error);
 
     public static bool GetEnum(
-        IEnumerable<CompiledEnum> enums,
+        IEnumerable<EnumDefinition> enums,
 
         string enumName,
         Uri relevantFile,
 
-        [NotNullWhen(true)] out CompiledEnum? result,
+        [NotNullWhen(true)] out EnumDefinition? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        CompiledEnum? result_ = default;
+        EnumDefinition? result_ = default;
         PossibleDiagnostic? error_ = null;
 
         EnumPerfectus perfectus = EnumPerfectus.None;
 
         static EnumPerfectus Max(EnumPerfectus a, EnumPerfectus b) => a > b ? a : b;
 
-        bool HandleIdentifier(CompiledEnum @enum)
+        bool HandleIdentifier(EnumDefinition @enum)
         {
             if (enumName is not null &&
-                @enum.Identifier != enumName)
+                @enum.Identifier.Content != enumName)
             { return false; }
 
             perfectus = Max(perfectus, EnumPerfectus.Identifier);
             return true;
         }
 
-        bool HandleFile(CompiledEnum @enum)
+        bool HandleFile(EnumDefinition @enum)
         {
             if (relevantFile is null ||
-                @enum.Definition.File != relevantFile)
+                @enum.File != relevantFile)
             {
                 // Not in the same file
                 return false;
@@ -1051,7 +1089,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return true;
         }
 
-        foreach (CompiledEnum @enum in enums)
+        foreach (EnumDefinition @enum in enums)
         {
             if (!HandleIdentifier(@enum))
             { continue; }
@@ -1268,22 +1306,48 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         }
     }
 
-    public static bool CanCastImplicitly(GeneralType source, GeneralType destination, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    public enum CastLevel
+    {
+        None,
+        Cast,
+        ReferenceDereference,
+        SameCast,
+        Same,
+        Equals,
+    }
+
+    public static bool CanCastImplicitly(GeneralType source, GeneralType destination, [NotNullWhen(false)] out PossibleDiagnostic? error, out CastLevel castLevel)
     {
         error = null;
+        castLevel = CastLevel.None;
+
+        if (destination.Equals(source))
+        {
+            castLevel = CastLevel.Equals;
+            return true;
+        }
 
         if (destination.SameAs(source))
-        { return true; }
+        {
+            castLevel = CastLevel.Same;
+            return true;
+        }
 
         if (destination.SameAs(BasicType.Any))
-        { return true; }
+        {
+            castLevel = CastLevel.Same;
+            return true;
+        }
 
         {
             if (destination.Is(out PointerType? dstPointer) &&
                 source.Is(out PointerType? srcPointer))
             {
                 if (dstPointer.To.SameAs(BasicType.Any))
-                { return true; }
+                {
+                    castLevel = CastLevel.Same;
+                    return true;
+                }
 
                 if (dstPointer.To.Is(out ArrayType? dstArray) &&
                     srcPointer.To.Is(out ArrayType? srcArray))
@@ -1297,7 +1361,10 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                     }
 
                     if (dstArray.Length is null)
-                    { return true; }
+                    {
+                        castLevel = CastLevel.Same;
+                        return true;
+                    }
                 }
             }
         }
@@ -1307,7 +1374,10 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 source.Is(out FunctionType? srcFunction)
                 && dstPointer.To.SameAs(BasicType.Any)
                 && srcFunction.HasClosure)
-            { return true; }
+            {
+                castLevel = CastLevel.Same;
+                return true;
+            }
         }
 
         {
@@ -1315,6 +1385,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 && source.Is(out PointerType? srcPointerType)
                 && destReferenceType.To.Equals(srcPointerType.To))
             {
+                castLevel = CastLevel.Same;
                 return true;
             }
         }
@@ -1323,9 +1394,9 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         return false;
     }
 
-    public static bool CanCastImplicitly(GeneralType source, GeneralType destination, Expression? value, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    public static bool CanCastImplicitly(GeneralType source, GeneralType destination, Expression? value, [NotNullWhen(false)] out PossibleDiagnostic? error, out CastLevel castLevel)
     {
-        if (CanCastImplicitly(source, destination, out error)) return true;
+        if (CanCastImplicitly(source, destination, out error, out castLevel)) return true;
 
         if (value is StringLiteralExpression stringLiteral)
         {
@@ -1351,6 +1422,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                     return false;
                 }
 
+                castLevel = CastLevel.SameCast;
                 return true;
             }
 
@@ -1373,6 +1445,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                     }
                 }
 
+                castLevel = CastLevel.SameCast;
                 return true;
             }
         }
@@ -1381,15 +1454,15 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         return false;
     }
 
-    public bool CanCastImplicitly(CompiledExpression value, GeneralType destination, out CompiledExpression assignedValue, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    public bool CanCastImplicitly(CompiledExpression value, GeneralType destination, out CompiledExpression assignedValue, [NotNullWhen(false)] out PossibleDiagnostic? error, out CastLevel castLevel)
     {
         assignedValue = value;
 
-        if (CanCastImplicitly(value.Type, destination, out error)) return true;
+        if (CanCastImplicitly(value.Type, destination, out error, out castLevel)) return true;
 
         if (destination.Is(out ReferenceType? returnRefType))
         {
-            if (value.Type.SameAs(returnRefType.To))
+            if (CanCastImplicitly(value.Type, returnRefType.To, out PossibleDiagnostic? suberror, out CastLevel subcastLevel))
             {
                 if (!IsLValue(value, out PossibleDiagnostic? lvalueError))
                 {
@@ -1404,17 +1477,19 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                     SaveValue = true,
                     Type = new ReferenceType(value.Type),
                 };
+                castLevel = CastLevel.ReferenceDereference;
+                if (subcastLevel < castLevel) castLevel = subcastLevel;
                 return true;
             }
             else
             {
-                error = new PossibleDiagnostic($"Can't cast `{value.Type}` to `{returnRefType.To}`", value);
+                error = suberror;
             }
         }
 
         if (value.Type.Is(out ReferenceType? valueRefType))
         {
-            if (valueRefType.To.SameAs(destination))
+            if (CanCastImplicitly(valueRefType.To, destination, out PossibleDiagnostic? suberror, out CastLevel subcastLevel))
             {
                 assignedValue = new CompiledDereference()
                 {
@@ -1423,105 +1498,13 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                     SaveValue = true,
                     Type = valueRefType.To,
                 };
+                castLevel = CastLevel.ReferenceDereference;
+                if (subcastLevel < castLevel) castLevel = subcastLevel;
                 return true;
             }
             else
             {
-                error = new PossibleDiagnostic($"Can't cast `{valueRefType.To}` to `{value.Type}`", value);
-            }
-        }
-
-        if (value is CompiledString stringInstance)
-        {
-            if (destination.Is(out PointerType? pointerType) &&
-                pointerType.To.Is(out ArrayType? arrayType) &&
-                arrayType.Of.SameAs(BasicType.U16))
-            {
-                if (arrayType.Length is not null)
-                {
-                    if (!arrayType.Length.HasValue)
-                    {
-                        error = new($"Can't cast literal value \"{stringInstance.Value}\" (length of {stringInstance.Value.Length}) to array \"{destination}\" (with a non-constant length)", stringInstance);
-                        return false;
-                    }
-
-                    if (stringInstance.Value.Length != arrayType.Length.Value)
-                    {
-                        error = new($"Can't cast literal value \"{stringInstance.Value}\" (length of {stringInstance.Value.Length}) to array \"{destination}\" (length of {arrayType.Length.Value})", stringInstance);
-                        return false;
-                    }
-                }
-
-                return true;
-            }
-        }
-
-        if (value is CompiledStackString stackStringInstance)
-        {
-            if (destination.Is(out ArrayType? destArrayType) && destArrayType.Of.SameAs(BasicType.U16))
-            {
-                if (destArrayType.Length is null)
-                {
-                    error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {stackStringInstance.Value.Length}) to stack array \"{destination}\" (without length)", stackStringInstance);
-                    return false;
-                }
-
-                if (!destArrayType.Length.HasValue)
-                {
-                    error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {stackStringInstance.Value.Length}) to stack array \"{destination}\" (with a non-constant length)", stackStringInstance);
-                    return false;
-                }
-
-                if (stackStringInstance.Value.Length != destArrayType.Length.Value)
-                {
-                    error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {stackStringInstance.Value.Length}) to stack array \"{destination}\" (length of {destArrayType.Length.Value})", stackStringInstance);
-                    return false;
-                }
-
-                assignedValue = new CompiledStackString()
-                {
-                    Value = stackStringInstance.Value,
-                    IsNullTerminated = false,
-                    IsUTF8 = false,
-                    Type = destination,
-                    Location = stackStringInstance.Location,
-                    SaveValue = stackStringInstance.SaveValue,
-                };
-                return true;
-            }
-
-            if (destination.Is(out ArrayType? destArrayType2) && destArrayType2.Of.SameAs(BasicType.U8))
-            {
-                byte[] bytes = Encoding.UTF8.GetBytes(stackStringInstance.Value);
-
-                if (destArrayType2.Length is null)
-                {
-                    error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (without length)", stackStringInstance);
-                    return false;
-                }
-
-                if (!destArrayType2.Length.HasValue)
-                {
-                    error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (with a non-constant length)", stackStringInstance);
-                    return false;
-                }
-
-                if (bytes.Length != destArrayType2.Length.Value)
-                {
-                    error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (length of {destArrayType2.Length.Value})", stackStringInstance);
-                    return false;
-                }
-
-                assignedValue = new CompiledStackString()
-                {
-                    Value = stackStringInstance.Value,
-                    IsNullTerminated = false,
-                    IsUTF8 = true,
-                    Type = destination,
-                    Location = stackStringInstance.Location,
-                    SaveValue = stackStringInstance.SaveValue,
-                };
-                return true;
+                error = suberror;
             }
         }
 
@@ -1551,26 +1534,168 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                         Location = value.Location,
                         SaveValue = value.SaveValue,
                     };
+                    castLevel = CastLevel.Cast;
                     return true;
                 }
             }
         }
 
-        if (value is CompiledConstantValue constantValue
-            && destination.Is(out BuiltinType? builtinDstType)
-            && constantValue.Value.TryCast(builtinDstType.RuntimeType, out CompiledValue assignedConstValue))
+        switch (value)
         {
-            assignedValue = new CompiledConstantValue()
+            case CompiledString stringInstance:
             {
-                Value = assignedConstValue,
-                Type = destination,
-                Location = value.Location,
-                SaveValue = value.SaveValue,
-            };
-            return true;
+                if (destination.Is(out PointerType? pointerType) &&
+                    pointerType.To.Is(out ArrayType? arrayType) &&
+                    arrayType.Of.SameAs(BasicType.U16))
+                {
+                    if (arrayType.Length is not null)
+                    {
+                        if (!arrayType.Length.HasValue)
+                        {
+                            error = new($"Can't cast literal value \"{stringInstance.Value}\" (length of {stringInstance.Value.Length}) to array \"{destination}\" (with a non-constant length)", stringInstance);
+                            return false;
+                        }
+
+                        if (stringInstance.Value.Length != arrayType.Length.Value)
+                        {
+                            error = new($"Can't cast literal value \"{stringInstance.Value}\" (length of {stringInstance.Value.Length}) to array \"{destination}\" (length of {arrayType.Length.Value})", stringInstance);
+                            return false;
+                        }
+                    }
+
+                    castLevel = CastLevel.SameCast;
+                    return true;
+                }
+
+                break;
+            }
+
+            case CompiledStackString stackStringInstance:
+            {
+                if (destination.Is(out ArrayType? destArrayType) && destArrayType.Of.SameAs(BasicType.U16))
+                {
+                    if (destArrayType.Length is null)
+                    {
+                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {stackStringInstance.Value.Length}) to stack array \"{destination}\" (without length)", stackStringInstance);
+                        return false;
+                    }
+
+                    if (!destArrayType.Length.HasValue)
+                    {
+                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {stackStringInstance.Value.Length}) to stack array \"{destination}\" (with a non-constant length)", stackStringInstance);
+                        return false;
+                    }
+
+                    if (stackStringInstance.Value.Length != destArrayType.Length.Value)
+                    {
+                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {stackStringInstance.Value.Length}) to stack array \"{destination}\" (length of {destArrayType.Length.Value})", stackStringInstance);
+                        return false;
+                    }
+
+                    assignedValue = new CompiledStackString()
+                    {
+                        Value = stackStringInstance.Value,
+                        IsNullTerminated = false,
+                        IsUTF8 = false,
+                        Type = destination,
+                        Location = stackStringInstance.Location,
+                        SaveValue = stackStringInstance.SaveValue,
+                    };
+                    castLevel = CastLevel.SameCast;
+                    return true;
+                }
+
+                if (destination.Is(out ArrayType? destArrayType2) && destArrayType2.Of.SameAs(BasicType.U8))
+                {
+                    byte[] bytes = Encoding.UTF8.GetBytes(stackStringInstance.Value);
+
+                    if (destArrayType2.Length is null)
+                    {
+                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (without length)", stackStringInstance);
+                        return false;
+                    }
+
+                    if (!destArrayType2.Length.HasValue)
+                    {
+                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (with a non-constant length)", stackStringInstance);
+                        return false;
+                    }
+
+                    if (bytes.Length != destArrayType2.Length.Value)
+                    {
+                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (length of {destArrayType2.Length.Value})", stackStringInstance);
+                        return false;
+                    }
+
+                    assignedValue = new CompiledStackString()
+                    {
+                        Value = stackStringInstance.Value,
+                        IsNullTerminated = false,
+                        IsUTF8 = true,
+                        Type = destination,
+                        Location = stackStringInstance.Location,
+                        SaveValue = stackStringInstance.SaveValue,
+                    };
+                    castLevel = CastLevel.SameCast;
+                    return true;
+                }
+
+                break;
+            }
+
+            case CompiledConstantValue constantValue:
+            {
+                if (destination.Is(out BuiltinType? builtinDstType)
+                    && constantValue.Value.TryCast(builtinDstType.RuntimeType, out CompiledValue assignedConstValue))
+                {
+                    assignedValue = new CompiledConstantValue()
+                    {
+                        Value = assignedConstValue,
+                        Type = destination,
+                        Location = value.Location,
+                        SaveValue = value.SaveValue,
+                    };
+                    castLevel = CastLevel.SameCast;
+                    return true;
+                }
+
+                break;
+            }
+
+            case CompiledBinaryOperatorCall binaryOperatorCall:
+                if (value.Type.SameAs(destination))
+                {
+                    assignedValue = new CompiledBinaryOperatorCall()
+                    {
+                        Left = binaryOperatorCall.Left,
+                        Right = binaryOperatorCall.Right,
+                        Operator = binaryOperatorCall.Operator,
+                        Type = destination,
+                        SaveValue = binaryOperatorCall.SaveValue,
+                        Location = binaryOperatorCall.Location,
+                    };
+                    castLevel = CastLevel.SameCast;
+                    return true;
+                }
+                break;
+
+            case CompiledSizeof sizeOf:
+                if (value.Type.SameAs(destination))
+                {
+                    assignedValue = new CompiledSizeof()
+                    {
+                        Of = sizeOf.Of,
+                        Type = destination,
+                        Location = sizeOf.Location,
+                        SaveValue = sizeOf.SaveValue,
+                    };
+                    castLevel = CastLevel.Equals;
+                    return true;
+                }
+                break;
         }
 
-        error = new($"Can't cast `{value.Type.FinalValue}` to `{destination.FinalValue}` implicitly", value);
+        error = new($"Can't cast `{value.Type}` to `{destination}` implicitly", value);
         return false;
     }
 
@@ -1668,9 +1793,11 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             }
         }
 
-        if (GetAlias(name.Content, relevantFile, out CompiledAlias? alias, out PossibleDiagnostic? aliasError))
+        if (GetAlias(name.Content, relevantFile, out AliasDefinition? aliasDefinition, out PossibleDiagnostic? aliasError))
         {
-            name.AnalyzedType = alias.Value.FinalValue switch
+            CompiledAlias compiled = CompileAlias(aliasDefinition);
+
+            name.AnalyzedType = compiled.Value.FinalValue switch
             {
                 CompiledBuiltinTypeExpression => TokenAnalyzedType.BuiltinType,
                 CompiledStructTypeExpression => TokenAnalyzedType.Struct,
@@ -1678,16 +1805,18 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 CompiledEnumTypeExpression => TokenAnalyzedType.Enum,
                 _ => TokenAnalyzedType.Type,
             };
-            alias.AddReference(new TypeInstanceSimple(name, relevantFile));
+            compiled.AddReference(new TypeInstanceSimple(name, relevantFile));
 
-            result = new CompiledAliasTypeExpression(alias, new Location(name.Position, relevantFile));
+            result = new CompiledAliasTypeExpression(compiled, new Location(name.Position, relevantFile));
             error = null;
             return true;
         }
 
-        if (GetEnum(name.Content, relevantFile, out CompiledEnum? @enum, out PossibleDiagnostic? enumError))
+        if (GetEnum(name.Content, relevantFile, out EnumDefinition? enumDefinition, out PossibleDiagnostic? enumError))
         {
-            name.AnalyzedType = @enum.Type.FinalValue switch
+            CompiledEnum compiled = CompileEnum(enumDefinition);
+
+            name.AnalyzedType = compiled.Type.FinalValue switch
             {
                 BuiltinType => TokenAnalyzedType.BuiltinType,
                 StructType => TokenAnalyzedType.Struct,
@@ -1696,19 +1825,21 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 EnumType => TokenAnalyzedType.Enum,
                 _ => TokenAnalyzedType.Type,
             };
-            @enum.AddReference(new TypeInstanceSimple(name, relevantFile));
+            compiled.AddReference(new TypeInstanceSimple(name, relevantFile));
 
-            result = new CompiledEnumTypeExpression(@enum, new Location(name.Position, relevantFile));
+            result = new CompiledEnumTypeExpression(compiled, new Location(name.Position, relevantFile));
             error = null;
             return true;
         }
 
-        if (GetStruct(name.Content, relevantFile, out CompiledStruct? @struct, out PossibleDiagnostic? structError))
+        if (GetStruct(name.Content, relevantFile, out StructDefinition? structDefinition, out PossibleDiagnostic? structError))
         {
-            name.AnalyzedType = TokenAnalyzedType.Struct;
-            @struct.AddReference(new TypeInstanceSimple(name, relevantFile));
+            CompiledStruct compiled = CompileStruct(structDefinition);
 
-            result = new CompiledStructTypeExpression(@struct, relevantFile, new Location(name.Position, relevantFile));
+            name.AnalyzedType = TokenAnalyzedType.Struct;
+            compiled.AddReference(new TypeInstanceSimple(name, relevantFile));
+
+            result = new CompiledStructTypeExpression(compiled, relevantFile, new Location(name.Position, relevantFile));
             error = null;
             return true;
         }
@@ -1745,9 +1876,9 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         type = null;
 
-        foreach (CompiledAlias alias in CompiledAliases)
+        foreach (AliasDefinition aliasDefinition in AliasDefinitions)
         {
-            if (alias.Definition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? attribute))
+            if (aliasDefinition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? attribute))
             {
                 if (ParseAttribute(attribute) == by)
                 {
@@ -1757,19 +1888,21 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                         return false;
                     }
 
-                    if (!CompileType(alias.Value, out GeneralType? aliasValue, out error))
+                    CompiledAlias compiled = CompileAlias(aliasDefinition);
+
+                    if (!CompileType(compiled.Value, out GeneralType? aliasValue, out error))
                     {
                         return false;
                     }
 
-                    type = new AliasType(aliasValue, alias);
+                    type = new AliasType(aliasValue, compiled);
                 }
             }
         }
 
-        foreach (CompiledEnum @enum in CompiledEnums)
+        foreach (EnumDefinition enumDefinition in EnumDefinitions)
         {
-            if (@enum.Definition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? attribute))
+            if (enumDefinition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? attribute))
             {
                 if (ParseAttribute(attribute) == by)
                 {
@@ -1778,14 +1911,17 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                         error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute);
                         return false;
                     }
-                    type = new EnumType(@enum);
+
+                    CompiledEnum compiled = CompileEnum(enumDefinition);
+
+                    type = new EnumType(compiled);
                 }
             }
         }
 
-        foreach (CompiledStruct @struct in CompiledStructs)
+        foreach (StructDefinition structDefinition in StructDefinitions)
         {
-            if (@struct.Definition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? attribute))
+            if (structDefinition.Attributes.TryGetAttribute(AttributeConstants.InternalType, out AttributeUsage? attribute))
             {
                 if (ParseAttribute(attribute) == by)
                 {
@@ -1794,7 +1930,10 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                         error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute);
                         return false;
                     }
-                    type = new StructType(@struct, @struct.Definition.File);
+
+                    CompiledStruct compiled = CompileStruct(structDefinition);
+
+                    type = new StructType(compiled, compiled.File);
                 }
             }
         }

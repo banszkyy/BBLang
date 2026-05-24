@@ -40,11 +40,11 @@ public readonly struct Reference<TSource>
 
 public interface IReferenceable
 {
-    IEnumerable<Reference> References { get; }
+    IEnumerable<Reference> GetReferences();
 }
 
 public interface IReferenceable<TBy> : IReferenceable
 {
-    new List<Reference<TBy>> References { get; }
-    IEnumerable<Reference> IReferenceable.References => References.Select(v => (Reference)v);
+    List<Reference<TBy>> References { get; }
+    IEnumerable<Reference> IReferenceable.GetReferences() => References.Select(v => (Reference)v);
 }

@@ -67,7 +67,7 @@ public class DiagnosticAt :
 #if UNITY
     public new LanguageExceptionAt ToException() => new(Message, Position, File, SubErrors.ToImmutableArray(v => v.ToException() as Exception));
 #else
-    public override LanguageExceptionAt ToException() => new($"{Message}\n{Location}", Position, File, SubErrors.ToImmutableArray(v => v.ToException() as Exception));
+    public override LanguageExceptionAt ToException() => new(Message, Position, File, SubErrors.ToImmutableArray(v => v.ToException() as Exception));
 #endif
 
     #region Internal

@@ -7,6 +7,7 @@ public class LanguageExceptionAt : LanguageException
 {
     public Position Position { get; protected set; }
     public Uri File { get; protected set; }
+    public override string Message => Format(base.Message, Position, File);
 
     public LanguageExceptionAt(string message, Position position, Uri file)
         : this(message, position, file, ImmutableArray<Exception>.Empty)

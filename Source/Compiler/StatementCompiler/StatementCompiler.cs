@@ -27,16 +27,29 @@ public partial class StatementCompiler
 
         compiledStatement = null;
 
-        if (!TryGetBuiltinFunction(BuiltinFunctions.Allocate, ImmutableArray.Create<GeneralType>(SizeofStatementType), type.Location.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? error, AddCompilable))
+        ImmutableArray<CompiledExpression> argumentExpressions = ImmutableArray.Create<CompiledExpression>(new CompiledSizeof()
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")] not found: {error}", type));
+            Of = type,
+            Location = type.Location,
+            SaveValue = true,
+            Type = SizeofStatementType,
+        });
+
+        if (!TryGetBuiltinFunction(BuiltinFunctions.Allocate, argumentExpressions, type.Location.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? error, AddCompilable))
+        {
+            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")] not found", type)
+                .WithSuberrors(error.ToError(type)));
             return false;
         }
 
-        if (result.DidReplaceArguments) throw new UnreachableException();
+        result.ReplaceArgumentsIfNeeded(ref argumentExpressions);
 
-        //result.Function.References.AddReference(type, type.Location.File);
-        //result.OriginalFunction.References.AddReference(type, type.Location.File);
+        if (!CompileArguments(default, argumentExpressions, result.Function, result.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments))
+        {
+            return false;
+        }
+
+        result.Function.AddReference(type);
 
         CompiledFunctionDefinition allocator = result.Function;
         if (!allocator.ReturnSomething)
@@ -50,14 +63,6 @@ public partial class StatementCompiler
             Diagnostics.Add(DiagnosticAt.Error($"Function \"{allocator.ToReadable()}\" cannot be called due to its protection level", type));
             return false;
         }
-
-        ImmutableArray<CompiledArgument> compiledArguments = ImmutableArray.Create(CompiledArgument.Wrap(new CompiledSizeof()
-        {
-            Of = type,
-            Location = type.Location,
-            SaveValue = true,
-            Type = SizeofStatementType,
-        }));
 
         if (allocator.ExternalFunctionName is not null)
         {
@@ -90,16 +95,28 @@ public partial class StatementCompiler
             Diagnostics.Add(DiagnosticAt.Warning($"No type defined for integer literals, using the default {intType}", sizeLocation).WithSuberrors(typeError.ToError(sizeLocation, false)));
         }
 
-        if (!TryGetBuiltinFunction(BuiltinFunctions.Allocate, ImmutableArray.Create<GeneralType>(intType), sizeLocation.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? error, AddCompilable))
+        ImmutableArray<CompiledExpression> argumentExpressions = ImmutableArray.Create<CompiledExpression>(new CompiledConstantValue()
+        {
+            Value = size,
+            Location = sizeLocation,
+            SaveValue = true,
+            Type = intType,
+        });
+
+        if (!TryGetBuiltinFunction(BuiltinFunctions.Allocate, argumentExpressions, sizeLocation.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? error, AddCompilable))
         {
             Diagnostics.Add(DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")] not found: {error}", sizeLocation));
             return false;
         }
 
-        if (result.DidReplaceArguments) throw new UnreachableException();
+        result.ReplaceArgumentsIfNeeded(ref argumentExpressions);
 
-        //result.Function.References.AddReference(type, type.Location.File);
-        //result.OriginalFunction.References.AddReference(type, type.Location.File);
+        result.Function.AddReference(sizeLocation);
+
+        if (!CompileArguments(default, argumentExpressions, result.Function, result.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments))
+        {
+            return false;
+        }
 
         CompiledFunctionDefinition allocator = result.Function;
         if (!allocator.ReturnSomething)
@@ -113,14 +130,6 @@ public partial class StatementCompiler
             Diagnostics.Add(DiagnosticAt.Error($"Function \"{allocator.ToReadable()}\" cannot be called due to its protection level", sizeLocation));
             return false;
         }
-
-        ImmutableArray<CompiledArgument> compiledArguments = ImmutableArray.Create(CompiledArgument.Wrap(new CompiledConstantValue()
-        {
-            Value = size,
-            Location = sizeLocation,
-            SaveValue = true,
-            Type = intType,
-        }));
 
         if (allocator.ExternalFunctionName is not null)
         {
@@ -146,17 +155,24 @@ public partial class StatementCompiler
     bool CompileDeallocation(GeneralType deallocateableType, Location location, [NotNullWhen(true)] out CompiledFunctionDefinition? deallocator)
     {
         deallocator = null;
-        ImmutableArray<GeneralType> parameterTypes = ImmutableArray.Create(deallocateableType);
+        ImmutableArray<CompiledExpression> argumentExpressions = ImmutableArray.Create<CompiledExpression>(
+            new CompiledMeowExpression()
+            {
+                Location = location,
+                SaveValue = true,
+                Type = deallocateableType,
+            }
+        );
 
-        if (!TryGetBuiltinFunction(BuiltinFunctions.Free, parameterTypes, location.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? notFoundError, AddCompilable))
+        if (!TryGetBuiltinFunction(BuiltinFunctions.Free, argumentExpressions, location.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? notFoundError, AddCompilable))
         {
             Diagnostics.Add(DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Free}\")] not found", location).WithSuberrors(notFoundError.ToError(location)));
             return false;
         }
 
-        result.Function.AddReference(null, location);
+        result.Function.AddReference(new CompiledMeowExpression() { Location = location, SaveValue = true, Type = deallocateableType });
 
-        if (result.DidReplaceArguments) throw new UnreachableException();
+        result.ReplaceArgumentsIfNeeded(ref argumentExpressions);
 
         deallocator = result.Function;
 
@@ -198,10 +214,10 @@ public partial class StatementCompiler
         {
             if (!GetGeneralFunction(deallocateablePointerType.To, argumentTypes, BuiltinFunctionIdentifiers.Destructor, location.File, out destructor, out PossibleDiagnostic? error, AddCompilable))
             {
-                if (deallocateablePointerType.To.Is<StructType>())
-                {
-                    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type \"{deallocateablePointerType.To}\" not found", location).WithSuberrors(error.ToWarning(location)));
-                }
+                //if (deallocateablePointerType.To.Is<StructType>())
+                //{
+                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type \"{deallocateablePointerType.To}\" not found", location).WithSuberrors(error.ToWarning(location)));
+                //}
             }
             else
             {
@@ -212,10 +228,10 @@ public partial class StatementCompiler
         {
             if (!GetGeneralFunction(deallocateableType, argumentTypes, BuiltinFunctionIdentifiers.Destructor, location.File, out destructor, out PossibleDiagnostic? error, AddCompilable))
             {
-                if (deallocateableType.Is<StructType>())
-                {
-                    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type \"{deallocateableType}\" not found", location).WithSuberrors(error.ToWarning(location)));
-                }
+                //if (deallocateableType.Is<StructType>())
+                //{
+                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type \"{deallocateableType}\" not found", location).WithSuberrors(error.ToWarning(location)));
+                //}
             }
             else
             {
@@ -425,49 +441,41 @@ public partial class StatementCompiler
 
                     if (newVariable.InitialValue is StringLiteralExpression literalStatement)
                     {
+                        int realLength;
+
                         if (arrayType.Of.SameAs(BasicType.U16))
                         {
-                            int length = literalStatement.Value.Length + 1;
-
-                            if (arrayType.Length.HasValue)
-                            {
-                                length = arrayType.Length.Value;
-                            }
-                            else if (arrayType.Length.HasValue)
-                            {
-                                length = arrayType.Length.Value;
-                            }
-
-                            if (length != literalStatement.Value.Length &&
-                                length != literalStatement.Value.Length + 1)
-                            {
-                                Diagnostics.Add(DiagnosticAt.Error($"String literal's length ({literalStatement.Value.Length}) doesn't match with the type's length ({length})", literalStatement));
-                            }
-
-                            type = new ArrayType(arrayType.Of, length);
+                            realLength = literalStatement.Value.Length;
                         }
                         else if (arrayType.Of.SameAs(BasicType.U8))
                         {
-                            int byteCount = Encoding.UTF8.GetByteCount(literalStatement.Value);
-                            int length = byteCount + 1;
-
-                            if (arrayType.Length.HasValue)
-                            {
-                                length = arrayType.Length.Value;
-                            }
-                            else if (arrayType.Length.HasValue)
-                            {
-                                length = arrayType.Length.Value;
-                            }
-
-                            if (length != byteCount &&
-                                length != byteCount + 1)
-                            {
-                                Diagnostics.Add(DiagnosticAt.Error($"String literal's length ({byteCount}) doesn't match with the type's length ({length})", literalStatement));
-                            }
-
-                            type = new ArrayType(arrayType.Of, length);
+                            realLength = Encoding.UTF8.GetByteCount(literalStatement.Value);
                         }
+                        else
+                        {
+                            goto skip;
+                        }
+
+                        int definedLength = realLength + 1;
+
+                        if (arrayType.Length.HasValue)
+                        {
+                            definedLength = arrayType.Length.Value;
+                        }
+                        else if (arrayType.Length.HasValue)
+                        {
+                            definedLength = arrayType.Length.Value;
+                        }
+
+                        if (definedLength != realLength &&
+                            definedLength != realLength + 1)
+                        {
+                            Diagnostics.Add(DiagnosticAt.Error($"String literal's length ({realLength}) doesn't match with the type's length ({definedLength})", literalStatement));
+                        }
+
+                        type = new ArrayType(arrayType.Of, definedLength);
+
+                    skip:;
                     }
                 }
 
@@ -531,7 +539,7 @@ public partial class StatementCompiler
             {
                 type ??= internalConstantType;
 
-                if (!CanCastImplicitly(internalConstantType, type, out PossibleDiagnostic? castError))
+                if (!CanCastImplicitly(internalConstantType, type, out PossibleDiagnostic? castError, out _))
                 {
                     Diagnostics.Add(castError.ToError(newVariable.Type));
                     return false;
@@ -561,7 +569,7 @@ public partial class StatementCompiler
                     ? initialValue.Type
                     : GeneralType.TryInsertConstants(type, initialValue.Type);
 
-                if (!CanCastImplicitly(initialValue, type, out CompiledExpression? assignedInitialValue, out PossibleDiagnostic? castError))
+                if (!CanCastImplicitly(initialValue, type, out CompiledExpression? assignedInitialValue, out PossibleDiagnostic? castError, out _))
                 {
                     Diagnostics.Add(castError.ToError(initialValue));
                     success = false;
@@ -652,7 +660,7 @@ public partial class StatementCompiler
                 if (!CompileExpression(keywordCall.Arguments[0], out returnValue, Frames.Last.CurrentReturnType)) return false;
                 Frames.Last.CurrentReturnType ??= returnValue.Type;
 
-                if (!CanCastImplicitly(returnValue, Frames.Last.CurrentReturnType, out CompiledExpression? assignedReturnValue, out PossibleDiagnostic? castError))
+                if (!CanCastImplicitly(returnValue, Frames.Last.CurrentReturnType, out CompiledExpression? assignedReturnValue, out PossibleDiagnostic? castError, out _))
                 {
                     Diagnostics.Add(castError.ToError(keywordCall.Arguments[0]));
                 }
@@ -724,7 +732,7 @@ public partial class StatementCompiler
 
             if (!CompileExpression(keywordCall.Arguments[0], out CompiledExpression? to)) return false;
 
-            if (!CanCastImplicitly(to, CompiledLabelDeclaration.Type, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError))
+            if (!CanCastImplicitly(to, CompiledLabelDeclaration.Type, out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
             {
                 Diagnostics.Add(castError.ToError(keywordCall.Arguments[0]));
                 return false;
@@ -1065,7 +1073,7 @@ public partial class StatementCompiler
         {
             if (!CompileExpression(value, out CompiledExpression? _value, registerKeyword.Type)) return false;
 
-            if (!CanCastImplicitly(_value, registerKeyword.Type, out _value, out PossibleDiagnostic? castError))
+            if (!CanCastImplicitly(_value, registerKeyword.Type, out _value, out PossibleDiagnostic? castError, out _))
             { Diagnostics.Add(castError.ToError(value)); }
 
             compiledStatement = new CompiledSetter()
@@ -1105,7 +1113,7 @@ public partial class StatementCompiler
 
             if (!CompileExpression(value, out CompiledExpression? _value, parameter.Type)) return false;
 
-            if (!CanCastImplicitly(_value, parameter.Type, out _value, out PossibleDiagnostic? castError))
+            if (!CanCastImplicitly(_value, parameter.Type, out _value, out PossibleDiagnostic? castError, out _))
             {
                 Diagnostics.Add(castError.ToError(value));
             }
@@ -1240,7 +1248,7 @@ public partial class StatementCompiler
             GeneralType type = GeneralType.InsertTypeParameters(compiledField.Type, structPointerType.TypeArguments);
             if (!CompileExpression(value, out CompiledExpression? _value, type)) return false;
 
-            if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2))
+            if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
             {
                 Diagnostics.Add(castError2.ToError(value));
             }
@@ -1276,7 +1284,7 @@ public partial class StatementCompiler
             GeneralType type = GeneralType.TryInsertTypeParameters(compiledField.Type, structType.TypeArguments);
             if (!CompileExpression(value, out CompiledExpression? _value, type)) return false;
 
-            if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2))
+            if (!CanCastImplicitly(_value, type, out _value, out PossibleDiagnostic? castError2, out _))
             {
                 Diagnostics.Add(castError2.ToError(value));
             }
@@ -1334,7 +1342,7 @@ public partial class StatementCompiler
             {
                 if (compiledStatement2.Type.Is(out IReferenceType? referenceReturnType))
                 {
-                    if (CanCastImplicitly(_value.Type, referenceReturnType.To, out PossibleDiagnostic? castError2))
+                    if (CanCastImplicitly(_value.Type, referenceReturnType.To, out PossibleDiagnostic? castError2, out _))
                     {
                         compiledStatement = new CompiledSetter()
                         {
@@ -1385,7 +1393,7 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (!CanCastImplicitly(_value, itemType, out _value, out PossibleDiagnostic? castError))
+        if (!CanCastImplicitly(_value, itemType, out _value, out PossibleDiagnostic? castError, out _))
         {
             Diagnostics.Add(castError.ToError(value));
         }
@@ -1420,7 +1428,7 @@ public partial class StatementCompiler
 
         if (!CompileExpression(value, out CompiledExpression? _value, targetType)) return false;
 
-        if (!CanCastImplicitly(_value, targetType, out _value, out PossibleDiagnostic? castError))
+        if (!CanCastImplicitly(_value, targetType, out _value, out PossibleDiagnostic? castError, out _))
         {
             Diagnostics.Add(castError.ToError(value));
         }
@@ -1617,7 +1625,7 @@ public partial class StatementCompiler
             if (function.Definition.IsTemplate) continue;
             if (!Settings.CompileEverything)
             {
-                if (!function.References.Any() && (function is not IExposeable exposeable || exposeable.ExposedFunctionName is null) && !function.Definition.Attributes.TryGetAttribute(AttributeConstants.BuiltinIdentifier, out _))
+                if (!function.GetReferences().Any() && (function is not IExposeable exposeable || exposeable.ExposedFunctionName is null) && !function.Definition.Attributes.TryGetAttribute(AttributeConstants.BuiltinIdentifier, out _))
                 { continue; }
             }
 
@@ -1704,22 +1712,9 @@ public partial class StatementCompiler
         return true;
     }
 
-    void GenerateCode(ImmutableArray<ParsedFile> parsedFiles, Uri entryFile)
+    void GenerateCode(Uri entryFile)
     {
         ImmutableArray<CompiledLabelDeclaration>.Builder globalInstructionLabels = ImmutableArray.CreateBuilder<CompiledLabelDeclaration>();
-
-        foreach (VariableDefinition variableDeclaration in TopLevelStatements
-            .SelectMany(v => v.Statements)
-            .OfType<VariableDefinition>())
-        {
-            if (variableDeclaration.Modifiers.Contains(ModifierKeywords.Const))
-            {
-                if (CompileConstant(variableDeclaration, out CompiledVariableConstant? result))
-                {
-                    CompiledGlobalConstants.Add(result);
-                }
-            }
-        }
 
         foreach (InstructionLabelDeclaration instructionLabel in TopLevelStatements
             .SelectMany(v => v.Statements)
@@ -1839,7 +1834,7 @@ public partial class StatementCompiler
         {
             if (firstHeapUsageLocation is null) throw new UnreachableException();
 
-            if (!TryGetBuiltinFunction(BuiltinFunctions.InitializeHeap, ImmutableArray.Create<GeneralType>(), entryFile, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? notFoundError, AddCompilable))
+            if (!TryGetBuiltinFunction(BuiltinFunctions.InitializeHeap, ImmutableArray<CompiledExpression>.Empty, entryFile, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? notFoundError, AddCompilable))
             {
                 Diagnostics.Add(
                     DiagnosticAt.Error($"Failed to generate heap initialization code", firstHeapUsageLocation)

@@ -20,13 +20,6 @@ struct List<T>
         return this._ptr[index];
     }
 
-    export void indexer_set(int index, T value)
-    {
-        if (index < 0 || index >= this._length)
-        { crash "Index out of range exception"; }
-        this._ptr[index] = value;
-    }
-
     export List<T>(int capacity)
     {
         this._capacity = capacity;

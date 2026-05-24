@@ -8,14 +8,14 @@ static class Utils
     public static CompilerSettings GetCompilerSettings(CompilerSettings settigns) => new(settigns)
     {
         AdditionalImports = ImmutableArray.Create(
-            $"{LanguageCore.Program.ProjectPath}/StandardLibrary/Primitives.bbc"
+            $"{Project.Path}/StandardLibrary/Primitives.bbc"
         ),
         SourceProviders = ImmutableArray.Create<ISourceProvider>(
             new FileSourceProvider()
             {
                 ExtraDirectories = new string[]
                 {
-                    $"{LanguageCore.Program.ProjectPath}/StandardLibrary/"
+                    $"{Project.Path}/StandardLibrary/"
                 },
             }
         ),

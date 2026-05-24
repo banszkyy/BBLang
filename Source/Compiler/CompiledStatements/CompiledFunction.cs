@@ -3,6 +3,7 @@ namespace LanguageCore.Compiler;
 [Flags]
 public enum FunctionFlags
 {
+    None = 0x0,
     CapturesGlobalVariables = 0x1,
     AllocatesMemory = 0x2,
     DeallocatesMemory = 0x4,

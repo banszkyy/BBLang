@@ -33,6 +33,7 @@ public struct BrainfuckGeneratorSettings
     public bool GenerateSmallComments;
     public bool GenerateComments;
     public bool CleanupHeap;
+    public bool CheckNullPointers;
 
     public readonly int HeapStart => StackSize + 1;
 
@@ -47,6 +48,7 @@ public struct BrainfuckGeneratorSettings
         GenerateSmallComments = false,
         GenerateComments = false,
         CleanupHeap = false,
+        CheckNullPointers = true,
     };
 
     public BrainfuckGeneratorSettings(BrainfuckGeneratorSettings other)
@@ -60,6 +62,7 @@ public struct BrainfuckGeneratorSettings
         GenerateSmallComments = other.GenerateSmallComments;
         GenerateComments = other.GenerateComments;
         CleanupHeap = other.CleanupHeap;
+        CheckNullPointers = other.CheckNullPointers;
     }
 }
 
@@ -413,12 +416,14 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 
             if (index.Index is not CompiledConstantValue indexValue)
             {
-                address = null;
-                return false;
+                address = new AddressRuntimeIndex(new AddressRuntimePointer(index.Base), index.Index, size);
+                return true;
             }
-
-            address = new AddressRuntimePointer(index.Base) + ((int)indexValue.Value * size);
-            return true;
+            else
+            {
+                address = new AddressRuntimePointer(index.Base) + ((int)indexValue.Value * size);
+                return true;
+            }
         }
 
         if (!GetVariable(index.Base, out BrainfuckVariable? variable, out PossibleDiagnostic? notFoundError))

@@ -5,6 +5,8 @@ namespace LanguageCore.Parser;
 
 public class AliasDefinition :
     IPositioned,
+    IInFile,
+    ILocated,
     IIdentifiable<Token>,
     IExportable,
     IHaveAttributes
@@ -17,6 +19,7 @@ public class AliasDefinition :
     public Uri File { get; }
 
     public Position Position => new(Keyword, Identifier, Value);
+    public Location Location => new(Position, File);
     public bool IsExported => Modifiers.Contains(ProtectionKeywords.Export);
 
     CanUseOn IHaveAttributes.AttributeUsageKind => CanUseOn.TypeAlias;
@@ -40,4 +43,6 @@ public class AliasDefinition :
         Value = other.Value;
         File = other.File;
     }
+
+    public override string ToString() => $"{DeclarationKeywords.Alias} {Identifier} = {Value}";
 }

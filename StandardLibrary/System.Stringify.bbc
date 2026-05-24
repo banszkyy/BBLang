@@ -3,12 +3,12 @@ using System.String;
 using System.Memory;
 using System.Math;
 
-export string tostring(this u8 number)
+export string tostring(this byte number)
 {
 	if (number == 0)
     { return "0"; }
 
-	u8 v = number;
+	byte v = number;
 
     int numberLength = log10(v) + 2;
 
@@ -18,7 +18,7 @@ export string tostring(this u8 number)
     int i = numberLength - 2;
 	while (v > 0)
 	{
-        u8 rem = v % (u8)10;
+        byte rem = v % (byte)10;
         result[i] = ((char)rem) + '0';
 		v = v / 10;
         i--;
@@ -27,12 +27,12 @@ export string tostring(this u8 number)
 	return result;
 }
 
-export string tostring(this i32 number)
+export string tostring(this int number)
 {
 	if (number == 0)
     { return "0"; }
     
-	i32 v = number;
+	int v = number;
 
 	byte isNegative = v < 0;
 	if (isNegative)

@@ -14,7 +14,7 @@ public class SetupAssemblyInitializer
 
 static class TestList
 {
-    static readonly string TestFilesPath = $"{LanguageCore.Program.ProjectPath}/TestFiles/";
+    static readonly string TestFilesPath = $"{Project.Path}/TestFiles/";
 
     const int TestCount = 92;
     static readonly int TestFileNameWidth = (int)Math.Floor(Math.Log10(TestCount)) + 1;

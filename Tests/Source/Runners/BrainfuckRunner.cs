@@ -56,11 +56,23 @@ static class BrainfuckRunner
         byte InputCallback() => Brainfuck.CharCode.GetByte(inputBuffer.Read());
 
         DiagnosticsCollection diagnostics = new();
-        CompilerResult compiled = StatementCompiler.CompileFile(file, new CompilerSettings(Utils.GetCompilerSettings(Brainfuck.Generator.CodeGeneratorForBrainfuck.DefaultCompilerSettings))
+        CompilerResult compiled;
+        Brainfuck.Generator.BrainfuckGeneratorResult generated;
+
+        try
         {
-            Optimizations = OptimizationSettings.All,
-        }, diagnostics);
-        Brainfuck.Generator.BrainfuckGeneratorResult generated = Brainfuck.Generator.CodeGeneratorForBrainfuck.Generate(compiled, BrainfuckGeneratorSettings, null, diagnostics);
+            compiled = StatementCompiler.CompileFile(file, new CompilerSettings(Utils.GetCompilerSettings(Brainfuck.Generator.CodeGeneratorForBrainfuck.DefaultCompilerSettings))
+            {
+                Optimizations = OptimizationSettings.All,
+            }, diagnostics);
+            generated = Brainfuck.Generator.CodeGeneratorForBrainfuck.Generate(compiled, BrainfuckGeneratorSettings, null, diagnostics);
+        }
+        catch
+        {
+            diagnostics.Throw();
+            throw;
+        }
+
         diagnostics.Throw();
 
         diagnostics = new DiagnosticsCollection();

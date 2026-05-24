@@ -7,40 +7,44 @@ namespace LanguageCore.Compiler;
 
 public partial class StatementCompiler
 {
-    bool CompileArguments(ImmutableArray<ArgumentExpression> arguments, ImmutableArray<CompiledExpression> compiledArgumentExpressions, FunctionType function, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments)
+    bool CompileArguments(ImmutableArray<ArgumentExpression>? arguments, ImmutableArray<CompiledExpression> compiledArgumentExpressions, FunctionType function, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments)
     {
-        ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(arguments.Length);
+        ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(compiledArgumentExpressions.Length);
 
-        for (int i = 0; i < arguments.Length; i++)
+        for (int i = 0; i < compiledArgumentExpressions.Length; i++)
         {
-            Expression argument = arguments[i];
+            ArgumentExpression? argument = arguments.HasValue ? arguments.Value[i] : null;
             CompiledExpression compiledArgumentExpression = compiledArgumentExpressions[i];
             GeneralType parameterType = function.Parameters[i];
 
-            if (!CanCastImplicitly(compiledArgumentExpression, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error))
+            if (!CanCastImplicitly(compiledArgumentExpression, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error, out _))
             { Diagnostics.Add(error.ToError(compiledArgumentExpression)); }
             compiledArgumentExpression = assignedArgument;
 
-            bool canDeallocate = true; // temp type maybe?
-
-            canDeallocate = canDeallocate && AllowDeallocate(compiledArgumentExpression.Type);
-
-            if (StatementCanBeDeallocated(ArgumentExpression.Wrap(argument), out bool explicitDeallocate))
-            {
-                if (explicitDeallocate && !canDeallocate)
-                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a \"{ModifierKeywords.Temp}\" modifier", argument)); }
-            }
-            else
-            {
-                if (explicitDeallocate)
-                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value", compiledArgumentExpression)); }
-                canDeallocate = false;
-            }
-
             CompiledCleanup? compiledCleanup = null;
-            if (canDeallocate)
+
+            if (argument is not null)
             {
-                CompileCleanup(compiledArgumentExpression.Type, compiledArgumentExpression.Location, out compiledCleanup);
+                bool canDeallocate = true; // temp type maybe?
+
+                canDeallocate = canDeallocate && AllowDeallocate(compiledArgumentExpression.Type);
+
+                if (StatementCanBeDeallocated(argument, out bool explicitDeallocate))
+                {
+                    if (explicitDeallocate && !canDeallocate)
+                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a \"{ModifierKeywords.Temp}\" modifier", argument)); }
+                }
+                else
+                {
+                    if (explicitDeallocate)
+                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value", compiledArgumentExpression)); }
+                    canDeallocate = false;
+                }
+
+                if (canDeallocate)
+                {
+                    CompileCleanup(compiledArgumentExpression.Type, compiledArgumentExpression.Location, out compiledCleanup);
+                }
             }
 
             result.Add(new CompiledArgument()
@@ -60,16 +64,16 @@ public partial class StatementCompiler
         compiledArguments = result.ToImmutable();
         return true;
     }
-    bool CompileArguments(ImmutableArray<ArgumentExpression> arguments, ImmutableArray<CompiledExpression> compiledArgumentExpressions, ICompiledFunctionDefinition compiledFunction, ImmutableDictionary<string, GeneralType>? typeArguments, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments, int alreadyPassed = 0)
+    bool CompileArguments(ImmutableArray<ArgumentExpression>? arguments, ImmutableArray<CompiledExpression> compiledArgumentExpressions, ICompiledFunctionDefinition compiledFunction, ImmutableDictionary<string, GeneralType>? typeArguments, [NotNullWhen(true)] out ImmutableArray<CompiledArgument> compiledArguments, int alreadyPassed = 0)
     {
         compiledArguments = ImmutableArray<CompiledArgument>.Empty;
 
-        ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(arguments.Length);
+        ImmutableArray<CompiledArgument>.Builder result = ImmutableArray.CreateBuilder<CompiledArgument>(compiledArgumentExpressions.Length);
 
-        for (int i = 0; i < arguments.Length; i++)
+        for (int i = 0; i < compiledArgumentExpressions.Length; i++)
         {
             CompiledParameter parameter = compiledFunction.Parameters[i + alreadyPassed];
-            ArgumentExpression argument = arguments[i];
+            ArgumentExpression? argument = arguments.HasValue ? arguments.Value[i] : null;
             CompiledExpression? compiledArgumentExpression = compiledArgumentExpressions[i];
             GeneralType parameterType = GeneralType.TryInsertTypeParameters(parameter.Type, typeArguments);
 
@@ -77,16 +81,18 @@ public partial class StatementCompiler
                 parameter.Definition.Modifiers.Any(v => v.Content == ModifierKeywords.This) &&
                 !compiledArgumentExpression.Type.Is<PointerType>())
             {
-                if (!CompileExpression(new GetReferenceExpression(
-                    Token.CreateAnonymous("&", TokenType.Operator, argument.Position.Before()),
-                    argument,
-                    argument.File
-                ), out compiledArgumentExpression, parameterType))
-                { return false; }
+                compiledArgumentExpression = new CompiledGetReference()
+                {
+                    Of = compiledArgumentExpression,
+                    Type = new PointerType(compiledArgumentExpression.Type),
+                    Location = compiledArgumentExpression.Location,
+                    SaveValue = true,
+                };
             }
 
-            if (!CanCastImplicitly(compiledArgumentExpression, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error))
-            { Diagnostics.Add(error.ToError(argument)); }
+            if (!CanCastImplicitly(compiledArgumentExpression, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error, out _))
+            { Diagnostics.Add(error.ToError(compiledArgumentExpression)); }
+
             compiledArgumentExpression = assignedArgument;
 
             if (compiledArgumentExpression is CompiledConstantValue meow3
@@ -95,32 +101,36 @@ public partial class StatementCompiler
                 && meow is CompiledConstantValue meow2
                 && meow3.Value.Equals(meow2.Value))
             {
-                Diagnostics.Add(DiagnosticAt.Hint($"Passed argument is the same as the default value", argument));
-            }
-
-            bool typeAllowsTemp = AllowDeallocate(compiledArgumentExpression.Type);
-
-            bool calleeAllowsTemp = parameter.Definition.Modifiers.Contains(ModifierKeywords.Temp);
-
-            bool callerAllowsTemp = StatementCanBeDeallocated(argument, out bool explicitDeallocate);
-
-            if (callerAllowsTemp)
-            {
-                if (explicitDeallocate && !calleeAllowsTemp)
-                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a \"{ModifierKeywords.Temp}\" modifier", argument)); }
-                if (explicitDeallocate && !typeAllowsTemp)
-                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this type", argument)); }
-            }
-            else
-            {
-                if (explicitDeallocate)
-                { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value", argument)); }
+                Diagnostics.Add(DiagnosticAt.Hint($"Passed argument is the same as the default value", compiledArgumentExpression));
             }
 
             CompiledCleanup? compiledCleanup = null;
-            if (calleeAllowsTemp && callerAllowsTemp && typeAllowsTemp)
+
+            if (argument is not null)
             {
-                CompileCleanup(compiledArgumentExpression.Type, argument.Location, out compiledCleanup);
+                bool typeAllowsTemp = AllowDeallocate(compiledArgumentExpression.Type);
+
+                bool calleeAllowsTemp = parameter.Definition.Modifiers.Contains(ModifierKeywords.Temp);
+
+                bool callerAllowsTemp = StatementCanBeDeallocated(argument, out bool explicitDeallocate);
+
+                if (callerAllowsTemp)
+                {
+                    if (explicitDeallocate && !calleeAllowsTemp)
+                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a \"{ModifierKeywords.Temp}\" modifier", argument)); }
+                    if (explicitDeallocate && !typeAllowsTemp)
+                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this type", argument)); }
+                }
+                else
+                {
+                    if (explicitDeallocate)
+                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value", argument)); }
+                }
+
+                if (calleeAllowsTemp && callerAllowsTemp && typeAllowsTemp)
+                {
+                    CompileCleanup(compiledArgumentExpression.Type, argument.Location, out compiledCleanup);
+                }
             }
 
             result.Add(new CompiledArgument()
@@ -137,7 +147,7 @@ public partial class StatementCompiler
             });
         }
 
-        int remaining = compiledFunction.Parameters.Length - arguments.Length - alreadyPassed;
+        int remaining = compiledFunction.Parameters.Length - compiledArgumentExpressions.Length - alreadyPassed;
 
         ImmutableArray<Scope> savedScopes = Frames.Last.Scopes.ToImmutableArray();
         Frames.Last.Scopes.Clear();
@@ -145,7 +155,7 @@ public partial class StatementCompiler
         {
             for (int i = 0; i < remaining; i++)
             {
-                CompiledParameter parameter = compiledFunction.Parameters[arguments.Length + i + alreadyPassed];
+                CompiledParameter parameter = compiledFunction.Parameters[compiledArgumentExpressions.Length + i + alreadyPassed];
                 Expression? argument = parameter.Definition.DefaultValue;
                 GeneralType parameterType = GeneralType.TryInsertTypeParameters(parameter.Type, typeArguments);
 
@@ -161,7 +171,7 @@ public partial class StatementCompiler
 
                 if (!CompileExpression(argument, out CompiledExpression? compiledArgument, parameterType)) return false;
 
-                if (!CanCastImplicitly(compiledArgument, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error))
+                if (!CanCastImplicitly(compiledArgument, parameterType, out CompiledExpression? assignedArgument, out PossibleDiagnostic? error, out _))
                 { Diagnostics.Add(error.ToError(argument)); }
                 compiledArgument = assignedArgument;
 
@@ -392,7 +402,7 @@ public partial class StatementCompiler
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function inlined", caller));
 
-                        if (!CanCastImplicitly(statementWithValue, GeneralType.TryInsertTypeParameters(callee.Type, typeArguments), out CompiledExpression? assignedValue, out PossibleDiagnostic? castError))
+                        if (!CanCastImplicitly(statementWithValue, GeneralType.TryInsertTypeParameters(callee.Type, typeArguments), out CompiledExpression? assignedValue, out PossibleDiagnostic? castError, out _))
                         { Diagnostics.Add(castError.ToError(statementWithValue)); }
                         statementWithValue = assignedValue;
 
@@ -484,7 +494,7 @@ public partial class StatementCompiler
 
             GeneralType resultType = SizeofStatementType;
             if (expectedType is not null &&
-                CanCastImplicitly(resultType, expectedType, out _))
+                CanCastImplicitly(resultType, expectedType, out _, out _))
             {
                 resultType = expectedType;
             }
@@ -551,6 +561,11 @@ public partial class StatementCompiler
 
                 return CompileFunctionCall(functionCall, compiledArgumentExpressions, functionCall.MethodArguments, result, out compiledStatement);
             }
+            else
+            {
+                Debugger.Break();
+                GetFunction(functionCall.Identifier.Content, compiledArgumentExpressions, anyCall.File, out _, out _, AddCompilable);
+            }
         }
 
         if (!CompileExpression(anyCall.Arguments.Arguments.Select(v => v.Value), out compiledArgumentExpressions))
@@ -616,7 +631,7 @@ public partial class StatementCompiler
             if (argument.Type.SameAs(parameter))
             { return true; }
 
-            if (CanCastImplicitly(argument.Type, parameter, out argumentError))
+            if (CanCastImplicitly(argument.Type, parameter, out argumentError, out _))
             { return true; }
 
             argumentError = argumentError.TrySetLocation(argument);
@@ -656,12 +671,11 @@ public partial class StatementCompiler
         if (!CompileExpression(left, out CompiledExpression? compiledLeft, expectedType)) return false;
         if (!CompileExpression(right, out CompiledExpression? compiledRight, expectedType)) return false;
 
-        if (GetOperator(@operator.Operator.Content, ImmutableArray.Create(compiledLeft, compiledRight), @operator.File, out FunctionQueryResult<CompiledOperatorDefinition>? result, out PossibleDiagnostic? notFoundError))
+        ImmutableArray<CompiledExpression> argumentExpressions = ImmutableArray.Create(compiledLeft, compiledRight);
+        if (GetOperator(@operator.Operator.Content, argumentExpressions, @operator.File, out FunctionQueryResult<CompiledOperatorDefinition>? result, out PossibleDiagnostic? notFoundError))
         {
             @operator.Operator.AnalyzedType = TokenAnalyzedType.FunctionName;
             SetStatementReference(@operator, result.Function);
-
-            if (result.DidReplaceArguments) throw new UnreachableException();
 
             CompiledOperatorDefinition? operatorDefinition = result.Function;
 
@@ -672,7 +686,7 @@ public partial class StatementCompiler
 
             SetStatementType(@operator, operatorDefinition.Type);
 
-            if (!CompileFunctionCall(@operator, ImmutableArray.Create(compiledLeft, compiledRight), @operator.Arguments.ToImmutableArray(ArgumentExpression.Wrap), result, out compiledStatement)) return false;
+            if (!CompileFunctionCall(@operator, argumentExpressions, @operator.Arguments.ToImmutableArray(ArgumentExpression.Wrap), result, out compiledStatement)) return false;
 
             return true;
         }
@@ -833,6 +847,15 @@ public partial class StatementCompiler
                             return false;
                     }
 
+                    if (compiledLeft.Type.SameAs(resultType) && compiledRight.Type.SameAs(resultType))
+                    {
+                        resultType = compiledLeft.Type;
+                    }
+                    else
+                    {
+                        Diagnostics.Add(DiagnosticAt.Warning($"Failed to infer binary operator result type ({leftType} {@operator.Operator} {rightType}), using {resultType} instead", @operator));
+                    }
+
                     SetStatementType(@operator, resultType);
 
                     goto OK;
@@ -887,7 +910,7 @@ public partial class StatementCompiler
         OK:
 
             if (expectedType is not null &&
-                CanCastImplicitly(resultType, expectedType, out _))
+                CanCastImplicitly(resultType, expectedType, out _, out _))
             {
                 resultType = expectedType;
             }
@@ -934,12 +957,11 @@ public partial class StatementCompiler
 
         if (!CompileExpression(@operator.Expression, out CompiledExpression? left)) return false;
 
-        if (GetOperator(@operator.Operator.Content, ImmutableArray.Create(left), @operator.File, out FunctionQueryResult<CompiledOperatorDefinition>? operatorDefinition, out PossibleDiagnostic? operatorNotFoundError))
+        ImmutableArray<CompiledExpression> argumentExpressions = ImmutableArray.Create(left);
+        if (GetOperator(@operator.Operator.Content, argumentExpressions, @operator.File, out FunctionQueryResult<CompiledOperatorDefinition>? operatorDefinition, out PossibleDiagnostic? operatorNotFoundError))
         {
             SetStatementReference(@operator, operatorDefinition.Function);
             @operator.Operator.AnalyzedType = TokenAnalyzedType.FunctionName;
-
-            if (operatorDefinition.DidReplaceArguments) throw new UnreachableException();
 
             SetStatementType(@operator, operatorDefinition.Function.Type);
 
@@ -960,12 +982,7 @@ public partial class StatementCompiler
                 return false;
             }
 
-            if (!CompileExpression(@operator.Arguments, out ImmutableArray<CompiledExpression> compiledArgumentExpressions))
-            {
-                return false;
-            }
-
-            if (!CompileArguments(@operator.Arguments.ToImmutableArray(ArgumentExpression.Wrap), compiledArgumentExpressions, operatorDefinition.Function, operatorDefinition.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
+            if (!CompileArguments(@operator.Arguments.ToImmutableArray(ArgumentExpression.Wrap), argumentExpressions, operatorDefinition.Function, operatorDefinition.TypeArguments, out ImmutableArray<CompiledArgument> compiledArguments)) return false;
 
             if (operatorDefinition.Function.ExternalFunctionName is not null)
             {
@@ -1012,13 +1029,25 @@ public partial class StatementCompiler
             {
                 case UnaryOperatorCallExpression.LogicalNOT:
                 {
+                    if (!GetUsedBy(InternalTypes.Boolean, out GeneralType? resultType, out PossibleDiagnostic? booleanTypeError))
+                    {
+                        resultType = BuiltinType.U8;
+                        Diagnostics.Add(DiagnosticAt.Warning($"Type for booleans not found, using {resultType} instead", @operator)
+                            .WithSuberrors(booleanTypeError.ToError(@operator)));
+                    }
+
+                    if (left.Type.SameAs(resultType))
+                    {
+                        resultType = left.Type;
+                    }
+
                     compiledStatement = new CompiledUnaryOperatorCall()
                     {
                         Expression = left,
                         Location = @operator.Location,
                         Operator = @operator.Operator.Content,
                         SaveValue = @operator.SaveValue,
-                        Type = BuiltinType.U8,
+                        Type = resultType,
                     };
 
                     if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
@@ -1688,7 +1717,7 @@ public partial class StatementCompiler
                     return false;
                 }
 
-                if (!FindSize(literalType, out int charSize, out var sizeError, this))
+                if (!FindSize(literalType, out int charSize, out PossibleDiagnostic? sizeError, this))
                 {
                     Diagnostics.Add(sizeError.ToError(literal));
                     compiledStatement = default;

@@ -30,7 +30,7 @@ public class UserDefinedAttribute
         {
             if (context is not T v)
             {
-                error = new PossibleDiagnostic($"This attribute can only be used on '{typeof(T)}'");
+                error = new PossibleDiagnostic($"This attribute can only be used on '{typeof(T)}' and not '{context.GetType()}'");
                 return false;
             }
 

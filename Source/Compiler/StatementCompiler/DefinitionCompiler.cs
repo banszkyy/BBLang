@@ -46,20 +46,11 @@ public partial class StatementCompiler
         {
             FieldDefinition field = structDefinition.Fields[i];
 
-            foreach (AttributeUsage attribute in field.Attributes)
-            {
-                CompileUserAttribute(field, attribute);
-            }
-
             field.Identifier.AnalyzedType = TokenAnalyzedType.FieldName;
 
             if (!CompileType(field.Type, out GeneralType? fieldType, Diagnostics)) continue;
-            compiledFields.Add(new CompiledField(fieldType, null! /* CompiledStruct constructor will set this */, field));
-        }
 
-        foreach (AttributeUsage attribute in structDefinition.Attributes)
-        {
-            CompileUserAttribute(structDefinition, attribute);
+            compiledFields.Add(new CompiledField(fieldType, null! /* CompiledStruct constructor will set this */, field));
         }
 
         if (structDefinition.Template is not null)
@@ -68,6 +59,20 @@ public partial class StatementCompiler
         CompilingDefinitionStack.Remove(structDefinition);
 
         result = new CompiledStruct(compiledFields.ToImmutable(), structDefinition);
+
+        foreach (CompiledField compiledField in result.Fields)
+        {
+            foreach (AttributeUsage attribute in compiledField.Attributes)
+            {
+                CompileUserAttribute(compiledField, attribute);
+            }
+        }
+
+        foreach (AttributeUsage attribute in result.Attributes)
+        {
+            CompileUserAttribute(result, attribute);
+        }
+
         CompiledStructs.Add(result);
         return result;
     }

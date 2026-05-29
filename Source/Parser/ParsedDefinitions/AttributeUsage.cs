@@ -51,21 +51,33 @@ public class AttributeUsage :
         switch (literalType)
         {
             case LiteralType.Integer:
+            {
                 if (Parameters[index] is not IntLiteralExpression intLiteral) return false;
-                value = (T)(object)intLiteral.Value;
+                if (intLiteral.Value is not T v) return false;
+                value = v;
                 return true;
+            }
             case LiteralType.Float:
+            {
                 if (Parameters[index] is not FloatLiteralExpression floatLiteral) return false;
-                value = (T)(object)floatLiteral.Value;
+                if (floatLiteral.Value is not T v) return false;
+                value = v;
                 return true;
+            }
             case LiteralType.String:
+            {
                 if (Parameters[index] is not StringLiteralExpression stringLiteral) return false;
-                value = (T)(object)stringLiteral.Value;
+                if (stringLiteral.Value is not T v) return false;
+                value = v;
                 return true;
+            }
             case LiteralType.Char:
+            {
                 if (Parameters[index] is not CharLiteralExpression charLiteral) return false;
-                value = (T)(object)charLiteral.Value;
+                if (charLiteral.Value is not T v) return false;
+                value = v;
                 return true;
+            }
             case LiteralType.Invalid:
                 return false;
             default:

@@ -1599,7 +1599,13 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     {
         using DebugInfoBlock debugBlock = DebugBlock(functionCall);
 
-        GenerateCodeForFunction(functionCall.Function.Template, functionCall.Arguments, functionCall.Function.TypeArguments, functionCall);
+        switch (functionCall.Function.Template)
+        {
+            case CompiledFunctionDefinition v: GenerateCodeForFunction(v, functionCall.Arguments, functionCall.Function.TypeArguments, functionCall); break;
+            case CompiledOperatorDefinition v: GenerateCodeForFunction(v, functionCall.Arguments, functionCall.Function.TypeArguments, functionCall); break;
+            case CompiledGeneralFunctionDefinition v: GenerateCodeForFunction(v, functionCall.Arguments, functionCall.Function.TypeArguments, functionCall); break;
+            default: throw new UnreachableException(functionCall.Function.Template.GetType().Name);
+        }
 
         if (!functionCall.SaveValue && functionCall.Function.Template.ReturnSomething)
         { Stack.Pop(); }
@@ -2701,17 +2707,6 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         }
 
         GenerateCodeForFunction_(function, parameters, typeArguments, caller);
-    }
-
-    void GenerateCodeForFunction(ICompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, ImmutableDictionary<string, GeneralType>? typeArguments, ILocated caller)
-    {
-        switch (function)
-        {
-            case CompiledFunctionDefinition v: GenerateCodeForFunction(v, parameters, typeArguments, caller); break;
-            case CompiledOperatorDefinition v: GenerateCodeForFunction(v, parameters, typeArguments, caller); break;
-            case CompiledGeneralFunctionDefinition v: GenerateCodeForFunction(v, parameters, typeArguments, caller); break;
-            case CompiledConstructorDefinition v: GenerateCodeForFunction(v, parameters, typeArguments, (CompiledConstructorCall)caller); break;
-        }
     }
 
     void GenerateCodeForParameterPassing(ICompiledFunctionDefinition function, ImmutableArray<CompiledArgument> parameters, Stack<BrainfuckVariable> compiledParameters, ImmutableDictionary<string, GeneralType>? typeArguments)

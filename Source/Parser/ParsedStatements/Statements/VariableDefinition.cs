@@ -8,7 +8,7 @@ public class VariableDefinition : Statement,
     IExportable,
     IIdentifiable<Token>,
     IHaveAttributes,
-    IReferenceableTo
+    IReferenceableTo<object>
 {
     /// <summary>
     /// Set by the compiler

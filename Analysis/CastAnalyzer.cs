@@ -37,6 +37,7 @@ namespace LanguageCore.Analyzers
 
             ITypeSymbol sourceType = context.SemanticModel.GetTypeInfo(cast.Expression).ConvertedType;
             ITypeSymbol targetType = context.SemanticModel.GetTypeInfo(cast.Type).Type;
+            if (sourceType == null) return;
             if (targetType == null) return;
 
             if (targetType.TypeKind == TypeKind.Enum || targetType.TypeKind == TypeKind.Struct) return;

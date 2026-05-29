@@ -1,9 +1,10 @@
 using LanguageCore.Parser;
+using LanguageCore.Parser.Statements;
 
 namespace LanguageCore.Compiler;
 
 public class CompiledEnum :
-    IReferenceable<TypeInstance>,
+    IReferenceable<IdentifierExpression>,
     IIdentifiable<string>,
     IInFile,
     ILocated,
@@ -12,7 +13,7 @@ public class CompiledEnum :
     public EnumDefinition Definition { get; }
     public GeneralType Type { get; }
     public ImmutableArray<CompiledEnumMember> Members { get; }
-    public List<Reference<TypeInstance>> References { get; }
+    public List<Reference<IdentifierExpression>> References { get; }
 
     public string Identifier => Definition.Identifier.Content;
     public Uri File => Definition.File;
@@ -23,7 +24,7 @@ public class CompiledEnum :
         Definition = definition;
         Type = type;
         Members = members;
-        References = new List<Reference<TypeInstance>>();
+        References = new List<Reference<IdentifierExpression>>();
 
         for (int i = 0; i < Members.Length; i++)
         {

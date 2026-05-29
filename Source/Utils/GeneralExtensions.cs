@@ -78,6 +78,39 @@ public static class GeneralExtensions
         list.Insert((x >= 0) ? x : ~x, value);
     }
 
+    public static void AddSorted<T>(this List<T> list, T value, Comparison<T> comparison)
+    {
+        int l = 0;
+        int r = list.Count - 1;
+        while (l <= r)
+        {
+            int m = l + ((r - l) / 2);
+            T v = list[m];
+            int c = comparison(v, value);
+            if (c < 0)
+            {
+                r = m - 1;
+            }
+            else if (c > 0)
+            {
+                l = m + 1;
+            }
+            else
+            {
+                if (l + 1 < list.Count)
+                {
+                    do
+                    {
+                        l++;
+                    }
+                    while (comparison(list[l], value) == 0 && l + 1 < list.Count);
+                }
+                break;
+            }
+        }
+        list.Insert(l, value);
+    }
+
     public static void AddRangeIf<T>(this ICollection<T> collection, IEnumerable<T> items, Func<T, bool> condition)
     {
         foreach (T item in items)

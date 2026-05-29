@@ -5,6 +5,10 @@ public static class ReferenceExtensions
     public static void AddReference<TSource>(this IReferenceable<TSource> references, TSource source, Location sourceLocation, bool isImplicit = false)
         => references.References.Add(new Reference<TSource>(source, sourceLocation, isImplicit));
 
+    public static void AddReference<TSource>(this IReferenceable<TSource> references, TSource source, Position sourceLocation, bool isImplicit = false)
+        where TSource : ILocated
+        => references.References.Add(new Reference<TSource>(source, new Location(sourceLocation, source.Location.File), isImplicit));
+
     public static void AddReference<TSource>(this IReferenceable<TSource> references, TSource source, bool isImplicit = false)
         where TSource : ILocated
         => references.References.Add(new Reference<TSource>(source, source.Location, isImplicit));

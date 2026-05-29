@@ -2,7 +2,8 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Parser.Statements;
 
-public class FieldExpression : Expression, IReferenceableTo
+public class FieldExpression : Expression,
+    IReferenceableTo<object>
 {
     /// <summary>
     /// Set by the compiler

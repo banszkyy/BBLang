@@ -2,12 +2,13 @@ using LanguageCore.Compiler;
 
 namespace LanguageCore.Parser.Statements;
 
-public class AnyCallExpression : Expression, IReferenceableTo<CompiledFunctionDefinition>
+public class AnyCallExpression : Expression,
+    IReferenceableTo<StatementCompiler.FunctionQueryResult<CompiledFunctionDefinition>>
 {
     /// <summary>
     /// Set by the compiler
     /// </summary>
-    public CompiledFunctionDefinition? Reference { get; set; }
+    public StatementCompiler.FunctionQueryResult<CompiledFunctionDefinition>? Reference { get; set; }
 
     public Expression Expression { get; }
     public ArgumentListExpression Arguments { get; }

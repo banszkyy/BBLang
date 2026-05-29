@@ -47,7 +47,7 @@ public partial struct CompiledValue :
         value = default;
         return type.FinalValue switch
         {
-            BuiltinType builtinType => TryCast(builtinType.RuntimeType, out value),
+            BuiltinType builtinType => builtinType.TryGetRuntimeType(out RuntimeType runtimeType) && TryCast(runtimeType, out value),
             _ => false
         };
     }
@@ -58,7 +58,7 @@ public partial struct CompiledValue :
 #pragma warning disable IDE0078
         value = targetType switch
         {
-            RuntimeType.Null => CompiledValue.Null,
+            RuntimeType.Null => Null,
             RuntimeType.U8 => Type switch
             {
                 RuntimeType.U8 => (U8 >= byte.MinValue && U8 <= byte.MaxValue) ? new CompiledValue((byte)I8) : this,
@@ -119,7 +119,7 @@ public partial struct CompiledValue :
                 RuntimeType.I32 => (I32 >= int.MinValue && I32 <= int.MaxValue) ? new CompiledValue((int)I32) : this,
                 _ => this,
             },
-            RuntimeType.F32 => this.Type switch
+            RuntimeType.F32 => Type switch
             {
                 RuntimeType.U8 => new CompiledValue((float)I8),
                 RuntimeType.I8 => new CompiledValue((float)I8),

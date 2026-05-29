@@ -3,12 +3,13 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Parser.Statements;
 
-public class FunctionCallExpression : Expression, IReferenceableTo<CompiledFunctionDefinition>
+public class FunctionCallExpression : Expression,
+    IReferenceableTo<StatementCompiler.FunctionQueryResult<CompiledFunctionDefinition>>
 {
     /// <summary>
     /// Set by the compiler
     /// </summary>
-    public CompiledFunctionDefinition? Reference { get; set; }
+    public StatementCompiler.FunctionQueryResult<CompiledFunctionDefinition>? Reference { get; set; }
 
     public Token Identifier { get; }
     public ArgumentListExpression Arguments { get; }

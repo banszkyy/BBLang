@@ -723,7 +723,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         {
             if (!constantValue.IsNull && constantType.Is(out BuiltinType? builtinType))
             {
-                if (!constantValue.TryCast(builtinType.RuntimeType, out CompiledValue castedConstantValue))
+                if (!builtinType.TryGetRuntimeType(out RuntimeType runtimeType) || !constantValue.TryCast(runtimeType, out CompiledValue castedConstantValue))
                 {
                     Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constantValue} of type \"{constantValue.Type}\" to {constantType}", variableDefinition.InitialValue?.Location ?? variableDefinition.Location));
                 }
@@ -1646,7 +1646,8 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             case CompiledConstantValue constantValue:
             {
                 if (destination.Is(out BuiltinType? builtinDstType)
-                    && constantValue.Value.TryCast(builtinDstType.RuntimeType, out CompiledValue assignedConstValue))
+                    && builtinDstType.TryGetRuntimeType(out RuntimeType runtimeDstType)
+                    && constantValue.Value.TryCast(runtimeDstType, out CompiledValue assignedConstValue))
                 {
                     assignedValue = new CompiledConstantValue()
                     {
@@ -1825,7 +1826,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
                 EnumType => TokenAnalyzedType.Enum,
                 _ => TokenAnalyzedType.Type,
             };
-            compiled.AddReference(new TypeInstanceSimple(name, relevantFile));
+            compiled.AddReference(new IdentifierExpression(name, relevantFile));
 
             result = new CompiledEnumTypeExpression(compiled, new Location(name.Position, relevantFile));
             error = null;
@@ -2026,16 +2027,16 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     void TrySetStatementReference<TRef>(Statement statement, TRef? reference) where TRef : class
     {
         if (statement is IReferenceableTo<TRef> v1) SetStatementReference(v1, reference);
-        else if (statement is IReferenceableTo v2) SetStatementReference(v2, reference);
+        else if (statement is IReferenceableTo<object> v2) SetStatementReference(v2, reference);
     }
     void SetStatementReference<TRef>(IReferenceableTo<TRef> statement, TRef? reference) where TRef : class
     {
         if (!Frames.Last.IsTemplateInstance) statement.Reference = reference;
     }
-    void SetStatementReference(IReferenceableTo statement, object? reference)
-    {
-        if (!Frames.Last.IsTemplateInstance) statement.Reference = reference;
-    }
+    //void SetStatementReference(IReferenceableTo statement, object? reference)
+    //{
+    //    if (!Frames.Last.IsTemplateInstance) statement.Reference = reference;
+    //}
 
     #endregion
 
@@ -3321,13 +3322,14 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return false;
         }
 
-        if (!typeCast.Type.Is(out BuiltinType? builtinType))
+        if (!typeCast.Type.Is(out BuiltinType? builtinType)
+            || !builtinType.TryGetRuntimeType(out RuntimeType runtimeDstType))
         {
-            error = new PossibleDiagnostic($"This must be a built-in type to compute", typeCast.TypeExpression);
+            error = new PossibleDiagnostic($"Cannot compute value of type \"{typeCast.Type}\"", typeCast.TypeExpression);
             return false;
         }
 
-        value = CompiledValue.CreateUnsafe(value.I32, builtinType.RuntimeType);
+        value = CompiledValue.CreateUnsafe(value.I32, runtimeDstType);
         return true;
     }
     bool TryCompute(CompiledCast typeCast, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -3338,15 +3340,16 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             return false;
         }
 
-        if (!typeCast.Type.Is(out BuiltinType? builtinType))
+        if (!typeCast.Type.Is(out BuiltinType? builtinType)
+            || !builtinType.TryGetRuntimeType(out RuntimeType runtimeType))
         {
-            error = new PossibleDiagnostic($"This must be a built-in type to compute", typeCast.TypeExpression);
+            error = new PossibleDiagnostic($"Cannot cast to type \"{typeCast.Type}\"", typeCast.TypeExpression);
             return false;
         }
 
-        if (!value.TryCast(builtinType.RuntimeType, out CompiledValue casted))
+        if (!value.TryCast(runtimeType, out CompiledValue casted))
         {
-            error = new PossibleDiagnostic($"Failed to cast {value.ToStringValue()} to type {builtinType.RuntimeType}", typeCast);
+            error = new PossibleDiagnostic($"Failed to cast {value.ToStringValue()} to type {runtimeType}", typeCast);
             return false;
         }
 

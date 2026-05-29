@@ -8,7 +8,8 @@ public class FieldDefinition :
     IInContext<StructDefinition>,
     IIdentifiable<Token>,
     IHaveAttributes,
-    ILocated
+    ILocated,
+    IInFile
 {
     /// <summary>
     /// Set by the <see cref="StructDefinition"/>
@@ -38,6 +39,7 @@ public class FieldDefinition :
         }
     }
 
+    public Uri File => Context.File;
     public Location Location => new(Position, Context.File);
 
     CanUseOn IHaveAttributes.AttributeUsageKind => CanUseOn.Field;

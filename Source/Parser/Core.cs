@@ -21,7 +21,8 @@ public interface IHaveType
     TypeInstance Type { get; }
 }
 
-public interface IReferenceableTo<TReference> : IInFile, IReferenceableTo where TReference : class
+public interface IReferenceableTo<TReference> : IInFile,
+    IReferenceableTo where TReference : class
 {
     new TReference? Reference { get; internal set; }
     object? IReferenceableTo.Reference

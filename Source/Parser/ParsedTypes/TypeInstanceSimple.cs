@@ -4,7 +4,9 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Parser;
 
-public class TypeInstanceSimple : TypeInstance, IEquatable<TypeInstanceSimple?>, IReferenceableTo
+public class TypeInstanceSimple : TypeInstance,
+    IEquatable<TypeInstanceSimple?>,
+    IReferenceableTo<object>
 {
     /// <summary> Set by the compiler </summary>
     public GeneralType? CompiledType { get; set; }

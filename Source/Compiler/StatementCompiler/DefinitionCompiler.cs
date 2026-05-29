@@ -167,11 +167,12 @@ public partial class StatementCompiler
                 {
                     if (enumType is not null
                         && enumType.Is(out BuiltinType? builtinEnumType)
-                        && builtinEnumType.RuntimeType != RuntimeType.Null)
+                        && builtinEnumType.TryGetRuntimeType(out RuntimeType runtimeType)
+                        && runtimeType != RuntimeType.Null)
                     {
                         lastValue = new CompiledConstantValue()
                         {
-                            Value = builtinEnumType.RuntimeType switch
+                            Value = runtimeType switch
                             {
                                 RuntimeType.Null => throw new UnreachableException(),
                                 RuntimeType.U8 => CompiledValue.CreateUnsafe(0, RuntimeType.U8),
@@ -258,7 +259,7 @@ public partial class StatementCompiler
                 {
                     Diagnostics.Add(DiagnosticAt.Error($"Const enum must have a built-in type", enumDefinition.Type?.Location ?? enumDefinition.Location));
                 }
-                else if (!constValue.TryCast(enumBuiltinType.RuntimeType, out CompiledValue castedConstantValue))
+                else if (!enumBuiltinType.TryGetRuntimeType(out RuntimeType enumRuntimeType) || !constValue.TryCast(enumRuntimeType, out CompiledValue castedConstantValue))
                 {
                     Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constValue} of type {constValue.Type} to {enumBuiltinType}", value));
                     value = new CompiledConstantValue()

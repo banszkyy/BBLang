@@ -536,11 +536,10 @@ public partial class StatementCompiler
                     if (anyCall.Expression is FieldExpression _field)
                     { _field.Identifier.AnalyzedType = TokenAnalyzedType.FunctionName; }
 
-                    SetStatementReference(anyCall, result2.Function);
+                    SetStatementReference(anyCall, result2);
                     TrySetStatementReference(anyCall.Expression, result2);
                     SetStatementType(anyCall, result2.Function.Type);
-
-                    result2.Function.AddReference(anyCall, anyCall.Location);
+                    result2.Function.AddReference(anyCall, functionCall.Identifier.Position);
                 }
                 return false;
             }
@@ -553,11 +552,10 @@ public partial class StatementCompiler
                 if (anyCall.Expression is FieldExpression _field)
                 { _field.Identifier.AnalyzedType = TokenAnalyzedType.FunctionName; }
 
-                SetStatementReference(anyCall, result.Function);
+                SetStatementReference(anyCall, result);
                 TrySetStatementReference(anyCall.Expression, result);
                 SetStatementType(anyCall, result.Function.Type);
-
-                result.Function.AddReference(anyCall, anyCall.Location);
+                result.Function.AddReference(anyCall, functionCall.Identifier.Position);
 
                 return CompileFunctionCall(functionCall, compiledArgumentExpressions, functionCall.MethodArguments, result, out compiledStatement);
             }
@@ -599,6 +597,7 @@ public partial class StatementCompiler
             {
                 CompiledOperatorDefinition compiledFunction = res1.Function;
                 compiledFunction.AddReference(anyCall);
+
                 return CompileFunctionCall(anyCall, arguments.ToImmutableArray(), arguments2.ToImmutableArray(), res1, out compiledStatement);
             }
         }
@@ -851,9 +850,15 @@ public partial class StatementCompiler
                     {
                         resultType = compiledLeft.Type;
                     }
-                    else
+                    else if (@operator.Operator.Content
+                            is not BinaryOperatorCallExpression.CompLT
+                            and not BinaryOperatorCallExpression.CompGT
+                            and not BinaryOperatorCallExpression.CompLEQ
+                            and not BinaryOperatorCallExpression.CompGEQ
+                            and not BinaryOperatorCallExpression.CompEQ
+                            and not BinaryOperatorCallExpression.CompNEQ)
                     {
-                        Diagnostics.Add(DiagnosticAt.Warning($"Failed to infer binary operator result type ({leftType} {@operator.Operator} {rightType}), using {resultType} instead", @operator));
+                        Diagnostics.Add(DiagnosticAt.Warning($"Failed to infer binary operator result type (\"{leftType}\" {@operator.Operator} \"{rightType}\"), using \"{resultType}\" instead", @operator));
                     }
 
                     SetStatementType(@operator, resultType);
@@ -1809,6 +1814,7 @@ public partial class StatementCompiler
             SetStatementType(variable, constant.Type);
             SetPredictedValue(variable, constant.Value);
             SetStatementReference(variable, constant);
+            constant.AddReference(variable);
             variable.AnalyzedType = TokenAnalyzedType.ConstantName;
 
             if (constant.Definition.Attributes.Any(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier))
@@ -1859,6 +1865,7 @@ public partial class StatementCompiler
             { variable.AnalyzedType = TokenAnalyzedType.ParameterName; }
             SetStatementReference(variable, param);
             SetStatementType(variable, paramType);
+            param.AddReference(variable);
 
             compiledStatement = new CompiledParameterAccess()
             {
@@ -1875,6 +1882,7 @@ public partial class StatementCompiler
             variable.AnalyzedType = TokenAnalyzedType.VariableName;
             SetStatementReference(variable, val);
             SetStatementType(variable, val.Type);
+            val.AddReference(variable);
 
             if (val.IsGlobal)
             { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get local variable \"{val.Identifier}\" but it was compiled as a global variable.", variable)); }
@@ -1894,6 +1902,7 @@ public partial class StatementCompiler
             variable.AnalyzedType = TokenAnalyzedType.VariableName;
             SetStatementReference(variable, globalVariable);
             SetStatementType(variable, globalVariable.Type);
+            globalVariable.AddReference(variable);
             Frames.Last.CapturesGlobalVariables = true;
 
             if (!globalVariable.IsGlobal)
@@ -1918,7 +1927,7 @@ public partial class StatementCompiler
 
             FunctionType functionType = new(compiledFunction.Function.Type, compiledFunction.Function.Parameters.ToImmutableArray(v => v.Type), false);
 
-            compiledFunction.Function.AddReference(variable, variable.Location);
+            compiledFunction.Function.AddReference(variable);
             variable.AnalyzedType = TokenAnalyzedType.FunctionName;
             SetStatementReference(variable, compiledFunction.Function);
             SetStatementType(variable, functionType);
@@ -1935,6 +1944,7 @@ public partial class StatementCompiler
 
         if (GetInstructionLabel(variable.Content, out CompiledLabelDeclaration? instructionLabel, out PossibleDiagnostic? instructionLabelError))
         {
+            instructionLabel.AddReference(variable);
             SetStatementReference(variable, instructionLabel);
             variable.AnalyzedType = TokenAnalyzedType.InstructionLabel;
             SetStatementType(variable, CompiledLabelDeclaration.Type);
@@ -1956,6 +1966,7 @@ public partial class StatementCompiler
                 variable.AnalyzedType = TokenAnalyzedType.VariableName;
                 SetStatementReference(variable, outerParameter);
                 SetStatementType(variable, outerParameter.Type);
+                outerParameter.AddReference(variable);
 
                 compiledStatement = new CompiledParameterAccess()
                 {
@@ -1976,6 +1987,7 @@ public partial class StatementCompiler
                 variable.AnalyzedType = TokenAnalyzedType.VariableName;
                 SetStatementReference(variable, outerLocal);
                 SetStatementType(variable, outerLocal.Type);
+                outerLocal.AddReference(variable);
 
                 if (outerLocal.IsGlobal)
                 { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get local variable \"{outerLocal.Identifier}\" but it was compiled as a global variable.", variable)); }
@@ -2159,7 +2171,7 @@ public partial class StatementCompiler
             Frames.LastRef.IsMsilCompatible = false;
         }
 
-        compiledFunction.Function.AddReference(constructorCall);
+        compiledFunction.Function.AddReference(constructorCall, constructorCall.Type.Position);
         SetStatementReference(constructorCall, compiledFunction.Function);
 
         SetStatementType(constructorCall, compiledFunction.Function.Type);
@@ -2195,6 +2207,7 @@ public partial class StatementCompiler
             && GetEnum(objectIdentifier.Identifier.Content, objectIdentifier.File, out CompiledEnum? @enum, out enumError))
         {
             SetStatementReference(objectIdentifier, @enum);
+            @enum.AddReference(objectIdentifier);
             objectIdentifier.Identifier.AnalyzedType = TokenAnalyzedType.Enum;
 
             if (field.Identifier is IMissingNode)
@@ -2209,7 +2222,7 @@ public partial class StatementCompiler
                 {
                     field.Identifier.AnalyzedType = TokenAnalyzedType.EnumMember;
                     SetStatementReference(field, member);
-                    member.AddReference(field);
+                    member.AddReference(field, field.Identifier.Position);
                     compiledStatement = new CompiledEnumMemberAccess()
                     {
                         EnumMember = member,
@@ -2284,6 +2297,7 @@ public partial class StatementCompiler
             field.Identifier.AnalyzedType = TokenAnalyzedType.FieldName;
             SetStatementType(field, fieldDefinition.Type);
             SetStatementReference(field, fieldDefinition);
+            fieldDefinition.AddReference(field, field.Identifier.Position);
 
             compiledStatement = new CompiledFieldAccess()
             {
@@ -2311,6 +2325,7 @@ public partial class StatementCompiler
         field.Identifier.AnalyzedType = TokenAnalyzedType.FieldName;
         SetStatementType(field, compiledField.Type);
         SetStatementReference(field, compiledField);
+        compiledField.AddReference(field, field.Identifier.Position);
 
         compiledStatement = new CompiledFieldAccess()
         {
@@ -2499,10 +2514,11 @@ public partial class StatementCompiler
             return true;
         }
 
-        if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
-            targetType.Is(out BuiltinType? targetBuiltinType) &&
-            TryComputeSimple(typeCast.Expression, out CompiledValue prevValue) &&
-            prevValue.TryCast(targetBuiltinType.RuntimeType, out CompiledValue castedValue))
+        if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics)
+            && targetType.Is(out BuiltinType? targetBuiltinType)
+            && TryComputeSimple(typeCast.Expression, out CompiledValue prevValue)
+            && targetBuiltinType.TryGetRuntimeType(out RuntimeType targetRuntimeType)
+            && prevValue.TryCast(targetRuntimeType, out CompiledValue castedValue))
         {
             Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Type cast evaluated, converting {prevValue} ({prevValue.Type}) to {castedValue} ({castedValue.Type})", typeCast));
             if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))

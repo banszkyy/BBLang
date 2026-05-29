@@ -43,22 +43,25 @@ public class BuiltinType : GeneralType,
 
     public BasicType Type { get; }
 
-    public RuntimeType RuntimeType => Type switch
-    {
-        BasicType.U8 => RuntimeType.U8,
-        BasicType.I8 => RuntimeType.I8,
-        BasicType.U16 => RuntimeType.U16,
-        BasicType.I16 => RuntimeType.I16,
-        BasicType.U32 => RuntimeType.U32,
-        BasicType.I32 => RuntimeType.I32,
-        BasicType.F32 => RuntimeType.F32,
-
-        _ => throw new NotImplementedException($"Type conversion for \"{Type}\" is not implemented"),
-    };
-
     public BuiltinType(BasicType type)
     {
         Type = type;
+    }
+
+    public bool TryGetRuntimeType(out RuntimeType runtimeType)
+    {
+        runtimeType = default;
+        switch (Type)
+        {
+            case BasicType.U8: runtimeType = RuntimeType.U8; return true;
+            case BasicType.I8: runtimeType = RuntimeType.I8; return true;
+            case BasicType.U16: runtimeType = RuntimeType.U16; return true;
+            case BasicType.I16: runtimeType = RuntimeType.I16; return true;
+            case BasicType.U32: runtimeType = RuntimeType.U32; return true;
+            case BasicType.I32: runtimeType = RuntimeType.I32; return true;
+            case BasicType.F32: runtimeType = RuntimeType.F32; return true;
+            default: return false;
+        }
     }
 
     public static BuiltinType CreateNumeric(NumericType type, BitWidth size) => type switch

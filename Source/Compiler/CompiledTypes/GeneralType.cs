@@ -62,7 +62,7 @@ public abstract class GeneralType :
     public bool Equals(BasicType other) => FinalValue is BuiltinType builtinType && builtinType.Type == other;
     public bool Equals(RuntimeType other) => FinalValue switch
     {
-        BuiltinType builtinType => builtinType.RuntimeType == other,
+        BuiltinType builtinType => builtinType.TryGetRuntimeType(out RuntimeType runtimeType) && runtimeType == other,
         PointerType => other == RuntimeType.I32,
         _ => false,
     };

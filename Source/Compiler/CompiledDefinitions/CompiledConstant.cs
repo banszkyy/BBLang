@@ -7,7 +7,8 @@ public class CompiledVariableConstant :
     IIdentifiable<string>,
     IInFile,
     ILocated,
-    ICompiledDefinition<VariableDefinition>
+    ICompiledDefinition<VariableDefinition>,
+    IReferenceable<IdentifierExpression>
 {
     public VariableDefinition Definition { get; }
     public CompiledValue Value { get; }
@@ -17,10 +18,13 @@ public class CompiledVariableConstant :
     public Uri File => Definition.File;
     public Location Location => Definition.Location;
 
+    public List<Reference<IdentifierExpression>> References { get; }
+
     public CompiledVariableConstant(CompiledValue value, GeneralType type, VariableDefinition definition)
     {
         Definition = definition;
         Value = value;
         Type = type;
+        References = new();
     }
 }

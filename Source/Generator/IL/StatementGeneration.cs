@@ -793,30 +793,18 @@ public partial class CodeGeneratorForIL : CodeGenerator
             return;
         }
 
-        switch (statement.Address)
-        {
-            case CompiledVariableAccess:
-            case CompiledParameterAccess:
-            case CompiledFieldAccess:
-                break;
-            default:
-                Diagnostics.Add(DiagnosticAt.Error($"Unsafe!!!", statement, false));
-                successful = false;
-                break;
-        }
-
         EmitStatement(statement.Address, il, ref successful);
         EmitStatement(value, il, ref successful);
-        if (!statement.Address.Type.Is(out PointerType? pointer))
+        if (!statement.Address.Type.Is(out IReferenceType? reference))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"This should be a pointer", statement.Address));
+            Diagnostics.Add(DiagnosticAt.Error($"This should be a reference type", statement.Address));
             successful = false;
             return;
         }
 
-        if (!StoreIndirect(pointer.To, il, out PossibleDiagnostic? error))
+        if (!StoreIndirect(reference.To, il, out PossibleDiagnostic? error))
         {
-            Diagnostics.Add(error.ToError(statement));
+            Diagnostics.Add(error.ToError(statement.Address));
             successful = false;
             return;
         }
@@ -902,28 +890,16 @@ public partial class CodeGeneratorForIL : CodeGenerator
             return;
         }
 
-        switch (statement.Address)
-        {
-            case CompiledVariableAccess:
-            case CompiledParameterAccess:
-            case CompiledFieldAccess:
-                break;
-            default:
-                Diagnostics.Add(DiagnosticAt.Error($"Unsafe!!!", statement, false));
-                successful = false;
-                return;
-        }
-
         EmitStatement(statement.Address, il, ref successful);
 
-        if (!statement.Address.Type.Is(out PointerType? pointer))
+        if (!statement.Address.Type.Is(out IReferenceType? reference))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"This should be a pointer", statement.Address));
+            Diagnostics.Add(DiagnosticAt.Error($"This should be a reference type", statement.Address));
             successful = false;
             return;
         }
 
-        if (!LoadIndirect(pointer.To, il, out PossibleDiagnostic? error))
+        if (!LoadIndirect(reference.To, il, out PossibleDiagnostic? error))
         {
             Diagnostics.Add(error.ToError(statement.Address));
             successful = false;
@@ -1152,12 +1128,6 @@ public partial class CodeGeneratorForIL : CodeGenerator
                     il.Emit(OpCodes.Mul);
                     il.Emit(OpCodes.Add);
 
-                    if (!LoadIndirect(elementType, il, out PossibleDiagnostic? loadIndirectError))
-                    {
-                        Diagnostics.Add(loadIndirectError.ToError(statement));
-                        successful = false;
-                    }
-
                     break;
                 }
 
@@ -1186,7 +1156,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             return;
         }
 
-        if (!statement.Type.Is(out PointerType? pointerType))
+        if (!statement.TypeExpression.Is(out CompiledPointerTypeExpression? pointerType))
         {
             Diagnostics.Add(DiagnosticAt.Internal("What", statement));
             successful = false;
@@ -1195,7 +1165,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         switch (pointerType.To.FinalValue)
         {
-            case ArrayType arrayType:
+            case CompiledArrayTypeExpression arrayType:
             {
                 if (!ToType(arrayType.Of, out Type? type, out PossibleDiagnostic? typeError))
                 {
@@ -1211,14 +1181,14 @@ public partial class CodeGeneratorForIL : CodeGenerator
                     return;
                 }
 
-                EmitValue(arrayType.Length.Value, il);
+                EmitStatement(arrayType.Length, il, ref successful);
                 il.Emit(OpCodes.Newarr, type);
                 EmitValue(0, il);
                 il.Emit(OpCodes.Ldelema, type);
                 return;
             }
 
-            case StructType structType:
+            case CompiledStructTypeExpression structType:
             {
                 if (!ToType(structType, out Type? type, out PossibleDiagnostic? typeError))
                 {
@@ -1243,9 +1213,9 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 return;
             }
 
-            case BuiltinType builtinType:
+            case CompiledBuiltinTypeExpression builtinType:
             {
-                if (!EmitDefaultValue(builtinType, il, out PossibleDiagnostic? defaultValueError))
+                if (!EmitDefaultValue(builtinType.Type, il, out PossibleDiagnostic? defaultValueError))
                 {
                     Diagnostics.Add(defaultValueError.ToError(statement));
                     successful = false;
@@ -1358,6 +1328,12 @@ public partial class CodeGeneratorForIL : CodeGenerator
             }
         }
 
+        if (statement.Value.Type.SameAs(statement.Type))
+        {
+            EmitStatement(statement.Value, il, ref successful);
+            return;
+        }
+
         if (statement.Type.SameAs(BuiltinType.I32) &&
             statement.Value.Type.SameAs(BuiltinType.F32))
         {
@@ -1398,29 +1374,26 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 EmitStatement(statement.Value, il, ref successful);
                 if (!fromTypePT.Equals(toTypePT))
                 {
-                    Diagnostics.Add(DiagnosticAt.Warning($"Be careful! (casting {statement.Value.Type.FinalValue} to {statement.Type.FinalValue})", statement));
+                    if (Settings.AllowUnsafePointers)
+                    {
+                        Diagnostics.Add(DiagnosticAt.Warning($"Type {fromTypePT} doesn't equal to {toTypePT} (reinterpreting {statement.Value.Type.FinalValue} as {statement.Type.FinalValue})", statement));
+                    }
+                    else
+                    {
+                        Diagnostics.Add(DiagnosticAt.Error($"Type {fromTypePT} doesn't equal to {toTypePT} (reinterpreting {statement.Value.Type.FinalValue} as {statement.Type.FinalValue})", statement));
+                        successful = false;
+                    }
                 }
                 return;
             }
         }
 
         if (statement.Value is CompiledConstantValue fromValue &&
-            statement.Type.Is(out toTypeP))
+            statement.Type.Is(out toTypeP) &&
+            CompiledValue.IsZero(fromValue.Value))
         {
-            if (CompiledValue.IsZero(fromValue.Value))
-            {
-                il.Emit(OpCodes.Ldnull);
-                return;
-            }
-
-            if (ToType(toTypeP, out Type? toTypePT, out _) &&
-                IsUnmanaged(toTypePT))
-            {
-                EmitStatement(statement.Value, il, ref successful);
-                il.Emit(OpCodes.Ldnull);
-                Diagnostics.Add(DiagnosticAt.Warning($"Be careful! (casting {statement.Value.Type} to {statement.Type})", statement));
-                return;
-            }
+            il.Emit(OpCodes.Ldnull);
+            return;
         }
 
         if (statement.Value.Type.SameAs(BuiltinType.I32) &&
@@ -1431,15 +1404,17 @@ public partial class CodeGeneratorForIL : CodeGenerator
             {
                 EmitStatement(statement.Value, il, ref successful);
                 il.Emit(OpCodes.Conv_I);
-                Diagnostics.Add(DiagnosticAt.Warning($"Be careful! (casting {statement.Value.Type} to {statement.Type})", statement));
+                if (Settings.AllowUnsafePointers)
+                {
+                    Diagnostics.Add(DiagnosticAt.Warning($"Reinterpreting integer value as a pointer (casting {statement.Value.Type} to {statement.Type})", statement));
+                }
+                else
+                {
+                    Diagnostics.Add(DiagnosticAt.Error($"Reinterpreting integer value as a pointer (casting {statement.Value.Type} to {statement.Type})", statement));
+                    successful = false;
+                }
                 return;
             }
-        }
-
-        if (statement.Value.Type.SameAs(statement.Type))
-        {
-            EmitStatement(statement.Value, il, ref successful);
-            return;
         }
 
         if (statement.Value.Type.Is(out BuiltinType? fromTypeB) &&
@@ -1453,7 +1428,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         }
 
         EmitStatement(statement.Value, il, ref successful);
-        Diagnostics.Add(DiagnosticAt.Internal($"Fake type casts are unsafe (tried to cast {statement.Value.Type} to {statement.Type})", statement, false));
+        Diagnostics.Add(DiagnosticAt.Internal($"Reinterpretations are unsafe (tried to reinterpret {statement.Value.Type} as {statement.Type})", statement, false));
         successful = false;
     }
     void EmitStatement(CompiledCast statement, ILProxy il, ref bool successful)
@@ -1960,6 +1935,16 @@ public partial class CodeGeneratorForIL : CodeGenerator
         }
     }
 
+    bool ToType(CompiledTypeExpression type, [NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
+    {
+        if (!CompileType(type, out var w, out error))
+        {
+            result = null;
+            return false;
+        }
+
+        return ToType(w, out result, out error);
+    }
     bool ToType<T>(ImmutableArray<T> types, [NotNullWhen(true)] out Type[]? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
         where T : IHaveCompiledType
     {

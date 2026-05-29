@@ -7,12 +7,6 @@ public interface IHaveInstructionOffset
 
 }
 
-public interface ITemplateable<TSelf> where TSelf : notnull
-{
-    bool IsTemplate { get; }
-    TSelf InstantiateTemplate(IReadOnlyDictionary<string, GeneralType> parameters);
-}
-
 public interface IHaveCompiledType
 {
     GeneralType Type { get; }

@@ -117,6 +117,7 @@ public static class Entry
                 AllowCrash = true,
                 // AllowHeap = true,
                 AllowPointers = true,
+                AllowUnsafePointers = true,
             },
         };
         BytecodeInterpreterSettings bytecodeInterpreterSettings = new(BytecodeInterpreterSettings.Default)
@@ -632,7 +633,7 @@ public static class Entry
 #else
                 logger.LogDebug($"Executing \"{arguments.Source}\" ...");
 
-                List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(VoidIO.Instance);
+                List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(StandardIO.Instance);
 
                 DiagnosticsCollection diagnostics = new();
 
@@ -653,16 +654,6 @@ public static class Entry
                     ),
                 };
 
-                if (externalFunctions.TryGet("stdout", out IExternalFunction? stdoutFunction, out _))
-                {
-                    externalFunctions.AddExternalFunction(ExternalFunctionSync.Create<char>(stdoutFunction.Id, "stdout", Console.Write));
-                }
-
-                if (externalFunctions.TryGet("stdin", out IExternalFunction? stdinFunction, out _))
-                {
-                    externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(stdinFunction.Id, "stdin", static () => (char)Console.Read()));
-                }
-
                 CompilerResult compiled = StatementCompiler.CompileFile(arguments.Source, new(compilerSettings)
                 {
                     ExternalFunctions = externalFunctions.ToImmutableArray(),
@@ -673,6 +664,7 @@ public static class Entry
                     AllowCrash = true,
                     AllowHeap = true,
                     AllowPointers = true,
+                    AllowUnsafePointers = true,
                 });
 
                 if (arguments.Output is not null)

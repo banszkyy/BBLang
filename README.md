@@ -2,9 +2,9 @@
 
 [![.Net 11.0](https://img.shields.io/badge/.NET-11.0-5C2D91?style=flat-square)](#)
 
-- [VSCode Extension](https://github.com/BBpezsgo/InterpreterVSCodeExtension)
-- [Language Server](https://github.com/BBpezsgo/BBLang-LanguageServer)
-- [Debugger Host](https://github.com/BBpezsgo/BBLang-DebugHost)
+- [VSCode Extension](https://github.com/banszkyy/InterpreterVSCodeExtension)
+- [Language Server](https://github.com/banszkyy/BBLang-LanguageServer)
+- [Debugger Host](https://github.com/banszkyy/BBLang-DebugHost)
 
 ## About
 
@@ -13,7 +13,7 @@ An **interpreted, statically-typed embedded** language for mostly scripting purp
 > [!NOTE]
 > Currently it doesn't support serializing, so you can only execute the script. However, you can save the generated Brainfuck code.
 
-[Read more in the wiki](https://github.com/BBpezsgo/BBLang/wiki)
+[Read more in the wiki](https://github.com/banszkyy/BBLang/wiki)
 
 ## Hello World
 
@@ -52,7 +52,7 @@ printline("hello, world");
 
 - `--format format` Specifies which generator to use. Supported formats are `bytecode`, `brainfuck` and `assembly`.
 
-- `--debug` Launches the debugger screen (only avaliable on Windows) [More info](https://github.com/BBpezsgo/BBLang/wiki/Debugger)
+- `--debug` Launches the debugger screen (only avaliable on Windows) [More info](https://github.com/banszkyy/BBLang/wiki/Debugger)
 
 - `--output file` Writes the generated code to the specified file (this option only works for brainfuck)
 

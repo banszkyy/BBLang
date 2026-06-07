@@ -18,7 +18,7 @@ An **interpreted, statically-typed embedded** language for mostly scripting purp
 ## Hello World
 
 ```cs
-using "https://raw.githubusercontent.com/BBpezsgo/BBLang/master/StandardLibrary/System.Console.bbc";
+using "https://raw.githubusercontent.com/banszkyy/BBLang/master/StandardLibrary/System.Console.bbc";
 
 printline("hello, world");
 ```
@@ -126,7 +126,7 @@ ln -s ../Source Runtime
 - If you want some profiler analytics, add `UNITY_PROFILER` too.
 - You can install the necessary NuGet packages with this tool: [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity) or import the dll-s manually.
 
-## [Tests](https://github.com/BBpezsgo/BBLang/blob/master/Tests.md)
+## [Tests](https://github.com/banszkyy/BBLang/blob/master/Tests.md)
 
 ## Troubleshooting
 

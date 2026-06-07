@@ -88,7 +88,7 @@ public class SourceProviderTests
 
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(new FixedIO(string.Empty, output));
 
-        CompilerResult compiled = StatementCompiler.CompileFile("https://raw.githubusercontent.com/BBpezsgo/BBLang/refs/heads/master/Examples/hello_world.bbc", new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
+        CompilerResult compiled = StatementCompiler.CompileFile("https://raw.githubusercontent.com/banszkyy/BBLang/refs/heads/master/Examples/hello_world.bbc", new CompilerSettings(CodeGeneratorForMain.DefaultCompilerSettings)
         {
             ExternalFunctions = externalFunctions.ToImmutableArray(),
             PreprocessorVariables = PreprocessorVariables.Normal,

@@ -187,7 +187,7 @@ static class TestResults
             bytecodeResult.Outcome = TranslateOutcome(bytecodeResult.Outcome);
             brainfuckResult.Outcome = TranslateOutcome(brainfuckResult.Outcome);
 
-            string translatedName = $"https://github.com/BBpezsgo/BBLang/blob/master/TestFiles/{serialNumber.ToString().PadLeft(2, '0')}.{LanguageConstants.LanguageExtension}";
+            string translatedName = $"https://github.com/banszkyy/BBLang/blob/master/TestFiles/{serialNumber.ToString().PadLeft(2, '0')}.{LanguageConstants.LanguageExtension}";
             translatedName = $"[{serialNumber}]({translatedName})";
 
             file.Write("| ");

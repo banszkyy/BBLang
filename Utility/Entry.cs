@@ -613,7 +613,7 @@ public static class Entry
                         }
                         catch (RuntimeException error)
                         {
-                            logger.LogError(error.ToString(true));
+                            logger.LogError(error.ToString(true, true));
                             return 1;
                         }
                         finally

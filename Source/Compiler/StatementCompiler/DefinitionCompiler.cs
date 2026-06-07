@@ -700,17 +700,19 @@ public partial class StatementCompiler
         return true;
     }
 
-    void AddAST(ParsedFile collectedAST, bool addTopLevelStatements = true)
+    void AddAST(ParsedFile collectedAST, bool addTopLevelStatements = true) => AddAST(collectedAST.AST, collectedAST.File);
+
+    void AddAST(ParserResult ast, Uri file, bool addTopLevelStatements = true)
     {
         if (addTopLevelStatements)
-        { TopLevelStatements.Add((collectedAST.AST.TopLevelStatements, collectedAST.File)); }
+        { TopLevelStatements.Add((ast.TopLevelStatements, file)); }
 
-        FunctionDefinitions.AddRange(collectedAST.AST.Functions);
-        OperatorDefinitions.AddRange(collectedAST.AST.Operators);
-        StructDefinitions.AddRange(collectedAST.AST.Structs);
-        AliasDefinitions.AddRange(collectedAST.AST.AliasDefinitions);
-        EnumDefinitions.AddRange(collectedAST.AST.EnumDefinitions);
-        ConstantDefinitions.AddRange(collectedAST.AST.TopLevelStatements.OfType<VariableDefinition>().Where(v => v.IsConst));
+        FunctionDefinitions.AddRange(ast.Functions);
+        OperatorDefinitions.AddRange(ast.Operators);
+        StructDefinitions.AddRange(ast.Structs);
+        AliasDefinitions.AddRange(ast.AliasDefinitions);
+        EnumDefinitions.AddRange(ast.EnumDefinitions);
+        ConstantDefinitions.AddRange(ast.TopLevelStatements.OfType<VariableDefinition>().Where(v => v.IsConst));
     }
 
     static bool ThingEquality<TThing1, TThing2>(TThing1 a, TThing2 b)
@@ -1076,6 +1078,11 @@ public partial class StatementCompiler
         {
             Diagnostics.Add(DiagnosticAt.Error($"Cannot import files from an interactive expression", expressionAst.Usings.First()));
             return CompilerResult.MakeEmpty(entryFile);
+        }
+
+        foreach (ParsedFile item in previous.RawTokens)
+        {
+            AddAST(item, false);
         }
 
         CompiledStructs.Set(previous.Structs);

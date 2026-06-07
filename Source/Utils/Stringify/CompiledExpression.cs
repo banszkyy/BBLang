@@ -55,14 +55,37 @@ public static partial class Stringifier
     }
     public static void Stringify(CompiledFunctionCall expression, BuilderBase builder, StringifyContext context = default)
     {
-        builder.Append(expression.Function.Template switch
+        if (expression.Function.Template.Definition.Identifier.Content == BuiltinFunctionIdentifiers.IndexerGet
+            && expression.Arguments.Length == 2)
         {
-            CompiledFunctionDefinition v => v.Identifier,
-            _ => throw new NotImplementedException(expression.Function.Template.GetType().Name),
-        });
-        builder.Append('(');
-        builder.AppendJoin(expression.Arguments, Stringify);
-        builder.Append(')');
+            Stringify(expression.Arguments[0], builder);
+            builder.Append('[');
+            Stringify(expression.Arguments[1], builder);
+            builder.Append(']');
+        }
+        else if (expression.Function.Template.Definition.Identifier.Content == BuiltinFunctionIdentifiers.IndexerSet
+            && expression.Arguments.Length == 3)
+        {
+            Stringify(expression.Arguments[0], builder);
+            builder.Append('[');
+            Stringify(expression.Arguments[1], builder);
+            builder.Append(']');
+            builder.Append(' ');
+            builder.Append('=');
+            builder.Append(' ');
+            Stringify(expression.Arguments[2], builder);
+        }
+        else
+        {
+            builder.Append(expression.Function.Template switch
+            {
+                CompiledFunctionDefinition v => v.Identifier,
+                _ => throw new NotImplementedException(expression.Function.Template.GetType().Name),
+            });
+            builder.Append('(');
+            builder.AppendJoin(expression.Arguments, Stringify);
+            builder.Append(')');
+        }
     }
     public static void Stringify(CompiledExternalFunctionCall expression, BuilderBase builder, StringifyContext context = default)
     {

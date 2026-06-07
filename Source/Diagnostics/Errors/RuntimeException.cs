@@ -26,7 +26,7 @@ public class RuntimeException : LanguageException
         DebugInformation = debugInformation;
     }
 
-    public string ToString(bool colored)
+    public string ToString(bool colored, bool details)
     {
         if (!Context.HasValue) return Message + " (no context)";
         RuntimeContext context = Context.Value;
@@ -39,8 +39,9 @@ public class RuntimeException : LanguageException
         {
             position = sourcePosition.Location.Position;
             file = sourcePosition.Location.File;
-            if (sourcePosition.Location.File is not null &&
-                DebugInformation.OriginalFiles.TryGetValue(sourcePosition.Location.File, out ImmutableArray<Tokenizing.Token> tokens))
+            if (details
+                && sourcePosition.Location.File is not null
+                && DebugInformation.OriginalFiles.TryGetValue(sourcePosition.Location.File, out ImmutableArray<Tokenizing.Token> tokens))
             { arrows = LanguageExceptionAt.GetArrows(sourcePosition.Location.Position, tokens); }
         }
         else
@@ -65,9 +66,7 @@ public class RuntimeException : LanguageException
 
         StringBuilder result = new();
 
-        result.Append(LanguageExceptionAt.Format(Message, position, file));
-
-        result.AppendLine();
+        result.AppendLine(Message);
 
         if (colored) result.ResetStyle();
 
@@ -505,19 +504,14 @@ public class RuntimeException : LanguageException
             return true;
         }
 
-        // result.AppendLine();
-        // result.AppendLine($"Registers:");
-        // result.AppendLine($"CP: {context.Registers.CodePointer}");
-        // result.AppendLine($"SP: {context.Registers.StackPointer}");
-        // result.AppendLine($"BP: {context.Registers.BasePointer}");
-        // result.AppendLine($"AX: {context.Registers.AX}");
-        // result.AppendLine($"BX: {context.Registers.BX}");
-        // result.AppendLine($"CX: {context.Registers.CX}");
-        // result.AppendLine($"DX: {context.Registers.DX}");
-        // result.AppendLine($"Flags: {context.Registers.Flags}");
-
+        FunctionInformation currentFrame = DebugInformation.IsEmpty ? default : DebugInformation.GetFunctionInformation(context.Registers.CodePointer);
+        result.Append(' ', CallStackIndent);
+        if (!AppendFrame(currentFrame, new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer)))
+        { result.Append($"<unknown> {context.Registers.CodePointer}"); }
         result.AppendLine();
-        result.AppendLine("Call Stack (from oldest to recent):");
+
+        if (details) AppendScope(new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer));
+
         if (!callStack.IsDefaultOrEmpty)
         {
             if (callStack.Length != CallTrace.Length)
@@ -528,20 +522,13 @@ public class RuntimeException : LanguageException
             }
             else
             {
-                for (int i = 0; i < callStack.Length; i++)
+                for (int i = callStack.Length - 1; i >= 0; i--)
                 {
                     result.Append(' ', CallStackIndent);
 
                     if (!AppendFrame(callStack[i], CallTrace[i]))
                     {
-                        if (CallTrace[i].InstructionPointer == 0)
-                        {
-                            result.Append($"Top Level Statements");
-                        }
-                        else
-                        {
-                            result.Append($"<unknown> {CallTrace[i].InstructionPointer}");
-                        }
+                        result.Append($"<unknown> {CallTrace[i].InstructionPointer}");
 
                         if (DebugInformation.TryGetSourceLocation(CallTrace[i].InstructionPointer, out SourceCodeLocation sourceLocation))
                         {
@@ -552,22 +539,13 @@ public class RuntimeException : LanguageException
 
                     result.AppendLine();
 
-                    AppendScope(CallTrace[i]);
+                    if (details) AppendScope(CallTrace[i]);
                 }
             }
         }
 
-        FunctionInformation currentFrame = DebugInformation.IsEmpty ? default : DebugInformation.GetFunctionInformation(context.Registers.CodePointer);
-        result.Append(' ', CallStackIndent);
-        if (!AppendFrame(currentFrame, new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer)))
-        { result.Append($"<unknown> {context.Registers.CodePointer}"); }
-        result.Append(" (current)");
-        result.AppendLine();
-
-        AppendScope(new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer));
-
         return result.ToString();
     }
 
-    public override string ToString() => ToString(false);
+    public override string ToString() => ToString(false, false);
 }

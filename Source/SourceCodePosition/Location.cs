@@ -18,7 +18,7 @@ public readonly struct Location :
         File = file;
     }
 
-    public override string ToString() => $"{(File.IsFile ? File.LocalPath : File.ToString())}:{Position.Range.Start.ToStringMin()}";
+    public override string? ToString() => IsDefault ? null : $"{(File.IsFile ? File.LocalPath : File.ToString())}:{Position.Range.Start.ToStringMin()}";
     public override int GetHashCode() => HashCode.Combine(Position, File);
     public override bool Equals([NotNullWhen(true)] object? obj) => obj is Location other && Equals(other);
     public bool Equals(Location other) => Position.Equals(other.Position) && File == other.File;

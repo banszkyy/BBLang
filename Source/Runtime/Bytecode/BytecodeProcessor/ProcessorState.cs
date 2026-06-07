@@ -29,6 +29,8 @@ public ref partial struct ProcessorState
 
     public HotFunctions HotFunctions;
 
+    public readonly bool IsValid => !Code.IsEmpty;
+
 #if !UNITY_BURST
     public readonly ReadOnlySpan<IExternalFunction> ExternalFunctions;
     PendingExternalFunction PendingExternalFunction;

@@ -559,11 +559,11 @@ public partial class StatementCompiler
 
                 return CompileFunctionCall(functionCall, compiledArgumentExpressions, functionCall.MethodArguments, result, out compiledStatement);
             }
-            else
-            {
-                Debugger.Break();
-                GetFunction(functionCall.Identifier.Content, compiledArgumentExpressions, anyCall.File, out _, out _, AddCompilable);
-            }
+            //else
+            //{
+            //    Debugger.Break();
+            //    GetFunction(functionCall.Identifier.Content, compiledArgumentExpressions, anyCall.File, out _, out _, AddCompilable);
+            //}
         }
 
         if (!CompileExpression(anyCall.Arguments.Arguments.Select(v => v.Value), out compiledArgumentExpressions))
@@ -858,7 +858,7 @@ public partial class StatementCompiler
                             and not BinaryOperatorCallExpression.CompEQ
                             and not BinaryOperatorCallExpression.CompNEQ)
                     {
-                        Diagnostics.Add(DiagnosticAt.Warning($"Failed to infer binary operator result type (\"{leftType}\" {@operator.Operator} \"{rightType}\"), using \"{resultType}\" instead", @operator));
+                        //Diagnostics.Add(DiagnosticAt.Warning($"Failed to infer binary operator result type (\"{leftType}\" {@operator.Operator} \"{rightType}\"), using \"{resultType}\" instead", @operator));
                     }
 
                     SetStatementType(@operator, resultType);
@@ -1789,26 +1789,6 @@ public partial class StatementCompiler
             return true;
         }
 
-        if (!Settings.ExpressionVariables.IsDefault)
-        {
-            foreach (ExpressionVariable item in Settings.ExpressionVariables)
-            {
-                if (item.Name != variable.Content) continue;
-                variable.AnalyzedType = TokenAnalyzedType.VariableName;
-                SetStatementReference(variable, item);
-                SetStatementType(variable, item.Type);
-
-                compiledStatement = new CompiledExpressionVariableAccess()
-                {
-                    Variable = item,
-                    Location = variable.Location,
-                    SaveValue = variable.SaveValue,
-                    Type = item.Type,
-                };
-                return true;
-            }
-        }
-
         if (GetConstant(variable.Content, variable.File, out CompiledVariableConstant? constant, out PossibleDiagnostic? constantNotFoundError))
         {
             SetStatementType(variable, constant.Type);
@@ -1895,6 +1875,26 @@ public partial class StatementCompiler
                 SaveValue = variable.SaveValue,
             };
             return true;
+        }
+
+        if (!Settings.ExpressionVariables.IsDefault)
+        {
+            foreach (ExpressionVariable item in Settings.ExpressionVariables)
+            {
+                if (item.Name != variable.Content) continue;
+                variable.AnalyzedType = TokenAnalyzedType.VariableName;
+                SetStatementReference(variable, item);
+                SetStatementType(variable, item.Type);
+
+                compiledStatement = new CompiledExpressionVariableAccess()
+                {
+                    Variable = item,
+                    Location = variable.Location,
+                    SaveValue = variable.SaveValue,
+                    Type = item.Type,
+                };
+                return true;
+            }
         }
 
         if (GetGlobalVariable(variable.Content, variable.File, out CompiledVariableDefinition? globalVariable, out PossibleDiagnostic? globalVariableNotFoundError))

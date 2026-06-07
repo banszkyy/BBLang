@@ -713,7 +713,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             if (argument.Type.SameAs(parameter))
             { return true; }
 
-            if (StatementCompiler.CanCastImplicitly(argument.Type, parameter, null, out argumentError, out _))
+            if (StatementCompiler.CanCastImplicitly(argument.Type, parameter, out argumentError, out _))
             { return true; }
 
             argumentError = argumentError.TrySetLocation(argument);

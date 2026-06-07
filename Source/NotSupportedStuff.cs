@@ -1,5 +1,6 @@
 #if UNITY
 global using MemberNotNullWhenAttribute = System.Runtime.CompilerServices.MemberNotNullWhenAttribute_;
+using System.Threading;
 
 [assembly: SuppressMessage("Design", "CS8604")]
 [assembly: SuppressMessage("Design", "CS8632")]
@@ -214,4 +215,39 @@ namespace System.Diagnostics.CodeAnalysis
         public DynamicallyAccessedMembersAttribute(DynamicallyAccessedMemberTypes memberTypes) { }
     }
 }
+
+public readonly struct Lock
+{
+    readonly object _obj;
+
+    public Lock() => _obj = new object();
+
+    public void Enter() => Monitor.Enter(_obj);
+
+    public bool TryEnter() => Monitor.TryEnter(_obj);
+
+    public bool TryEnter(TimeSpan timeout) => Monitor.TryEnter(_obj, timeout);
+
+    public bool TryEnter(int millisecondsTimeout) => Monitor.TryEnter(_obj, millisecondsTimeout);
+
+    public void Exit() => Monitor.Exit(_obj);
+
+    public bool IsHeldByCurrentThread => Monitor.IsEntered(_obj);
+
+    public Scope EnterScope()
+    {
+        Monitor.Enter(_obj);
+        return new Scope(this);
+    }
+
+    public readonly struct Scope : IDisposable
+    {
+        readonly Lock _lock;
+
+        internal Scope(Lock @lock) => _lock = @lock;
+
+        public void Dispose() => _lock.Exit();
+    }
+}
+
 #endif

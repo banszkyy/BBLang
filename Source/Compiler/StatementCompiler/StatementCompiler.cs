@@ -1818,13 +1818,13 @@ public partial class StatementCompiler
         }
 
         FunctionFlags topLevelFlags = default;
-        CompiledStatement? firstHeapUsageLocation = null;
+        Location? firstHeapUsageLocation = default;
         StatementWalker.Visit(CompiledTopLevelStatements.Append(GeneratedFunctions.Where(v => v.Function is IExposeable exposeable && exposeable.ExposedFunctionName is not null).Select(v => v.Body)), v =>
         {
             FunctionFlags flags = GetStatementFlags(v);
             if (flags.HasFlag(FunctionFlags.AllocatesMemory) || topLevelFlags.HasFlag(FunctionFlags.DeallocatesMemory))
             {
-                firstHeapUsageLocation ??= v;
+                firstHeapUsageLocation ??= new Location(new Position(new Range<SinglePosition>(v.Location.Position.Range.Start, v.Location.Position.Range.Start), new Range<int>(v.Location.Position.AbsoluteRange.Start, v.Location.Position.AbsoluteRange.Start)), v.Location.File);
             }
             topLevelFlags |= flags;
             return true;
@@ -1832,16 +1832,16 @@ public partial class StatementCompiler
 
         if (topLevelFlags.HasFlag(FunctionFlags.AllocatesMemory) || topLevelFlags.HasFlag(FunctionFlags.DeallocatesMemory))
         {
-            if (firstHeapUsageLocation is null) throw new UnreachableException();
+            if (!firstHeapUsageLocation.HasValue) throw new UnreachableException();
 
             if (!TryGetBuiltinFunction(BuiltinFunctions.InitializeHeap, ImmutableArray<CompiledExpression>.Empty, entryFile, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? notFoundError, AddCompilable))
             {
                 Diagnostics.Add(
-                    DiagnosticAt.Error($"Failed to generate heap initialization code", firstHeapUsageLocation)
+                    DiagnosticAt.Error($"Failed to generate heap initialization code", firstHeapUsageLocation.Value)
                     .WithSuberrors(
-                        DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.InitializeHeap}\")] not found", firstHeapUsageLocation)
+                        DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.InitializeHeap}\")] not found", firstHeapUsageLocation.Value)
                         .WithSuberrors(
-                            notFoundError.ToError(firstHeapUsageLocation)
+                            notFoundError.ToError(firstHeapUsageLocation.Value)
                         )
                     )
                 );
@@ -1850,8 +1850,8 @@ public partial class StatementCompiler
             {
                 if (CompileFunctionCall(new FunctionCallExpression(
                     null,
-                    Token.CreateAnonymous(result.Function.Identifier, TokenType.Identifier, firstHeapUsageLocation.Location.Position),
-                    ArgumentListExpression.CreateAnonymous(TokenPair.CreateAnonymous(firstHeapUsageLocation.Location.Position, "(", ")"), entryFile),
+                    Token.CreateAnonymous(result.Function.Identifier, TokenType.Identifier, firstHeapUsageLocation.Value.Position),
+                    ArgumentListExpression.CreateAnonymous(TokenPair.CreateAnonymous(firstHeapUsageLocation.Value.Position, "(", ")"), entryFile),
                     entryFile
                 ), ImmutableArray<CompiledExpression>.Empty, ImmutableArray<ArgumentExpression>.Empty, result, out CompiledExpression? call))
                 {
@@ -1859,12 +1859,12 @@ public partial class StatementCompiler
                 }
                 else
                 {
-                    Diagnostics.Add(DiagnosticAt.Warning($"Heap initialization code not generated", firstHeapUsageLocation));
+                    Diagnostics.Add(DiagnosticAt.Warning($"Heap initialization code not generated", firstHeapUsageLocation.Value));
                 }
             }
             else
             {
-                Diagnostics.Add(DiagnosticAt.Warning($"Heap initialization code not generated because top level statements are ignored by the settings. Use a memory with an already initialized heap when you execute the code.", firstHeapUsageLocation));
+                Diagnostics.Add(DiagnosticAt.Warning($"Heap initialization code not generated because top level statements are ignored by the settings. Use a memory with an already initialized heap when you execute the code.", firstHeapUsageLocation.Value));
             }
         }
     }

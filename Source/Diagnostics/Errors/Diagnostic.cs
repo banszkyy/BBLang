@@ -88,4 +88,12 @@ public class Diagnostic : IEquatable<Diagnostic>
             yield return sub;
         }
     }
+
+    public static Diagnostic FromException(Exception exception) => exception switch
+    {
+        LanguageExceptionAt ex => ex.ToDiagnostic(),
+        LanguageException ex => ex.ToDiagnostic(),
+        AggregateException ex => new Diagnostic(DiagnosticsLevel.Error, ex.Message, false, ex.InnerExceptions is null ? ImmutableArray<Diagnostic>.Empty : ex.InnerExceptions.ToImmutableArray(FromException), ImmutableArray<DiagnosticRelatedInformation>.Empty),
+        _ => new Diagnostic(DiagnosticsLevel.Error, exception.Message, false, exception.InnerException is null ? ImmutableArray<Diagnostic>.Empty : ImmutableArray.Create(FromException(exception.InnerException)), ImmutableArray<DiagnosticRelatedInformation>.Empty)
+    };
 }

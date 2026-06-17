@@ -1,3 +1,4 @@
+#if false
 using LanguageCore.Compiler;
 
 namespace LanguageCore.IR;
@@ -21,6 +22,15 @@ class IRTemporary : IRValue
     }
 
     public override string ToString() => $"t{Id}";
+}
+
+class IRVoid : IRValue
+{
+    public IRVoid() : base(BuiltinType.Void)
+    {
+    }
+
+    public override string ToString() => $"void";
 }
 
 class IRConstant : IRValue
@@ -53,6 +63,18 @@ class IRPhi : IRValue
     }
 
     public override string ToString() => $"phi()";
+}
+
+class IRCompilerVariable : IRValue
+{
+    public readonly string Identifier;
+
+    public IRCompilerVariable(string identifier, GeneralType type) : base(type)
+    {
+        Identifier = identifier;
+    }
+
+    public override string ToString() => $"@{Identifier}";
 }
 
 abstract class IRStatement
@@ -119,6 +141,32 @@ class IRAssignment : IRStatement
     public required IRValue Value;
 
     public override string ToString() => $"{Target} = {Value}";
+}
+
+class IRFunctionCall : IRStatement
+{
+    public required IRTemporary? ReturnValue;
+    public required ImmutableArray<IRValue> Arguments;
+    public required TemplateInstance<ICompiledFunctionDefinition> Function;
+
+    public override string ToString() => $"{(ReturnValue is null ? null : $"{ReturnValue} = ")}...({string.Join(", ", Arguments)})";
+}
+
+class IRExternalFunctionCall : IRStatement
+{
+    public required IRTemporary? ReturnValue;
+    public required ImmutableArray<IRValue> Arguments;
+    public required Runtime.IExternalFunction Function;
+
+    public override string ToString() => $"{(ReturnValue is null ? null : $"{ReturnValue} = ")}...({string.Join(", ", Arguments)})";
+}
+
+class IRIndirectAssignment : IRStatement
+{
+    public required IRValue TargetAddress;
+    public required IRValue Value;
+
+    public override string ToString() => $"*({TargetAddress}) = {Value}";
 }
 
 class IRReturn : IRStatement
@@ -420,14 +468,157 @@ class IRGenerator
     IRValue EmitExpression(CompiledStackAllocation expression, IRBuilder builder) { throw new NotImplementedException(); }
     IRValue EmitExpression(CompiledConstructorCall expression, IRBuilder builder) { throw new NotImplementedException(); }
     IRValue EmitExpression(CompiledCast expression, IRBuilder builder) { throw new NotImplementedException(); }
-    IRValue EmitExpression(CompiledReinterpretation expression, IRBuilder builder) { throw new NotImplementedException(); }
+    IRValue EmitExpression(CompiledReinterpretation expression, IRBuilder builder) => EmitExpression(expression.Value, builder) switch
+    {
+        IRTemporary v => new IRTemporary(v.Id, expression.Type),
+        IRConstant v => new IRConstant(expression.Type) { Value = v.Value },
+        IRVoid => new IRVoid(),
+        IRCompilerVariable v => new IRCompilerVariable(v.Identifier, expression.Type),
+        _ => throw new UnreachableException(),
+    };
     IRValue EmitExpression(CompiledRuntimeCall expression, IRBuilder builder) { throw new NotImplementedException(); }
-    IRValue EmitExpression(CompiledFunctionCall expression, IRBuilder builder) { throw new NotImplementedException(); }
-    IRValue EmitExpression(CompiledExternalFunctionCall expression, IRBuilder builder) { throw new NotImplementedException(); }
+    IRValue EmitExpression(CompiledFunctionCall expression, IRBuilder builder)
+    {
+        List<IRValue> arguments = new();
+        foreach (CompiledArgument item in expression.Arguments)
+        {
+            arguments.Add(EmitExpression(item, builder));
+        }
+        IRTemporary? returnValue = null;
+        if (expression.SaveValue && expression.Function.Template.ReturnSomething)
+        {
+            returnValue = builder.NewTemporary(GeneralType.TryInsertTypeParameters(expression.Function.Template.Type, expression.Function.TypeArguments));
+        }
+        builder.Statements.Add(new IRFunctionCall()
+        {
+            Function = expression.Function,
+            Arguments = arguments.ToImmutableArray(),
+            ReturnValue = returnValue,
+        });
+        return returnValue as IRValue ?? new IRVoid();
+    }
+    void EmitDeallocator(IRTemporary value, CompiledCleanup cleanup, IRBuilder builder)
+    {
+        if (cleanup.Deallocator is null)
+        {
+            return;
+        }
+
+        if (cleanup.Deallocator.Template.ExternalFunctionName is not null)
+        {
+            throw new NotImplementedException();
+        }
+
+        if (cleanup.Deallocator.Template.ReturnSomething)
+        { throw new NotImplementedException(); }
+
+        AddComment(" .:");
+
+        InstructionLabel label = LabelForDefinition(cleanup.Deallocator);
+        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables));
+
+        if (!label.IsMarked)
+        { UndefinedFunctionOffsets.Add(new UndefinedOffset(cleanup.Location, cleanup.Deallocator.UnsafeTo<IHaveInstructionOffset>())); }
+
+        if (cleanup.Deallocator.Template.ReturnSomething)
+        {
+            AddComment($" Clear return value:");
+
+            // todo: wtf?
+            const int returnValueSize = 0;
+            Pop(returnValueSize);
+        }
+
+        AddComment("}");
+    }
+
+    void EmitDestructor(CompiledCleanup cleanup)
+    {
+        if (StatementCompiler.AllowDeallocate(cleanup.TrashType))
+        {
+            if (cleanup.Destructor is null)
+            {
+                AddComment($"Pointer value should be already there");
+                GenerateDeallocator(cleanup);
+
+                return;
+            }
+        }
+        else
+        {
+            if (cleanup.Destructor is null)
+            {
+                return;
+            }
+        }
+
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Destructor.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Destructor.TypeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{cleanup.Destructor.Template.ToReadable()}\" wasn't compiled", cleanup));
+            return;
+        }
+
+        AddComment(" Param0 should be already there");
+
+        AddComment(" .:");
+
+        InstructionLabel label = LabelForDefinition(cleanup.Destructor);
+        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables));
+
+        if (!label.IsMarked)
+        { UndefinedFunctionOffsets.Add(new UndefinedOffset(cleanup.Location, cleanup.Destructor.UnsafeTo<IHaveInstructionOffset>())); }
+
+        if (StatementCompiler.AllowDeallocate(cleanup.TrashType))
+        {
+            GenerateDeallocator(cleanup);
+        }
+
+        AddComment("}");
+    }
+    IRValue EmitExpression(CompiledExternalFunctionCall expression, IRBuilder builder)
+    {
+        List<IRValue> arguments = new();
+        foreach (CompiledArgument item in expression.Arguments)
+        {
+            arguments.Add(EmitExpression(item, builder));
+        }
+        IRTemporary? returnValue = null;
+        if (expression.SaveValue && expression.Function.ReturnValueSize > 0)
+        {
+            returnValue = builder.NewTemporary(expression.Type);
+        }
+        builder.Statements.Add(new IRExternalFunctionCall()
+        {
+            Function = expression.Function,
+            Arguments = arguments.ToImmutableArray(),
+            ReturnValue = returnValue,
+        });
+        for (int i = 0; i < expression.Arguments.Length; i++)
+        {
+            if (expression.Arguments[i].Cleanup is not null)
+            {
+                expression.Arguments[i].Cleanup.Destructor
+            }
+        }
+        return returnValue as IRValue ?? new IRVoid();
+    }
+    IRValue EmitExpression(CompiledDummyExpression expression, IRBuilder builder)
+    {
+        EmitStatement(expression.Statement, builder);
+        return new IRVoid();
+    }
     IRValue EmitExpression(CompiledString expression, IRBuilder builder) { throw new NotImplementedException(); }
     IRValue EmitExpression(CompiledStackString expression, IRBuilder builder) { throw new NotImplementedException(); }
     IRValue EmitExpression(CompiledLambda expression, IRBuilder builder) { throw new NotImplementedException(); }
-    IRValue EmitExpression(CompiledCompilerVariableAccess expression, IRBuilder builder) { throw new NotImplementedException(); }
+    IRValue EmitExpression(CompiledCompilerVariableAccess expression, IRBuilder builder)
+    {
+        return new IRCompilerVariable(expression.Identifier, expression.Type);
+    }
+    IRValue EmitExpression(CompiledArgument expression, IRBuilder builder)
+    {
+        return EmitExpression(expression.Value, builder);
+    }
     IRValue EmitExpression(CompiledExpression expression, IRBuilder builder) => expression switch
     {
         CompiledSizeof v => EmitExpression(v, builder),
@@ -451,15 +642,15 @@ class IRGenerator
         CompiledRuntimeCall v => EmitExpression(v, builder),
         CompiledFunctionCall v => EmitExpression(v, builder),
         CompiledExternalFunctionCall v => EmitExpression(v, builder),
-        CompiledDummyExpression => throw new NotImplementedException(),
+        CompiledDummyExpression v => EmitExpression(v, builder),
         CompiledString v => EmitExpression(v, builder),
         CompiledStackString v => EmitExpression(v, builder),
         CompiledLambda v => EmitExpression(v, builder),
         CompiledCompilerVariableAccess v => EmitExpression(v, builder),
+        CompiledArgument v => EmitExpression(v, builder),
         _ => throw new NotImplementedException($"Unimplemented expression \"{expression.GetType().Name}\""),
     };
 
-    void EmitStatement(CompiledExpression statement, IRBuilder builder) { throw new NotImplementedException(); }
     void EmitStatement(CompiledVariableDefinition statement, IRBuilder builder)
     {
         IRLocal local = new();
@@ -506,15 +697,13 @@ class IRGenerator
     void EmitStatement(CompiledGoto statement, IRBuilder builder) { throw new NotImplementedException(); }
     void EmitStatement(CompiledSetter statement, IRBuilder builder)
     {
-        IRTemporary target;
-        IRValue value;
-
         switch (statement.Target)
         {
             case CompiledVariableAccess v:
-                value = EmitExpression(statement.Value, builder);
+            {
+                IRValue value = EmitExpression(statement.Value, builder);
 
-                target = builder.NewTemporary(value.Type);
+                IRTemporary target = builder.NewTemporary(value.Type);
                 IRLocal local = builder.Locals[v.Variable.Identifier];
 
                 IRLocalVersion newVersion = new()
@@ -524,16 +713,29 @@ class IRGenerator
                 };
                 builder.UnfinishedLocals.Add(newVersion);
                 local.Values.Add(newVersion);
+
+                builder.Statements.Add(new IRAssignment()
+                {
+                    Target = target,
+                    Value = value,
+                });
                 break;
+            }
+            case CompiledDereference v:
+            {
+                IRValue target = EmitExpression(v.Address, builder);
+                IRValue value = EmitExpression(statement.Value, builder);
+
+                builder.Statements.Add(new IRIndirectAssignment()
+                {
+                    TargetAddress = target,
+                    Value = value,
+                });
+                break;
+            }
             default:
                 throw new NotImplementedException(statement.Target.GetType().Name);
         }
-
-        builder.Statements.Add(new IRAssignment()
-        {
-            Target = target,
-            Value = value,
-        });
     }
     void EmitStatement(CompiledWhileLoop statement, IRBuilder builder)
     {
@@ -617,7 +819,7 @@ class IRGenerator
     {
         switch (statement)
         {
-            case CompiledExpression v: EmitStatement(v, builder); break;
+            case CompiledExpression v: EmitExpression(v, builder); break;
             case CompiledVariableDefinition v: EmitStatement(v, builder); break;
             case CompiledReturn v: EmitStatement(v, builder); break;
             case CompiledCrash v: EmitStatement(v, builder); break;
@@ -705,3 +907,5 @@ class IRGenerator
 
     public static IRSimpleBlock Generate(CompilerResult compilerResult) => new IRGenerator(compilerResult).Generate();
 }
+#endif
+

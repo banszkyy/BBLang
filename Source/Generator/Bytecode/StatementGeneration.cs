@@ -1,6 +1,8 @@
 ﻿using System.Reflection.Emit;
 using LanguageCore.Compiler;
+#if false
 using LanguageCore.IR;
+#endif
 using LanguageCore.Runtime;
 
 namespace LanguageCore.BBLang.Generator;
@@ -2815,6 +2817,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     #endregion
 
+#if false
     readonly Dictionary<IRBlock, InstructionLabel> GeneratedBlocks = new();
     readonly Queue<IRBlock> RemainingBlocks = new();
     readonly Dictionary<IRTemporary, int> Temporaries = new();
@@ -2835,6 +2838,10 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         throw new NotImplementedException();
     }
+    void EmitIR(IRCompilerVariable value)
+    {
+        Code.Emit(Opcode.Push, new PreparationInstructionOperand(new VariableInstructionOperand(value.Identifier)));
+    }
     void EmitIR(IRValue value)
     {
         switch (value)
@@ -2842,6 +2849,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case IRTemporary v: EmitIR(v); break;
             case IRConstant v: EmitIR(v); break;
             case IRPhi v: EmitIR(v); break;
+            case IRCompilerVariable v: EmitIR(v); break;
             default: throw new UnreachableException(value.GetType().Name);
         }
     }
@@ -3042,6 +3050,90 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         throw new NotImplementedException();
     }
+    void EmitIR(IRIndirectAssignment statement)
+    {
+        EmitIR(statement.Value);
+        EmitIR(statement.TargetAddress);
+        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        {
+            PopTo(reg.Register);
+            PopTo(new AddressRegisterPointer(reg.Register), FindSize(statement.Value.Type));
+        }
+    }
+    void EmitIR(IRFunctionCall statement)
+    {
+        ILocated loc = new Location();
+
+        CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, statement.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, statement.Function.TypeArguments));
+        if (f is null)
+        {
+            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{statement.Function.Template.ToReadable()}\" wasn't compiled", loc));
+            return;
+        }
+
+        if (statement.Function.Template.ReturnSomething)
+        {
+            StackAlloc(FindSize(GeneralType.TryInsertTypeParameters(statement.Function.Template.Type, statement.Function.TypeArguments), loc), false);
+        }
+
+        foreach (IRValue item in statement.Arguments)
+        {
+            EmitIR(item);
+        }
+
+        InstructionLabel label = LabelForDefinition(statement.Function);
+        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables));
+
+        if (!label.IsMarked)
+        { UndefinedFunctionOffsets.Add(new(loc, statement.Function.UnsafeTo<IHaveInstructionOffset>())); }
+
+        if (statement.ReturnValue is not null)
+        {
+            if (!Temporaries.TryGetValue(statement.ReturnValue, out int target))
+            {
+                target = Temporaries.Keys.Sum(v => FindSize(v.Type)) + BasePointerSize;
+                Temporaries.Add(statement.ReturnValue, target);
+            }
+
+            if (ScopeSizes.Last != target)
+            {
+                PopTo(new AddressOffset(Register.BasePointer, -target), FindSize(statement.ReturnValue.Type));
+            }
+        }
+        else if (statement.Function.Template.ReturnSomething)
+        {
+            Pop(FindSize(GeneralType.TryInsertTypeParameters(statement.Function.Template.Type, statement.Function.TypeArguments), loc));
+        }
+    }
+    void EmitIR(IRExternalFunctionCall statement)
+    {
+        ILocated loc = new Location();
+
+        foreach (IRValue item in statement.Arguments)
+        {
+            EmitIR(item);
+        }
+
+        Code.Emit(Opcode.CallExternal, InstructionOperand.Immediate(statement.Function.Id));
+
+        if (statement.ReturnValue is not null)
+        {
+            if (!Temporaries.TryGetValue(statement.ReturnValue, out int target))
+            {
+                target = Temporaries.Keys.Sum(v => FindSize(v.Type)) + BasePointerSize;
+                Temporaries.Add(statement.ReturnValue, target);
+            }
+
+            if (ScopeSizes.Last != target)
+            {
+                PopTo(new AddressOffset(Register.BasePointer, -target), FindSize(statement.ReturnValue.Type));
+            }
+        }
+        else if (statement.Function.ReturnValueSize > 0)
+        {
+            Pop(statement.Function.ReturnValueSize);
+        }
+    }
     void EmitIR(IRStatement statement)
     {
         switch (statement)
@@ -3049,6 +3141,9 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case IROperator v: EmitIR(v); break;
             case IRAssignment v: EmitIR(v); break;
             case IRReturn v: EmitIR(v); break;
+            case IRIndirectAssignment v: EmitIR(v); break;
+            case IRFunctionCall v: EmitIR(v); break;
+            case IRExternalFunctionCall v: EmitIR(v); break;
             default: throw new UnreachableException(statement.GetType().Name);
         }
     }
@@ -3103,12 +3198,14 @@ public partial class CodeGeneratorForMain : CodeGenerator
             default: throw new UnreachableException(block.GetType().Name);
         }
     }
+#endif
 
     BBLangGeneratorResult GenerateCode(CompilerResult compilerResult, MainGeneratorSettings settings)
     {
         ScopeSizes.Push(0);
 
-        if (false)
+#if false
+        if (true)
         {
 #pragma warning disable CS0162 // Unreachable code detected
             AddComment("Create stack frame");
@@ -3125,6 +3222,40 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
 
             Code.Emit(Opcode.Exit);
+
+            while (UndefinedFunctionOffsets.Count > 0)
+            {
+                foreach (UndefinedOffset undefinedOffset in UndefinedFunctionOffsets.ToArray())
+                {
+                    if (undefinedOffset.Called.Template is CompiledLambda compiledLambda)
+                    {
+                        GenerateCodeForFunction(compiledLambda, null, compiledLambda.Block);
+                        goto ok;
+                    }
+
+                    foreach (CompiledFunction function in compilerResult.Functions)
+                    {
+                        if (!Utils.ReferenceEquals(undefinedOffset.Called.Template, function.Function)
+                            || !StatementCompiler.TypeArgumentsEquals(undefinedOffset.Called.TypeArguments, function.TypeArguments))
+                        { continue; }
+                        GenerateCodeForFunction(function.Function, function.TypeArguments, function.Body);
+                        goto ok;
+                    }
+
+                    if (!Diagnostics.HasErrors) Diagnostics.Add(DiagnosticAt.Error($"Function {undefinedOffset.Called} wasn't compiled for some reason", undefinedOffset.CallerLocation));
+                    goto failed2;
+                ok:;
+                }
+
+                for (int i = 0; i < UndefinedFunctionOffsets.Count; i++)
+                {
+                    if (LabelForDefinition(UndefinedFunctionOffsets[i].Called).IsMarked)
+                    {
+                        UndefinedFunctionOffsets.RemoveAt(i--);
+                    }
+                }
+            }
+        failed2:
 
             return new BBLangGeneratorResult()
             {
@@ -3146,6 +3277,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 ILGeneratorBuilders = ILGenerator?.Builders?.ToImmutableArray() ?? ImmutableArray<string>.Empty,
             };
         }
+#endif
 
         CurrentScopeDebug.Push(new ScopeInformation()
         {

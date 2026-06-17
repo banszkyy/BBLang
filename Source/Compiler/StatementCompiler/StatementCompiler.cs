@@ -1607,7 +1607,14 @@ public partial class StatementCompiler
 
             GeneratedFunctions.Add(new(function, body, closure, typeArguments));
 
-            if (!closure.IsEmpty) throw new NotImplementedException();
+            if (!closure.IsEmpty)
+            {
+                Diagnostics.Add(DiagnosticAt.Error($"Closures are not supported in this context", function)
+                    .WithRelatedInfo(closure.Select(v =>
+                        v.Parameter is not null ? new DiagnosticRelatedInformationAt($"Captured parameter \"{v.Parameter.Identifier}\"", v.Parameter.Location) :
+                        v.Variable is not null ? new DiagnosticRelatedInformationAt($"Captured variable \"{v.Variable.Identifier}\"", v.Variable.Location) :
+                        new DiagnosticRelatedInformation("meow"))));
+            }
 
             return true;
         }

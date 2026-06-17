@@ -700,7 +700,7 @@ public partial class StatementCompiler
         return true;
     }
 
-    void AddAST(ParsedFile collectedAST, bool addTopLevelStatements = true) => AddAST(collectedAST.AST, collectedAST.File);
+    void AddAST(ParsedFile collectedAST, bool addTopLevelStatements = true) => AddAST(collectedAST.AST, collectedAST.File, addTopLevelStatements);
 
     void AddAST(ParserResult ast, Uri file, bool addTopLevelStatements = true)
     {

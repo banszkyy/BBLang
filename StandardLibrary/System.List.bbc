@@ -1,7 +1,7 @@
 using Primitives;
 using System.Memory;
 
-struct List<T>
+export struct List<T>
 {
     private int _capacity;
     private int _length;

@@ -26,7 +26,7 @@ export alias string char[]*;
 #endif
 
 [InternalType("boolean")]
-alias bool u8;
+export alias bool u8;
 
 export const bool true = (bool)1;
 export const bool false = (bool)0;

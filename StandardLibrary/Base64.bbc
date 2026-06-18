@@ -1,0 +1,105 @@
+using System;
+
+/**
+ * Source: https://github.com/elzoughby/Base64/blob/master/base64.c
+ * Author: Ahmed Elzoughby
+ */
+export string base64_encode(temp byte[]* plain, int len)
+{
+    char[65] base64_map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    char counts = 0;
+    char[3] buffer;
+    char[]* cipher = new char[len * 4 / 3 + 4]*;
+    int c = 0;
+
+    for (int i = 0; plain[i] != '\0'; i++) {
+        buffer[counts] = plain[i];
+        counts++;
+        if (counts == 3)
+        {
+            cipher[c] = base64_map[buffer[0] >> 2];
+            c++;
+            cipher[c] = base64_map[((buffer[0] & 0x03) << 4) + (buffer[1] >> 4)];
+            c++;
+            cipher[c] = base64_map[((buffer[1] & 0x0f) << 2) + (buffer[2] >> 6)];
+            c++;
+            cipher[c] = base64_map[buffer[2] & 0x3f];
+            c++;
+            counts = 0;
+        }
+    }
+
+    if(counts > 0)
+    {
+        cipher[c] = base64_map[buffer[0] >> 2];
+        c++;
+
+        if (counts == 1)
+        {
+            cipher[c] = base64_map[(buffer[0] & 0x03) << 4];
+            c++;
+            cipher[c] = '=';
+            c++;
+        }
+        else
+        {                      // if counts == 2
+            cipher[c] = base64_map[((buffer[0] & 0x03) << 4) + (buffer[1] >> 4)];
+            c++;
+            cipher[c] = base64_map[(buffer[1] & 0x0f) << 2];
+            c++;
+        }
+
+        cipher[c] = '=';
+        c++;
+    }
+
+    cipher[c] = '\0';   /* string padding character */
+    return cipher;
+}
+
+/**
+ * Source: https://github.com/elzoughby/Base64/blob/master/base64.c
+ * Author: Ahmed Elzoughby
+ */
+export byte[]* base64_decode(temp string cipher)
+{
+    char[65] base64_map = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    char counts = 0;
+    char[4] buffer;
+    char[]* plain = new char[cipher.length() * 3 / 4]*;
+    int p = 0;
+
+    for (int i = 0; cipher[i] != '\0'; i++)
+    {
+        char k;
+        for (k = 0 ; k < 64 && base64_map[k] != cipher[i]; k++) { }
+
+        buffer[counts] = k;
+        counts++;
+
+        if (counts == 4)
+        {
+            plain[p] = (char)((buffer[0] << 2) + (buffer[1] >> 4));
+            p++;
+
+            if (buffer[2] != 64)
+            {
+                plain[p] = (char)((buffer[1] << 4) + (buffer[2] >> 2));
+                p++;
+            }
+
+            if (buffer[3] != 64)
+            {
+                plain[p] = (char)((buffer[2] << 6) + buffer[3]);
+                p++;
+            }
+
+            counts = 0;
+        }
+    }
+
+    plain[p] = '\0';
+    return plain;
+}

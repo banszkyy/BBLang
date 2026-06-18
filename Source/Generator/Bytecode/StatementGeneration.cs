@@ -1204,11 +1204,23 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForStatement(CompiledParameterAccess parameterRef)
     {
-        PushFrom(GetParameterAddress(parameterRef.Parameter), FindSize(parameterRef.Type, parameterRef.Parameter.Definition));
+        if (!GetParameterAddress(parameterRef.Parameter, 0, out Address? address, out PossibleDiagnostic? error))
+        {
+            Diagnostics.Add(error.ToError(parameterRef));
+            return;
+        }
+
+        PushFrom(address, FindSize(parameterRef.Type, parameterRef.Parameter.Definition));
     }
     void GenerateCodeForStatement(CompiledVariableAccess variableRef)
     {
-        PushFrom(GetVariableAddress(variableRef.Variable), FindSize(variableRef.Type, variableRef));
+        if (!GetVariableAddress(variableRef.Variable, out Address? address, out PossibleDiagnostic? error))
+        {
+            Diagnostics.Add(error.ToError(variableRef));
+            return;
+        }
+
+        PushFrom(address, FindSize(variableRef.Type, variableRef));
     }
     void GenerateCodeForStatement(CompiledExpressionVariableAccess expressionVariableRef)
     {
@@ -2307,7 +2319,14 @@ public partial class CodeGeneratorForMain : CodeGenerator
     void GenerateCodeForValueSetter(CompiledVariableAccess localVariableSetter, CompiledExpression value)
     {
         GenerateCodeForStatement(value);
-        PopTo(GetVariableAddress(localVariableSetter.Variable), FindSize(localVariableSetter.Variable.Type, localVariableSetter.Variable));
+
+        if (!GetVariableAddress(localVariableSetter.Variable, out Address? address, out PossibleDiagnostic? error))
+        {
+            Diagnostics.Add(error.ToError(localVariableSetter));
+            return;
+        }
+
+        PopTo(address, FindSize(localVariableSetter.Variable.Type, localVariableSetter.Variable));
         // localVariableSetter.Variable.Variable.IsInitialized = true;
     }
     void GenerateCodeForValueSetter(CompiledExpressionVariableAccess localVariableSetter, CompiledExpression value)
@@ -2318,7 +2337,14 @@ public partial class CodeGeneratorForMain : CodeGenerator
     void GenerateCodeForValueSetter(CompiledParameterAccess parameterSetter, CompiledExpression value)
     {
         GenerateCodeForStatement(value);
-        PopTo(GetParameterAddress(parameterSetter.Parameter), FindSize(parameterSetter.Parameter.Type, parameterSetter));
+
+        if (!GetParameterAddress(parameterSetter.Parameter, 0, out Address? address, out PossibleDiagnostic? error))
+        {
+            Diagnostics.Add(error.ToError(parameterSetter));
+            return;
+        }
+
+        PopTo(address, FindSize(parameterSetter.Parameter.Type, parameterSetter));
     }
     void GenerateCodeForValueSetter(CompiledFieldAccess fieldSetter, CompiledExpression value)
     {
@@ -2687,16 +2713,23 @@ public partial class CodeGeneratorForMain : CodeGenerator
             CompiledParameter p = CompiledParameters[i];
             GeneralType pType = GeneralType.TryInsertTypeParameters(p.Type, typeArguments);
 
-            StackElementInformation debugInfo = new()
+            if (!GetParameterAddress(p, 0, out Address? address, out PossibleDiagnostic? error))
             {
-                Address = GetParameterAddress(p).Offset,
+                Diagnostics.Add(error.ToWarning(p));
+                continue;
+            }
+
+            if (address is not AddressOffset addressOffset) continue;
+
+            CurrentScopeDebug.Last.Stack.Add(new StackElementInformation()
+            {
+                Address = addressOffset.Offset,
                 Kind = StackElementKind.Parameter,
                 BasePointerRelative = true,
                 Size = FindSize(pType, p.Definition),
                 Identifier = p.Identifier,
                 Type = pType,
-            };
-            CurrentScopeDebug.Last.Stack.Add(debugInfo);
+            });
         }
 
         InstructionLabel returnLabel = Code.DefineLabel();

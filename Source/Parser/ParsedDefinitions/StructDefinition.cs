@@ -8,7 +8,8 @@ public class StructDefinition :
     IPositioned,
     ILocated,
     IIdentifiable<Token>,
-    IHaveAttributes
+    IHaveAttributes,
+    ITemplateable
 {
     public ImmutableArray<AttributeUsage> Attributes { get; }
     public Token Identifier { get; }

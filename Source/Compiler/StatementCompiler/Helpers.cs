@@ -208,7 +208,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     static bool FunctionEquals<TFunction>(TemplateInstance<TFunction> a, FunctionMatch<TFunction> b) where TFunction : class
     {
-        return Utils.ReferenceEquals(a.Template, b.Function) && TypeArgumentsEquals(a.TypeArguments, b.TypeArguments);
+        return Utils.ReferenceEquals(a.Template, b.Definition) && TypeArgumentsEquals(a.TypeArguments, b.TypeArguments);
     }
 
     #region AddCompilable()
@@ -753,30 +753,17 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     #region GetStruct()
 
-    public enum StructPerfectus
+    public enum StructMatch
     {
         None,
-
-        /// <summary>
-        /// The identifier is good
-        /// </summary>
-        Identifier,
-
-        /// <summary>
-        /// Boundary between good and bad structs
-        /// </summary>
-        Good,
-
-        // == MATCHED --> Searching for the most relevant struct ==
-
-        /// <summary>
-        /// The struct is in the same file
-        /// </summary>
-        File,
+        IdentifierMatches,
+        ProtectionValid,
+        FileMatches,
     }
 
     bool GetStruct(
         string structName,
+        int? genericParameterCount,
         Uri relevantFile,
 
         [NotNullWhen(true)] out StructDefinition? result,
@@ -785,6 +772,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             StructDefinitions,
 
             structName,
+            genericParameterCount,
             relevantFile,
 
             out result,
@@ -794,102 +782,125 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         IEnumerable<StructDefinition> structs,
 
         string structName,
+        int? genericParameterCount,
         Uri relevantFile,
 
         [NotNullWhen(true)] out StructDefinition? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        StructDefinition? result_ = default;
-        PossibleDiagnostic? error_ = null;
+        MatchList<DefinitionMatch<StructDefinition>, StructDefinition> candidates = new();
 
-        StructPerfectus perfectus = StructPerfectus.None;
-
-        static StructPerfectus Max(StructPerfectus a, StructPerfectus b) => a > b ? a : b;
-
-        bool HandleIdentifier(StructDefinition function)
+        foreach (StructDefinition @struct in structs)
         {
-            if (structName is not null &&
-                function.Identifier.Content != structName)
-            { return false; }
-
-            perfectus = Max(perfectus, StructPerfectus.Identifier);
-            return true;
-        }
-
-        bool HandleFile(StructDefinition function)
-        {
-            if (relevantFile is null ||
-                function.File != relevantFile)
+            DefinitionMatch<StructDefinition> match = new()
             {
-                // Not in the same file
-                return false;
+                Definition = @struct,
+                Errors = new(),
+            };
+
+            if (structName is null)
+            {
+                match.IsIdentifierMatched = true;
+                match.IdentifierBadness = 0;
+            }
+            else if (@struct.Identifier.Equals(structName))
+            {
+                match.IsIdentifierMatched = true;
+                match.IdentifierBadness = 0;
+            }
+            else
+            {
+                match.IsIdentifierMatched = false;
+                match.IdentifierBadness = 2;
+
+                if (structName.ToLowerInvariant() == @struct.Identifier.Content.ToLowerInvariant())
+                {
+                    match.IdentifierBadness = 1;
+                }
+
+                if (match.IdentifierBadness == 1)
+                {
+                    match.Errors.Add(new PossibleDiagnostic($"Struct \"{structName}\" does not match with \"{@struct.Identifier}\"")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct \"{@struct.Identifier}\" defined here", @struct.Location)));
+                }
+                else
+                {
+                    continue;
+                }
             }
 
-            if (perfectus >= StructPerfectus.File)
+            if (relevantFile is null || @struct.File == relevantFile)
             {
-                error_ = new PossibleDiagnostic($"Struct \"{structName}\" not found: multiple structs matched in the same file");
-                // Debugger.Break();
+                match.IsFileMatches = true;
             }
 
-            perfectus = StructPerfectus.File;
-            result_ = function;
-            return true;
-        }
-
-        foreach (StructDefinition function in structs)
-        {
-            if (!HandleIdentifier(function))
-            { continue; }
-
-            // MATCHED --> Searching for most relevant struct
-
-            if (perfectus < StructPerfectus.Good)
+            if (relevantFile is null || @struct.CanUse(relevantFile))
             {
-                result_ = function;
-                perfectus = StructPerfectus.Good;
+                match.IsProtectionRespected = true;
+            }
+            else
+            {
+                match.Errors.Add(new PossibleDiagnostic($"Cannot use struct \"{@struct.Identifier}\" due it's protection level")
+                    .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct \"{@struct.Identifier}\" defined here", @struct.Location)));
             }
 
-            if (!HandleFile(function))
-            { continue; }
+            if (@struct.Template is null)
+            {
+                if (!genericParameterCount.HasValue)
+                {
+                    match.IsGenericParameterCountMatches = true;
+                }
+                else
+                {
+                    match.Errors.Add(new PossibleDiagnostic($"Struct \"{@struct.Identifier}\" doesn't have generic parameters")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct \"{@struct.Identifier}\" defined here", @struct.Location)));
+                }
+            }
+            else
+            {
+                if (genericParameterCount.HasValue && genericParameterCount.Value == @struct.Template.Parameters.Length)
+                {
+                    match.IsGenericParameterCountMatches = true;
+                }
+                else
+                {
+                    match.Errors.Add(new PossibleDiagnostic($"Wrong number of generic parameters used for struct \"{@struct.Identifier}\": expected {@struct.Template.Parameters.Length} used {genericParameterCount ?? 0}")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct \"{@struct.Identifier}\" defined here", @struct.Location)));
+                }
+            }
+
+            candidates.Add(match);
         }
 
-        if (result_ is not null && perfectus >= StructPerfectus.Good)
+        if (candidates.Count == 0)
         {
-            result = result_;
-            error = error_;
-            return true;
+            error = new PossibleDiagnostic($"Struct \"{structName}\" not found");
+            result = null;
+            return false;
         }
 
-        error = error_ ?? new PossibleDiagnostic($"Struct \"{structName}\" not found");
-        result = null;
-        return false;
+        if (candidates.Count > 1)
+        {
+            error = new PossibleDiagnostic($"Multiple structs matched").WithRelatedInfo(candidates.ToImmutableArray(v => new DiagnosticRelatedInformationAt($"Struct \"{v.Definition.Identifier}\" defined here", v.Definition.Location)));
+            result = null;
+            return false;
+        }
+
+        if (candidates[0].Errors.Count > 0)
+        {
+            error = new PossibleDiagnostic($"Struct \"{structName}\" not found", candidates[0].Errors.ToImmutableArray());
+            result = candidates[0].Definition;
+            return false;
+        }
+
+        error = null;
+        result = candidates[0].Definition;
+        return true;
     }
 
     #endregion
 
     #region GetAlias()
-
-    public enum AliasPerfectus
-    {
-        None,
-
-        /// <summary>
-        /// The identifier is good
-        /// </summary>
-        Identifier,
-
-        /// <summary>
-        /// Boundary between good and bad structs
-        /// </summary>
-        Good,
-
-        // == MATCHED --> Searching for the most relevant struct ==
-
-        /// <summary>
-        /// The struct is in the same file
-        /// </summary>
-        File,
-    }
 
     bool GetAlias(
         string aliasName,
@@ -915,97 +926,96 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         [NotNullWhen(true)] out AliasDefinition? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        AliasDefinition? result_ = default;
-        PossibleDiagnostic? error_ = null;
+        MatchList<DefinitionMatch<AliasDefinition>, AliasDefinition> candidates = new();
 
-        AliasPerfectus perfectus = AliasPerfectus.None;
-
-        static AliasPerfectus Max(AliasPerfectus a, AliasPerfectus b) => a > b ? a : b;
-
-        bool HandleIdentifier(AliasDefinition _alias)
+        foreach (AliasDefinition alias in aliases)
         {
-            if (aliasName is not null &&
-                _alias.Identifier.Content != aliasName)
-            { return false; }
-
-            perfectus = Max(perfectus, AliasPerfectus.Identifier);
-            return true;
-        }
-
-        bool HandleFile(AliasDefinition _alias)
-        {
-            if (relevantFile is null ||
-                _alias.File != relevantFile)
+            DefinitionMatch<AliasDefinition> match = new()
             {
-                // Not in the same file
-                return false;
+                Definition = alias,
+                Errors = new(),
+            };
+
+            if (aliasName is null)
+            {
+                match.IsIdentifierMatched = true;
+                match.IdentifierBadness = 0;
+            }
+            else if (alias.Identifier.Equals(aliasName))
+            {
+                match.IsIdentifierMatched = true;
+                match.IdentifierBadness = 0;
+            }
+            else
+            {
+                match.IsIdentifierMatched = false;
+                match.IdentifierBadness = 2;
+
+                if (aliasName.ToLowerInvariant() == alias.Identifier.Content.ToLowerInvariant())
+                {
+                    match.IdentifierBadness = 1;
+                }
+
+                if (match.IdentifierBadness == 1)
+                {
+                    match.Errors.Add(new PossibleDiagnostic($"Alias \"{aliasName}\" does not match with \"{alias.Identifier}\"")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Alias \"{alias.Identifier}\" defined here", alias.Location)));
+                }
+                else
+                {
+                    continue;
+                }
             }
 
-            if (perfectus >= AliasPerfectus.File)
+            if (relevantFile is null || alias.File == relevantFile)
             {
-                error_ = new PossibleDiagnostic($"Alias \"{aliasName}\" not found: multiple aliases matched in the same file");
-                // Debugger.Break();
+                match.IsFileMatches = true;
             }
 
-            perfectus = AliasPerfectus.File;
-            result_ = _alias;
-            return true;
-        }
-
-        foreach (AliasDefinition _alias in aliases)
-        {
-            if (!HandleIdentifier(_alias))
-            { continue; }
-
-            // MATCHED --> Searching for most relevant alias
-
-            if (perfectus < AliasPerfectus.Good)
+            if (relevantFile is null || alias.CanUse(relevantFile))
             {
-                result_ = _alias;
-                perfectus = AliasPerfectus.Good;
+                match.IsProtectionRespected = true;
+            }
+            else
+            {
+                match.Errors.Add(new PossibleDiagnostic($"Cannot use alias \"{alias.Identifier}\" due it's protection level")
+                    .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Alias \"{alias.Identifier}\" defined here", alias.Location)));
             }
 
-            if (!HandleFile(_alias))
-            { continue; }
+            match.IsGenericParameterCountMatches = true;
+
+            candidates.Add(match);
         }
 
-        if (result_ is not null && perfectus >= AliasPerfectus.Good)
+        if (candidates.Count == 0)
         {
-            result = result_;
-            error = error_;
-            return true;
+            error = new PossibleDiagnostic($"Alias \"{aliasName}\" not found");
+            result = null;
+            return false;
         }
 
-        error = error_ ?? new PossibleDiagnostic($"Alias \"{aliasName}\" not found");
-        result = null;
-        return false;
+        if (candidates.Count > 1)
+        {
+            error = new PossibleDiagnostic($"Multiple aliases matched").WithRelatedInfo(candidates.ToImmutableArray(v => new DiagnosticRelatedInformationAt($"Alias \"{v.Definition.Identifier}\" defined here", v.Definition.Location)));
+            result = null;
+            return false;
+        }
+
+        if (candidates[0].Errors.Count > 0)
+        {
+            error = new PossibleDiagnostic($"Alias \"{aliasName}\" not found", candidates[0].Errors.ToImmutableArray());
+            result = candidates[0].Definition;
+            return false;
+        }
+
+        error = null;
+        result = candidates[0].Definition;
+        return true;
     }
 
     #endregion
 
     #region GetEnum()
-
-    public enum EnumPerfectus
-    {
-        None,
-
-        /// <summary>
-        /// The identifier is good
-        /// </summary>
-        Identifier,
-
-        /// <summary>
-        /// Boundary between good and bad enums
-        /// </summary>
-        Good,
-
-        // == MATCHED --> Searching for the most relevant enum ==
-
-        /// <summary>
-        /// The enum is in the same file
-        /// </summary>
-        File,
-    }
 
     bool GetEnum(
         string enumName,
@@ -1053,69 +1063,91 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         [NotNullWhen(true)] out EnumDefinition? result,
         [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        EnumDefinition? result_ = default;
-        PossibleDiagnostic? error_ = null;
-
-        EnumPerfectus perfectus = EnumPerfectus.None;
-
-        static EnumPerfectus Max(EnumPerfectus a, EnumPerfectus b) => a > b ? a : b;
-
-        bool HandleIdentifier(EnumDefinition @enum)
-        {
-            if (enumName is not null &&
-                @enum.Identifier.Content != enumName)
-            { return false; }
-
-            perfectus = Max(perfectus, EnumPerfectus.Identifier);
-            return true;
-        }
-
-        bool HandleFile(EnumDefinition @enum)
-        {
-            if (relevantFile is null ||
-                @enum.File != relevantFile)
-            {
-                // Not in the same file
-                return false;
-            }
-
-            if (perfectus >= EnumPerfectus.File)
-            {
-                error_ = new PossibleDiagnostic($"Enum \"{enumName}\" not found: multiple enums matched in the same file");
-            }
-
-            perfectus = EnumPerfectus.File;
-            result_ = @enum;
-            return true;
-        }
+        MatchList<DefinitionMatch<EnumDefinition>, EnumDefinition> candidates = new();
 
         foreach (EnumDefinition @enum in enums)
         {
-            if (!HandleIdentifier(@enum))
-            { continue; }
-
-            // MATCHED --> Searching for most relevant enum
-
-            if (perfectus < EnumPerfectus.Good)
+            DefinitionMatch<EnumDefinition> match = new()
             {
-                result_ = @enum;
-                perfectus = EnumPerfectus.Good;
+                Definition = @enum,
+                Errors = new(),
+            };
+
+            if (enumName is null)
+            {
+                match.IsIdentifierMatched = true;
+                match.IdentifierBadness = 0;
+            }
+            else if (@enum.Identifier.Equals(enumName))
+            {
+                match.IsIdentifierMatched = true;
+                match.IdentifierBadness = 0;
+            }
+            else
+            {
+                match.IsIdentifierMatched = false;
+                match.IdentifierBadness = 2;
+
+                if (enumName.ToLowerInvariant() == @enum.Identifier.Content.ToLowerInvariant())
+                {
+                    match.IdentifierBadness = 1;
+                }
+
+                if (match.IdentifierBadness == 1)
+                {
+                    match.Errors.Add(new PossibleDiagnostic($"Enum \"{enumName}\" does not match with \"{@enum.Identifier}\"")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Enum \"{@enum.Identifier}\" defined here", @enum.Location)));
+                }
+                else
+                {
+                    continue;
+                }
             }
 
-            if (!HandleFile(@enum))
-            { continue; }
+            if (relevantFile is null || @enum.File == relevantFile)
+            {
+                match.IsFileMatches = true;
+            }
+
+            if (relevantFile is null || @enum.CanUse(relevantFile))
+            {
+                match.IsProtectionRespected = true;
+            }
+            else
+            {
+                match.Errors.Add(new PossibleDiagnostic($"Cannot use enum \"{@enum.Identifier}\" due it's protection level")
+                    .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Enum \"{@enum.Identifier}\" defined here", @enum.Location)));
+            }
+
+            match.IsGenericParameterCountMatches = true;
+
+            candidates.Add(match);
         }
 
-        if (result_ is not null && perfectus >= EnumPerfectus.Good)
+        if (candidates.Count == 0)
         {
-            result = result_;
-            error = error_;
-            return true;
+            error = new PossibleDiagnostic($"Enum \"{enumName}\" not found");
+            result = null;
+            return false;
         }
 
-        error = error_ ?? new PossibleDiagnostic($"Enum \"{enumName}\" not found");
-        result = null;
-        return false;
+        if (candidates.Count > 1)
+        {
+            error = new PossibleDiagnostic($"Multiple enums matched").WithRelatedInfo(candidates.ToImmutableArray(v => new DiagnosticRelatedInformationAt($"Enum \"{v.Definition.Identifier}\" defined here", v.Definition.Location)));
+            result = null;
+            return false;
+        }
+
+        if (candidates[0].Errors.Count > 0)
+        {
+            error = new PossibleDiagnostic($"Enum \"{enumName}\" not found", candidates[0].Errors.ToImmutableArray());
+            result = candidates[0].Definition;
+            return false;
+        }
+
+        error = null;
+        result = candidates[0].Definition;
+        return true;
     }
 
     #endregion
@@ -1753,106 +1785,6 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     #endregion
 
     #region Find Type
-
-    bool FindType(Token name, Uri relevantFile, [NotNullWhen(true)] out CompiledTypeExpression? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
-    {
-        if (TypeKeywords.BasicTypes.TryGetValue(name.Content, out BasicType builtinType))
-        {
-            result = new CompiledBuiltinTypeExpression(builtinType, new Location(name.Position, relevantFile));
-            error = null;
-            return true;
-        }
-
-        if (Frames.Last.TypeArguments.TryGetValue(name.Content, out GeneralType? typeArgument))
-        {
-            result = CompiledTypeExpression.CreateAnonymous(typeArgument, new Location(name.Position, relevantFile));
-            error = null;
-            return true;
-        }
-
-        {
-            int i = Frames.Last.TypeParameters.IndexOf(name.Content);
-            if (i != -1)
-            {
-                result = new CompiledGenericTypeExpression(Frames.Last.TypeParameters[i], relevantFile, new Location(name.Position, relevantFile));
-                error = null;
-                return true;
-            }
-        }
-
-        for (int i = 0; i < GenericParameters.Count; i++)
-        {
-            for (int j = 0; j < GenericParameters[i].Length; j++)
-            {
-                if (GenericParameters[i][j].Content == name.Content)
-                {
-                    GenericParameters[i][j].AnalyzedType = TokenAnalyzedType.TypeParameter;
-                    result = new CompiledGenericTypeExpression(GenericParameters[i][j], relevantFile, new Location(name.Position, relevantFile));
-                    error = null;
-                    return true;
-                }
-            }
-        }
-
-        if (GetAlias(name.Content, relevantFile, out AliasDefinition? aliasDefinition, out PossibleDiagnostic? aliasError))
-        {
-            CompiledAlias compiled = CompileAlias(aliasDefinition);
-
-            name.AnalyzedType = compiled.Value.FinalValue switch
-            {
-                CompiledBuiltinTypeExpression => TokenAnalyzedType.BuiltinType,
-                CompiledStructTypeExpression => TokenAnalyzedType.Struct,
-                CompiledGenericTypeExpression => TokenAnalyzedType.TypeParameter,
-                CompiledEnumTypeExpression => TokenAnalyzedType.Enum,
-                _ => TokenAnalyzedType.Type,
-            };
-            compiled.AddReference(new TypeInstanceSimple(name, relevantFile));
-
-            result = new CompiledAliasTypeExpression(compiled, new Location(name.Position, relevantFile));
-            error = null;
-            return true;
-        }
-
-        if (GetEnum(name.Content, relevantFile, out EnumDefinition? enumDefinition, out PossibleDiagnostic? enumError))
-        {
-            CompiledEnum compiled = CompileEnum(enumDefinition);
-
-            name.AnalyzedType = compiled.Type.FinalValue switch
-            {
-                BuiltinType => TokenAnalyzedType.BuiltinType,
-                StructType => TokenAnalyzedType.Struct,
-                GenericType => TokenAnalyzedType.TypeParameter,
-                AliasType => TokenAnalyzedType.TypeAlias,
-                EnumType => TokenAnalyzedType.Enum,
-                _ => TokenAnalyzedType.Type,
-            };
-            compiled.AddReference(new IdentifierExpression(name, relevantFile));
-
-            result = new CompiledEnumTypeExpression(compiled, new Location(name.Position, relevantFile));
-            error = null;
-            return true;
-        }
-
-        if (GetStruct(name.Content, relevantFile, out StructDefinition? structDefinition, out PossibleDiagnostic? structError))
-        {
-            CompiledStruct compiled = CompileStruct(structDefinition);
-
-            name.AnalyzedType = TokenAnalyzedType.Struct;
-            compiled.AddReference(new TypeInstanceSimple(name, relevantFile));
-
-            result = new CompiledStructTypeExpression(compiled, relevantFile, new Location(name.Position, relevantFile));
-            error = null;
-            return true;
-        }
-
-        result = null;
-        error = new PossibleDiagnostic($"Can't find type `{name.Content}`", ImmutableArray.Create(
-            aliasError,
-            structError,
-            enumError
-        ));
-        return false;
-    }
 
     bool GetLiteralType(LiteralType literal, [NotNullWhen(true)] out GeneralType? type, [NotNullWhen(false)] out PossibleDiagnostic? error) => GetUsedBy(literal switch
     {

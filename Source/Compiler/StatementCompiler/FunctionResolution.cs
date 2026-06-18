@@ -142,17 +142,94 @@ public partial class StatementCompiler
         Equals,
     }
 
-    struct FunctionMatch<TFunction> :
-        IComparable<FunctionMatch<TFunction>>,
-        IEquatable<FunctionMatch<TFunction>>
-        where TFunction : notnull
+    class MatchList<TMatch, TDefinition> : IEnumerable<TMatch>
+        where TMatch : notnull, DefinitionMatch<TDefinition>
+        where TDefinition : notnull
     {
-        public required TFunction Function { get; init; }
+        readonly List<TMatch> _items = new();
+
+        public int Count => _items.Count;
+
+        public TMatch this[int i] => _items[i];
+        public TMatch this[Index i] => _items[i];
+
+        public void Add(TMatch match)
+        {
+            _items.AddSorted(match);
+            for (int i = 1; i < _items.Count; i++)
+            {
+                if (_items[0].CompareTo(_items[i]) == -1)
+                {
+                    _items.RemoveAt(i--);
+                }
+            }
+        }
+
+        public IEnumerator<TMatch> GetEnumerator() => _items.GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
+    }
+
+    class DefinitionMatch<TDefinition> :
+        IComparable<DefinitionMatch<TDefinition>>,
+        IEquatable<DefinitionMatch<TDefinition>>
+        where TDefinition : notnull
+    {
+        public required TDefinition Definition { get; init; }
         public required List<PossibleDiagnostic> Errors { get; init; }
 
         public bool IsIdentifierMatched { get; set; }
         public int IdentifierBadness { get; set; }
         public bool IsFileMatches { get; set; }
+        public bool IsGenericParameterCountMatches { get; set; }
+        public bool IsProtectionRespected { get; set; }
+
+        protected const int Better = -1;
+        protected const int Same = 0;
+        protected const int Worse = 1;
+
+        public virtual int CompareTo(DefinitionMatch<TDefinition>? other)
+        {
+            if (Equals(other)) return Same;
+            if (other is null) return Better;
+
+            if (IsIdentifierMatched && !other.IsIdentifierMatched) return Better;
+            if (!IsIdentifierMatched && other.IsIdentifierMatched) return Worse;
+
+            if (IdentifierBadness < other.IdentifierBadness) return Better;
+            if (IdentifierBadness > other.IdentifierBadness) return Worse;
+            if (!IsIdentifierMatched || !other.IsIdentifierMatched) return Same;
+
+            if (IsGenericParameterCountMatches && !other.IsGenericParameterCountMatches) return Better;
+            if (!IsGenericParameterCountMatches && other.IsGenericParameterCountMatches) return Worse;
+            if (!IsGenericParameterCountMatches || !other.IsGenericParameterCountMatches) return Same;
+
+            if (IsProtectionRespected && !other.IsProtectionRespected) return Better;
+            if (!IsProtectionRespected && other.IsProtectionRespected) return Worse;
+
+            if (IsFileMatches && !other.IsFileMatches) return Better;
+            if (!IsFileMatches && other.IsFileMatches) return Worse;
+
+            return Same;
+        }
+
+        public virtual bool Equals(DefinitionMatch<TDefinition>? other)
+        {
+            if (other is null) return false;
+            if (IdentifierBadness != other.IdentifierBadness) return false;
+            if (IsIdentifierMatched != other.IsIdentifierMatched) return false;
+            if (IsFileMatches != other.IsFileMatches) return false;
+            if (IsGenericParameterCountMatches != other.IsGenericParameterCountMatches) return false;
+            return true;
+        }
+
+        public override string? ToString() => Definition.ToString();
+    }
+
+    class FunctionMatch<TDefinition> : DefinitionMatch<TDefinition>,
+        IComparable<FunctionMatch<TDefinition>>,
+        IEquatable<FunctionMatch<TDefinition>>
+        where TDefinition : notnull
+    {
         public bool IsParameterCountMatches { get; set; }
 
         public TypeMatch ReturnTypeMatch { get; set; }
@@ -162,12 +239,12 @@ public partial class StatementCompiler
         public ImmutableDictionary<string, GeneralType>? TypeArguments { get; set; }
         public ImmutableArray<CompiledExpression?> Arguments { get; set; }
 
-        const int Better = -1;
-        const int Same = 0;
-        const int Worse = 1;
+        public override int CompareTo(DefinitionMatch<TDefinition>? other) => CompareTo(other as FunctionMatch<TDefinition>);
+        public override bool Equals(DefinitionMatch<TDefinition>? other) => Equals(other as FunctionMatch<TDefinition>);
 
-        public readonly int CompareTo(FunctionMatch<TFunction> other)
+        public int CompareTo(FunctionMatch<TDefinition>? other)
         {
+            if (other is null) return Better;
             if (Equals(other)) return Same;
 
             if (IsIdentifierMatched && !other.IsIdentifierMatched) return Better;
@@ -200,28 +277,28 @@ public partial class StatementCompiler
             if (UsedUpDefaultParameterValues < other.UsedUpDefaultParameterValues) return Better;
             if (UsedUpDefaultParameterValues > other.UsedUpDefaultParameterValues) return Worse;
 
+            if (IsProtectionRespected && !other.IsProtectionRespected) return Better;
+            if (!IsProtectionRespected && other.IsProtectionRespected) return Worse;
+
             if (IsFileMatches && !other.IsFileMatches) return Better;
             if (!IsFileMatches && other.IsFileMatches) return Worse;
 
             return Same;
         }
 
-        public override readonly string? ToString() => Function.ToString();
-
-        public readonly bool Equals(FunctionMatch<TFunction> match)
+        public bool Equals(FunctionMatch<TDefinition>? other)
         {
-            if (IdentifierBadness != match.IdentifierBadness) return false;
-            if (IsIdentifierMatched != match.IsIdentifierMatched) return false;
-            if (IsFileMatches != match.IsFileMatches) return false;
-            if (IsParameterCountMatches != match.IsParameterCountMatches) return false;
-            if (ReturnTypeMatch != match.ReturnTypeMatch) return false;
-            if (UsedUpDefaultParameterValues != match.UsedUpDefaultParameterValues) return false;
-            if ((ParameterTypeMatch is null) != (match.ParameterTypeMatch is null)) return false;
-            if (ParameterTypeMatch is null || match.ParameterTypeMatch is null) return false;
-            if (ParameterTypeMatch.Value != match.ParameterTypeMatch.Value) return false;
-            if ((TypeArguments is null) != (match.TypeArguments is null)) return false;
-            if (TypeArguments is null || match.TypeArguments is null) return false;
-            if (!Utils.SequenceEquals(TypeArguments, match.TypeArguments, (a, b) => a.Key == b.Key && a.Value.Equals(b.Value))) return false;
+            if (other is null) return false;
+            if (!base.Equals(other)) return false;
+            if (IsParameterCountMatches != other.IsParameterCountMatches) return false;
+            if (ReturnTypeMatch != other.ReturnTypeMatch) return false;
+            if (UsedUpDefaultParameterValues != other.UsedUpDefaultParameterValues) return false;
+            if ((ParameterTypeMatch is null) != (other.ParameterTypeMatch is null)) return false;
+            if (ParameterTypeMatch is null || other.ParameterTypeMatch is null) return false;
+            if (ParameterTypeMatch.Value != other.ParameterTypeMatch.Value) return false;
+            if ((TypeArguments is null) != (other.TypeArguments is null)) return false;
+            if (TypeArguments is null || other.TypeArguments is null) return false;
+            if (!Utils.SequenceEquals(TypeArguments, other.TypeArguments, (a, b) => a.Key == b.Key && a.Value.Equals(b.Value))) return false;
             return true;
         }
     }
@@ -247,22 +324,19 @@ public partial class StatementCompiler
         string kindNameLower = kindName.ToLowerInvariant();
         string kindNameCapital = char.ToUpperInvariant(kindName[0]) + kindName[1..];
 
-        List<FunctionMatch<TFunction>> functionMatches = new();
+        MatchList<FunctionMatch<TFunction>, TFunction> functionMatches = new();
 
         foreach (TFunction function in functions.Compiled)
         {
-            functionMatches.AddSorted(GetFunctionMatch<TFunction, TDefinedIdentifier, TPassedIdentifier, TArgument>(function, query));
-            if (functionMatches.Count > 2) functionMatches.RemoveAt(2);
+            functionMatches.Add(GetFunctionMatch(function, query));
         }
-
-        FunctionMatch<TFunction> best;
 
         if (functionMatches.Count > 0)
         {
-            best = functionMatches[0];
+            FunctionMatch<TFunction> best = functionMatches[0];
             result = new FunctionQueryResult<TFunction>()
             {
-                Function = best.Function,
+                Function = best.Definition,
                 Success = true,
                 TypeArguments = best.TypeArguments,
                 Arguments = best.Arguments,
@@ -278,7 +352,7 @@ public partial class StatementCompiler
             {
                 if (best.IdentifierBadness == 1)
                 {
-                    error = new PossibleDiagnostic($"No {kindName} found with name \"{query.Identifier}\" (did you mean \"{best.Function.Identifier}\"?)");
+                    error = new PossibleDiagnostic($"No {kindName} found with name \"{query.Identifier}\" (did you mean \"{best.Definition.Identifier}\"?)");
                 }
                 else
                 {
@@ -289,9 +363,9 @@ public partial class StatementCompiler
 
             if (!best.IsParameterCountMatches)
             {
-                PossibleDiagnostic suberror = new($"Wrong number of arguments passed: expected {best.Function.Parameters.Length} but got {query.ArgumentCount}");
-                if (best.Function is FunctionThingDefinition ftd)
-                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt(best.Function.ToReadable(), new Location(ftd.Identifier.Position, ftd.File))); }
+                PossibleDiagnostic suberror = new($"Wrong number of arguments passed: expected {best.Definition.Parameters.Length} but got {query.ArgumentCount}");
+                if (best.Definition is FunctionThingDefinition ftd)
+                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{best.Definition.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found", suberror);
                 return false;
             }
@@ -300,9 +374,9 @@ public partial class StatementCompiler
                 best.ParameterTypeMatch.Value == TypeMatch.None)
             {
                 PossibleDiagnostic suberror = new($"Wrong types of arguments passed (sorry I can't tell any more info)");
-                GetFunctionMatch<TFunction, TDefinedIdentifier, TPassedIdentifier, TArgument>(best.Function, query);
-                if (best.Function is FunctionThingDefinition ftd)
-                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt(best.Function.ToReadable(), new Location(ftd.Identifier.Position, ftd.File))); }
+                GetFunctionMatch<TFunction, TDefinedIdentifier, TPassedIdentifier, TArgument>(best.Definition, query);
+                if (best.Definition is FunctionThingDefinition ftd)
+                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{best.Definition.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found", suberror);
                 return false;
             }
@@ -310,36 +384,36 @@ public partial class StatementCompiler
             if (best.ReturnTypeMatch == TypeMatch.None)
             {
                 PossibleDiagnostic suberror = new($"Wrong return type (sorry I can't tell any more info)");
-                if (best.Function is FunctionThingDefinition ftd)
-                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt(best.Function.ToReadable(), new Location(ftd.Identifier.Position, ftd.File))); }
+                if (best.Definition is FunctionThingDefinition ftd)
+                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{best.Definition.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found", suberror);
                 return false;
             }
 
-            if (functionMatches.Count > 1 && functionMatches[0].CompareTo(functionMatches[1]) == 0)
+            if (functionMatches.Count > 1)
             {
-                error = new PossibleDiagnostic($"Multiple functions matched ({string.Join(", ", functionMatches.Select(v => v.Function.ToReadable()))})");
+                error = new PossibleDiagnostic($"Multiple functions matched ({string.Join(", ", functionMatches.Select(v => v.Definition.ToReadable()))})");
                 foreach (FunctionMatch<TFunction> functionMatch in functionMatches)
                 {
-                    if (functionMatch.Function is FunctionThingDefinition f)
+                    if (functionMatch.Definition is FunctionThingDefinition f)
                     {
-                        error = error.WithRelatedInfo(new DiagnosticRelatedInformationAt(functionMatch.Function.ToReadable(), new Location(f.Identifier.Position, f.File)));
+                        error = error.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{functionMatch.Definition.ToReadable()}\" defined here", new Location(f.Identifier.Position, f.File)));
                     }
                     else
                     {
-                        error = error.WithRelatedInfo(new DiagnosticRelatedInformationAt(functionMatch.Function.ToReadable(), functionMatch.Function.Location));
+                        error = error.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{functionMatch.Definition.ToReadable()}\" defined here", functionMatch.Definition.Location));
                     }
                 }
                 return false;
             }
 
-            if (best.Function.Definition.IsTemplate)
+            if (best.Definition.Definition.IsTemplate)
             {
                 if (best.TypeArguments is null)
                 {
                     PossibleDiagnostic suberror = new($"Failed to resolve the template types");
-                    if (best.Function is FunctionThingDefinition ftd)
-                    { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt(best.Function.ToReadable(), new Location(ftd.Identifier.Position, ftd.File))); }
+                    if (best.Definition is FunctionThingDefinition ftd)
+                    { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{best.Definition.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                     error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found", suberror);
                     return false;
                 }
@@ -361,7 +435,7 @@ public partial class StatementCompiler
 
                 if (!templateAlreadyAdded)
                 {
-                    TemplateInstance<TFunction> template = new(best.Function, best.TypeArguments);
+                    TemplateInstance<TFunction> template = new(best.Definition, best.TypeArguments);
                     query.AddCompilable?.Invoke(template);
                     result = new FunctionQueryResult<TFunction>()
                     {
@@ -393,7 +467,7 @@ public partial class StatementCompiler
     {
         FunctionMatch<TFunction> result = new()
         {
-            Function = function,
+            Definition = function,
             Errors = new(),
         };
 
@@ -444,7 +518,7 @@ public partial class StatementCompiler
             {
                 PossibleDiagnostic item = new($"Function \"{query.Identifier}\" does not match with \"{function.Identifier}\"");
                 if (function is FunctionThingDefinition ftd)
-                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt(function.ToReadable(), new Location(ftd.Identifier.Position, ftd.File))); }
+                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function \"{function.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 result.Errors.Add(item);
             }
             else
@@ -460,7 +534,7 @@ public partial class StatementCompiler
             {
                 PossibleDiagnostic item = new($"Wrong number of arguments passed: expected {function.Parameters.Length} but passed {query.ArgumentCount.Value}");
                 if (function is FunctionThingDefinition ftd)
-                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt(function.ToReadable(), new Location(ftd.Identifier.Position, ftd.File))); }
+                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function \"{function.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 result.Errors.Add(item);
                 return result;
             }
@@ -469,7 +543,7 @@ public partial class StatementCompiler
             {
                 PossibleDiagnostic item = new($"Wrong number of arguments passed: expected {function.Parameters.Length} but passed {query.ArgumentCount.Value}");
                 if (function is FunctionThingDefinition ftd)
-                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt(function.ToReadable(), new Location(ftd.Identifier.Position, ftd.File))); }
+                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function \"{function.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 result.Errors.Add(item);
                 return result;
             }
@@ -479,10 +553,22 @@ public partial class StatementCompiler
 
         result.IsParameterCountMatches = true;
 
+        result.IsGenericParameterCountMatches = true;
+
         if (query.RelevantFile is null ||
             function.File == query.RelevantFile)
         {
             result.IsFileMatches = true;
+        }
+
+        if (query.RelevantFile is null ||
+            function.Definition.CanUse(query.RelevantFile))
+        {
+            result.IsProtectionRespected = true;
+        }
+        else
+        {
+            result.Errors.Add(new($"Cannot use function \"{query.Identifier}\" due it's protection level"));
         }
 
         bool TryReplaceArgument2(ref CompiledExpression? argument, GeneralType passedType, GeneralType definedType, ParameterDefinition definition, TArgument passed, Dictionary<string, GeneralType> typeArguments, int argumentIndex)
@@ -655,7 +741,7 @@ public partial class StatementCompiler
                     {
                         PossibleDiagnostic suberror = new($"Argument {i + 1}: Invalid type passed: expected {GeneralType.TryInsertTypeParameters(defined, _typeArguments)} but passed {passed}");
                         if (function is FunctionThingDefinition ftd)
-                        { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt(function.ToReadable(), new Location(ftd.Identifier.Position, ftd.File))); }
+                        { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function \"{function.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                         result.Errors.Add(new PossibleDiagnostic($"Argument {i + 1}: Could not resolve the template types", suberror));
                         return result;
                     }

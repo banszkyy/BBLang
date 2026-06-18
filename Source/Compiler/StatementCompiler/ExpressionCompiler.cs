@@ -466,29 +466,26 @@ public partial class StatementCompiler
             }
 
             Expression argument = anyCall.Arguments.Arguments[0];
-            CompiledTypeExpression? paramType;
-            if (argument is ArgumentExpression argumentExpression
-                && argumentExpression.Modifier is null)
+
+            if (argument is ArgumentExpression argumentExpression && argumentExpression.Modifier is null)
             {
                 argument = argumentExpression.Value;
             }
 
-            if (argument is IdentifierExpression identifier)
+            TypeInstance typeArgument;
+
+            if (argument is IdentifierExpression identifierExpression)
             {
-                if (FindType(identifier.Identifier, identifier.File, out paramType, out PossibleDiagnostic? typeError))
-                {
-                    //SetStatementType(identifier, paramType);
-                    //paramType = _paramType;
-                }
-                else
-                {
-                    Diagnostics.Add(typeError.ToError(identifier));
-                    return false;
-                }
+                typeArgument = new TypeInstanceSimple(identifierExpression.Identifier, identifierExpression.File);
             }
             else
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Type \"{argument}\" not found", argument));
+                Diagnostics.Add(DiagnosticAt.Error($"Expression \"{argument}\" is not a type", argument));
+                return false;
+            }
+
+            if (!CompileStatement(typeArgument, out CompiledTypeExpression? compiledTypeArgument, Diagnostics))
+            {
                 return false;
             }
 
@@ -503,7 +500,7 @@ public partial class StatementCompiler
 
             compiledStatement = new CompiledSizeof()
             {
-                Of = paramType,
+                Of = compiledTypeArgument,
                 Location = argument.Location,
                 Type = resultType,
                 SaveValue = anyCall.SaveValue,

@@ -29,6 +29,11 @@ public interface IIdentifiable<TIdentifier>
     TIdentifier Identifier { get; }
 }
 
+public interface ITemplateable
+{
+    TemplateInfo? Template { get; }
+}
+
 public interface IHaveAttributes
 {
     CanUseOn AttributeUsageKind { get; }

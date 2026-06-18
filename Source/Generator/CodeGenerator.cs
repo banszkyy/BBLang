@@ -292,13 +292,19 @@ public abstract class CodeGenerator : IRuntimeInfoProvider
         return StatementCompiler.CompileType(typeExpression, out type, out error);
     }
 
-    public int GetParameterIndex(CompiledParameter parameter)
+    public bool GetParameterIndex(CompiledParameter parameter, out int index, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
+        error = null;
+        index = 0;
+
         for (int i = 0; i < CompiledParameters.Count; i++)
         {
             if (!Utils.ReferenceEquals(CompiledParameters[i], parameter)) continue;
-            return i;
+            index = i;
+            return true;
         }
-        throw new LanguageExceptionAt($"Parameter {parameter.Identifier} not found", parameter.Definition.Position, parameter.Definition.File);
+
+        error = new PossibleDiagnostic($"Parameter {parameter.Identifier} not found", parameter);
+        return false;
     }
 }

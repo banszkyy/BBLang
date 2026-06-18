@@ -127,7 +127,7 @@ public sealed partial class Parser
     readonly DiagnosticsCollection Diagnostics;
     readonly List<FunctionDefinition> Functions = new();
     readonly List<FunctionDefinition> Operators = new();
-    readonly Dictionary<string, StructDefinition> Structs = new();
+    readonly List<StructDefinition> Structs = new();
     readonly List<UsingDefinition> Usings = new();
     readonly List<AliasDefinition> AliasDefinitions = new();
     readonly List<EnumDefinition> EnumDefinitions = new();
@@ -198,7 +198,7 @@ public sealed partial class Parser
         return new ParserResult(
             Functions.ToImmutableArray(),
             Operators.ToImmutableArray(),
-            Structs.Values.ToImmutableArray(),
+            Structs.ToImmutableArray(),
             Usings.ToImmutableArray(),
             AliasDefinitions.ToImmutableArray(),
             EnumDefinitions.ToImmutableArray(),

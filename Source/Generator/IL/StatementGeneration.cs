@@ -515,7 +515,14 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
     void EmitStatement(CompiledParameterAccess statement, ILProxy il, ref bool successful)
     {
-        LoadArgument(il, GetParameterIndex(statement.Parameter));
+        if (!GetParameterIndex(statement.Parameter, out int parameterIndex, out PossibleDiagnostic? error))
+        {
+            Diagnostics.Add(error.ToError(statement));
+            successful = false;
+            return;
+        }
+
+        LoadArgument(il, parameterIndex);
     }
     void EmitStatement(CompiledFieldAccess statement, ILProxy il, ref bool successful)
     {
@@ -733,7 +740,15 @@ public partial class CodeGeneratorForIL : CodeGenerator
     void EmitSetter(CompiledParameterAccess statement, CompiledExpression value, ILProxy il, ref bool successful)
     {
         EmitStatement(value, il, ref successful);
-        il.Emit(OpCodes.Starg, GetParameterIndex(statement.Parameter));
+
+        if (!GetParameterIndex(statement.Parameter, out int parameterIndex, out PossibleDiagnostic? error))
+        {
+            Diagnostics.Add(error.ToError(statement));
+            successful = false;
+            return;
+        }
+
+        il.Emit(OpCodes.Starg, parameterIndex);
     }
     void EmitSetter(CompiledFieldAccess statement, CompiledExpression value, ILProxy il, ref bool successful)
     {
@@ -1053,11 +1068,21 @@ public partial class CodeGeneratorForIL : CodeGenerator
                     successful = false;
                     return;
                 }
+
                 il.Emit(OpCodes.Ldloca_S, local);
                 break;
             case CompiledParameterAccess v:
-                il.Emit(OpCodes.Ldarga_S, GetParameterIndex(v.Parameter));
+            {
+                if (!GetParameterIndex(v.Parameter, out int parameterIndex, out PossibleDiagnostic? error))
+                {
+                    Diagnostics.Add(error.ToError(v.Parameter));
+                    successful = false;
+                    return;
+                }
+
+                il.Emit(OpCodes.Ldarga_S, parameterIndex);
                 break;
+            }
             case CompiledFieldAccess v:
                 CompiledExpression _object = v.Object;
 
@@ -1937,7 +1962,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
     bool ToType(CompiledTypeExpression type, [NotNullWhen(true)] out Type? result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        if (!CompileType(type, out var w, out error))
+        if (!CompileType(type, out GeneralType? w, out error))
         {
             result = null;
             return false;

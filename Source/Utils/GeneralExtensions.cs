@@ -72,13 +72,15 @@ public static class GeneralExtensions
         return v;
     }
 
-    public static void AddSorted<T>(this List<T> list, T value)
+    public static int AddSorted<T>(this List<T> list, T value)
     {
         int x = list.BinarySearch(value);
-        list.Insert((x >= 0) ? x : ~x, value);
+        int index = (x >= 0) ? x : ~x;
+        list.Insert(index, value);
+        return index;
     }
 
-    public static void AddSorted<T>(this List<T> list, T value, Comparison<T> comparison)
+    public static int AddSorted<T>(this List<T> list, T value, Comparison<T> comparison)
     {
         int l = 0;
         int r = list.Count - 1;
@@ -109,6 +111,7 @@ public static class GeneralExtensions
             }
         }
         list.Insert(l, value);
+        return l;
     }
 
     public static void AddRangeIf<T>(this ICollection<T> collection, IEnumerable<T> items, Func<T, bool> condition)

@@ -10,7 +10,8 @@ public abstract class FunctionThingDefinition :
     IIdentifiable<Token>,
     ILocated,
     IHaveAttributes,
-    ICallableDefinition
+    ICallableDefinition,
+    ITemplateable
 {
     public ImmutableArray<Token> Modifiers { get; }
     public Token Identifier { get; }

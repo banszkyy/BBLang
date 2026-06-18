@@ -291,37 +291,104 @@ public partial class StatementCompiler
     }
     bool CompileStatement(TypeInstanceSimple type, [NotNullWhen(true)] out CompiledTypeExpression? result, DiagnosticsCollection diagnostics)
     {
-        if (TypeKeywords.BasicTypes.TryGetValue(type.Identifier.Content, out BasicType builtinType))
+        if (!type.TypeArguments.HasValue && TypeKeywords.BasicTypes.TryGetValue(type.Identifier.Content, out BasicType builtinType))
         {
             result = new CompiledBuiltinTypeExpression(builtinType, type.Location);
             type.Identifier.AnalyzedType = TokenAnalyzedType.BuiltinType;
             return true;
         }
 
-        if (!FindType(type.Identifier, type.File, out result, out PossibleDiagnostic? error))
         {
-            diagnostics.Add(error.ToError(type));
+            PossibleDiagnostic? aliasError = null;
+            PossibleDiagnostic? enumError = null;
+
+            if (!type.TypeArguments.HasValue)
+            {
+                if (Frames.Last.TypeArguments.TryGetValue(type.Identifier.Content, out GeneralType? typeArgument))
+                {
+                    type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
+                    result = CompiledTypeExpression.CreateAnonymous(typeArgument, type.Location);
+                    goto ok;
+                }
+
+                {
+                    int i = Frames.Last.TypeParameters.IndexOf(type.Identifier.Content);
+                    if (i != -1)
+                    {
+                        type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
+                        result = new CompiledGenericTypeExpression(Frames.Last.TypeParameters[i], type.File, type.Location);
+                        SetStatementReference(type, Frames.Last.TypeParameters[i]);
+                        goto ok;
+                    }
+                }
+
+                foreach (ImmutableArray<Token> v in GenericParameters)
+                {
+                    foreach (Token w in v)
+                    {
+                        if (w.Content != type.Identifier.Content) continue;
+
+                        type.Identifier.AnalyzedType = TokenAnalyzedType.TypeParameter;
+                        result = new CompiledGenericTypeExpression(w, type.File, type.Location);
+                        SetStatementReference(type, w);
+                        goto ok;
+                    }
+                }
+
+                if (GetAlias(type.Identifier.Content, type.File, out AliasDefinition? aliasDefinition, out aliasError))
+                {
+                    CompiledAlias compiled = CompileAlias(aliasDefinition);
+
+                    type.Identifier.AnalyzedType = compiled.Value.FinalValue switch
+                    {
+                        CompiledBuiltinTypeExpression => TokenAnalyzedType.BuiltinType,
+                        CompiledStructTypeExpression => TokenAnalyzedType.Struct,
+                        CompiledGenericTypeExpression => TokenAnalyzedType.TypeParameter,
+                        CompiledEnumTypeExpression => TokenAnalyzedType.Enum,
+                        _ => TokenAnalyzedType.Type,
+                    };
+                    compiled.AddReference(type);
+                    SetStatementReference(type, aliasDefinition);
+
+                    result = new CompiledAliasTypeExpression(compiled, type.Location);
+                    goto ok;
+                }
+
+                if (GetEnum(type.Identifier.Content, type.File, out EnumDefinition? enumDefinition, out enumError))
+                {
+                    CompiledEnum compiled = CompileEnum(enumDefinition);
+
+                    type.Identifier.AnalyzedType = TokenAnalyzedType.Enum;
+                    compiled.AddReference(new IdentifierExpression(type.Identifier, type.File));
+                    SetStatementReference(type, enumDefinition);
+
+                    result = new CompiledEnumTypeExpression(compiled, type.Location);
+                    goto ok;
+                }
+            }
+
+            if (GetStruct(type.Identifier.Content, type.TypeArguments?.Length, type.File, out StructDefinition? structDefinition, out PossibleDiagnostic? structError))
+            {
+                CompiledStruct compiled = CompileStruct(structDefinition);
+
+                type.Identifier.AnalyzedType = TokenAnalyzedType.Struct;
+                compiled.AddReference(type);
+                SetStatementReference(type, structDefinition);
+
+                result = new CompiledStructTypeExpression(compiled, type.File, type.Location);
+                goto ok;
+            }
+
+            result = null;
+            diagnostics.Add(DiagnosticAt.Error($"Can't find type `{type}`", type).WithSuberrors(ImmutableArray.Create(
+                aliasError?.ToError(type),
+                structError?.ToError(type),
+                enumError?.ToError(type)
+            )));
             return false;
+
+        ok:;
         }
-
-        SetStatementReference(type, result switch
-        {
-            CompiledAliasTypeExpression v => v.Definition,
-            CompiledEnumTypeExpression v => v.Definition,
-            CompiledStructTypeExpression v => v.Struct,
-            CompiledGenericTypeExpression v => v.Definition,
-            _ => null,
-        });
-
-        type.Identifier.AnalyzedType = result.FinalValue switch
-        {
-            CompiledGenericTypeExpression => TokenAnalyzedType.TypeParameter,
-            CompiledStructTypeExpression => TokenAnalyzedType.Struct,
-            CompiledBuiltinTypeExpression => TokenAnalyzedType.BuiltinType,
-            CompiledAliasTypeExpression => TokenAnalyzedType.TypeAlias,
-            CompiledEnumTypeExpression => TokenAnalyzedType.Enum,
-            _ => TokenAnalyzedType.Type,
-        };
 
         if (result.Is(out CompiledStructTypeExpression? resultStructType) &&
             resultStructType.Struct.Definition.Template is not null)
@@ -336,16 +403,7 @@ public partial class StatementCompiler
                 result = new CompiledStructTypeExpression(resultStructType.Struct, type.File, type.Location);
             }
         }
-        else
-        {
-            if (type.TypeArguments.HasValue)
-            {
-                diagnostics.Add(DiagnosticAt.Internal($"Asd", type));
-                return false;
-            }
-        }
 
-        //type.SetAnalyzedType(result);
         return true;
     }
     bool CompileStatement(TypeInstanceFunction type, [NotNullWhen(true)] out CompiledTypeExpression? result, DiagnosticsCollection diagnostics)

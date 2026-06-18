@@ -103,6 +103,15 @@ public partial class StatementCompiler
 
         CompilingDefinitionStack.Remove(aliasDefinition);
 
+        aliasDefinition.Identifier.AnalyzedType = aliasValue.FinalValue switch
+        {
+            CompiledBuiltinTypeExpression => TokenAnalyzedType.BuiltinType,
+            CompiledEnumTypeExpression => TokenAnalyzedType.Enum,
+            CompiledGenericTypeExpression => TokenAnalyzedType.TypeParameter,
+            CompiledStructTypeExpression => TokenAnalyzedType.Struct,
+            _ => TokenAnalyzedType.Type,
+        };
+
         result = new CompiledAlias(aliasValue, aliasDefinition);
         CompiledAliases.Add(result);
         return result;
@@ -721,6 +730,15 @@ public partial class StatementCompiler
     {
         if (a.Identifier.Content != b.Identifier.Content) return false;
         if (a.File != b.File) return false;
+        if (a is ITemplateable ta && b is ITemplateable tb && !TemplateEquality(ta.Template, tb.Template)) return false;
+        return true;
+    }
+
+    static bool TemplateEquality(TemplateInfo? a, TemplateInfo? b)
+    {
+        if (a is null && b is null) return true;
+        if (a is null || b is null) return false;
+        if (a.Parameters.Length != b.Parameters.Length) return false;
         return true;
     }
 
@@ -729,8 +747,8 @@ public partial class StatementCompiler
     {
         if (!a.Type.Equals(b.Type)) return false;
         if (!Utils.SequenceEquals(a.Parameters.Select(v => v.Type), b.Parameters.Select(v => v.Type))) return false;
-        if (!ThingEquality(a.Definition, b.Definition)) return false;
-        return true;
+        if (!TemplateEquality(a.Definition.Template, b.Definition.Template)) return false;
+        return ThingEquality(a.Definition, b.Definition);
     }
 
     bool IsSymbolDefined<TThing>(TThing thing)

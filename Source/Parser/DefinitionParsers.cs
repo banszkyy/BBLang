@@ -559,7 +559,7 @@ public sealed partial class Parser
             File
         );
 
-        Structs.Add(structDefinition.Identifier.Content, structDefinition);
+        Structs.Add(structDefinition);
 
         return true;
     }

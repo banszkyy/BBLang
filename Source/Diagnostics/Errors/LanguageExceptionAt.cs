@@ -162,6 +162,7 @@ public class LanguageExceptionAt : LanguageException
         Position,
         File,
         false,
+        false,
         InnerException switch
         {
             LanguageExceptionAt v => ImmutableArray.Create<Diagnostic>(v.ToDiagnostic()),

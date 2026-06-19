@@ -9,44 +9,46 @@ public class PossibleDiagnostic
     readonly Position Position;
     readonly Uri? File;
     readonly bool ShouldBreak;
+    readonly bool IgnoreOnPartialSource;
 
     [MemberNotNullWhen(true, nameof(File))]
     bool IsPopulated => File is not null && Position != default;
 
-    public PossibleDiagnostic(string message, bool shouldBreak = true)
-        : this(message, null, ImmutableArray<PossibleDiagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak)
+    public PossibleDiagnostic(string message, bool shouldBreak = true, bool ignoreOnPartialSource = false)
+        : this(message, null, ImmutableArray<PossibleDiagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak, ignoreOnPartialSource)
     { }
 
     public PossibleDiagnostic(string message, params PossibleDiagnostic[] suberrors)
         : this(message, null, suberrors.ToImmutableArray(), ImmutableArray<DiagnosticRelatedInformation>.Empty)
     { }
 
-    public PossibleDiagnostic(string message, ImmutableArray<PossibleDiagnostic> suberrors, bool shouldBreak = true)
-        : this(message, null, suberrors, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak)
+    public PossibleDiagnostic(string message, ImmutableArray<PossibleDiagnostic> suberrors, bool shouldBreak = true, bool ignoreOnPartialSource = false)
+        : this(message, null, suberrors, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak, ignoreOnPartialSource)
     { }
 
-    public PossibleDiagnostic(string message, ImmutableArray<PossibleDiagnostic> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation, bool shouldBreak = true)
-        : this(message, null, suberrors, relatedInformation, shouldBreak)
+    public PossibleDiagnostic(string message, ImmutableArray<PossibleDiagnostic> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation, bool shouldBreak = true, bool ignoreOnPartialSource = false)
+        : this(message, null, suberrors, relatedInformation, shouldBreak, ignoreOnPartialSource)
     { }
 
-    public PossibleDiagnostic(string message, ILocated? location, bool shouldBreak = true)
-        : this(message, location, ImmutableArray<PossibleDiagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak)
+    public PossibleDiagnostic(string message, ILocated? location, bool shouldBreak = true, bool ignoreOnPartialSource = false)
+        : this(message, location, ImmutableArray<PossibleDiagnostic>.Empty, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak, ignoreOnPartialSource)
     { }
 
     public PossibleDiagnostic(string message, ILocated? location, params PossibleDiagnostic[] suberrors)
         : this(message, location, suberrors.ToImmutableArray(), ImmutableArray<DiagnosticRelatedInformation>.Empty)
     { }
 
-    public PossibleDiagnostic(string message, ILocated? location, ImmutableArray<PossibleDiagnostic> suberrors, bool shouldBreak = true)
-        : this(message, location, suberrors, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak)
+    public PossibleDiagnostic(string message, ILocated? location, ImmutableArray<PossibleDiagnostic> suberrors, bool shouldBreak = true, bool ignoreOnPartialSource = false)
+        : this(message, location, suberrors, ImmutableArray<DiagnosticRelatedInformation>.Empty, shouldBreak, ignoreOnPartialSource)
     { }
 
-    public PossibleDiagnostic(string message, ILocated? location, ImmutableArray<PossibleDiagnostic> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation, bool shouldBreak = true)
+    public PossibleDiagnostic(string message, ILocated? location, ImmutableArray<PossibleDiagnostic> suberrors, ImmutableArray<DiagnosticRelatedInformation> relatedInformation, bool shouldBreak = true, bool ignoreOnPartialSource = false)
     {
         Message = message;
         SubErrors = suberrors;
         RelatedInformation = relatedInformation;
         ShouldBreak = shouldBreak;
+        IgnoreOnPartialSource = ignoreOnPartialSource;
         if (location is not null)
         {
             Position = location.Location.Position;
@@ -79,28 +81,28 @@ public class PossibleDiagnostic
 
     public Diagnostic ToError(bool? shouldBreak = null) =>
         IsPopulated ?
-        new DiagnosticAt(DiagnosticsLevel.Error, Message, Position, File!, shouldBreak ?? ShouldBreak, SubErrors.ToImmutableArray(v => v.ToError(shouldBreak)), RelatedInformation, DiagnosticTag.None) :
+        new DiagnosticAt(DiagnosticsLevel.Error, Message, Position, File!, shouldBreak ?? ShouldBreak, IgnoreOnPartialSource, SubErrors.ToImmutableArray(v => v.ToError(shouldBreak)), RelatedInformation, DiagnosticTag.None) :
         new Diagnostic(DiagnosticsLevel.Error, Message, SubErrors.ToImmutableArray(v => v.ToError(shouldBreak)), RelatedInformation);
 
     public DiagnosticAt ToError(IPositioned position, Uri file, bool? shouldBreak = null) =>
         IsPopulated ?
-        new(DiagnosticsLevel.Error, Message, Position, File!, shouldBreak ?? ShouldBreak, SubErrors.ToImmutableArray(v => v.ToError(position, file, shouldBreak)), RelatedInformation, DiagnosticTag.None) :
-        new(DiagnosticsLevel.Error, Message, position.Position, file, shouldBreak ?? ShouldBreak, SubErrors.ToImmutableArray(v => v.ToError(position, file, shouldBreak)), RelatedInformation, DiagnosticTag.None);
+        new(DiagnosticsLevel.Error, Message, Position, File!, shouldBreak ?? ShouldBreak, IgnoreOnPartialSource, SubErrors.ToImmutableArray(v => v.ToError(position, file, shouldBreak)), RelatedInformation, DiagnosticTag.None) :
+        new(DiagnosticsLevel.Error, Message, position.Position, file, shouldBreak ?? ShouldBreak, IgnoreOnPartialSource, SubErrors.ToImmutableArray(v => v.ToError(position, file, shouldBreak)), RelatedInformation, DiagnosticTag.None);
 
     public DiagnosticAt ToWarning(IPositioned position, Uri file) =>
         IsPopulated ?
-        new(DiagnosticsLevel.Warning, Message, Position, File!, false, SubErrors.ToImmutableArray(v => v.ToWarning(position, file)), RelatedInformation, DiagnosticTag.None) :
-        new(DiagnosticsLevel.Warning, Message, position.Position, file, false, SubErrors.ToImmutableArray(v => v.ToWarning(position, file)), RelatedInformation, DiagnosticTag.None);
+        new(DiagnosticsLevel.Warning, Message, Position, File!, false, IgnoreOnPartialSource, SubErrors.ToImmutableArray(v => v.ToWarning(position, file)), RelatedInformation, DiagnosticTag.None) :
+        new(DiagnosticsLevel.Warning, Message, position.Position, file, false, IgnoreOnPartialSource, SubErrors.ToImmutableArray(v => v.ToWarning(position, file)), RelatedInformation, DiagnosticTag.None);
 
     public DiagnosticAt ToError(ILocated location, bool? shouldBreak = null) =>
         IsPopulated ?
-        new(DiagnosticsLevel.Error, Message, Position, File!, shouldBreak ?? ShouldBreak, SubErrors.ToImmutableArray(v => v.ToError(location, shouldBreak)), RelatedInformation, DiagnosticTag.None) :
-        new(DiagnosticsLevel.Error, Message, location.Location.Position, location.Location.File, shouldBreak ?? ShouldBreak, SubErrors.ToImmutableArray(v => v.ToError(location, shouldBreak)), RelatedInformation, DiagnosticTag.None);
+        new(DiagnosticsLevel.Error, Message, Position, File!, shouldBreak ?? ShouldBreak, IgnoreOnPartialSource, SubErrors.ToImmutableArray(v => v.ToError(location, shouldBreak)), RelatedInformation, DiagnosticTag.None) :
+        new(DiagnosticsLevel.Error, Message, location.Location.Position, location.Location.File, shouldBreak ?? ShouldBreak, IgnoreOnPartialSource, SubErrors.ToImmutableArray(v => v.ToError(location, shouldBreak)), RelatedInformation, DiagnosticTag.None);
 
     public DiagnosticAt ToWarning(ILocated location) =>
         IsPopulated ?
-        new(DiagnosticsLevel.Warning, Message, Position, File!, false, SubErrors.ToImmutableArray(v => v.ToWarning(location)), RelatedInformation, DiagnosticTag.None) :
-        new(DiagnosticsLevel.Warning, Message, location.Location.Position, location.Location.File, false, SubErrors.ToImmutableArray(v => v.ToWarning(location)), RelatedInformation, DiagnosticTag.None);
+        new(DiagnosticsLevel.Warning, Message, Position, File!, false, IgnoreOnPartialSource, SubErrors.ToImmutableArray(v => v.ToWarning(location)), RelatedInformation, DiagnosticTag.None) :
+        new(DiagnosticsLevel.Warning, Message, location.Location.Position, location.Location.File, false, IgnoreOnPartialSource, SubErrors.ToImmutableArray(v => v.ToWarning(location)), RelatedInformation, DiagnosticTag.None);
 
     public override string ToString() => Message;
 }

@@ -48,9 +48,9 @@ public partial class StatementCompiler
 
             field.Identifier.AnalyzedType = TokenAnalyzedType.FieldName;
 
-            if (!CompileType(field.Type, out GeneralType? fieldType, Diagnostics)) continue;
+            CompileType(field.Type, out GeneralType? fieldType, Diagnostics);
 
-            compiledFields.Add(new CompiledField(fieldType, null! /* CompiledStruct constructor will set this */, field));
+            compiledFields.Add(new CompiledField(fieldType ?? BuiltinType.Any, null! /* CompiledStruct constructor will set this */, field));
         }
 
         if (structDefinition.Template is not null)
@@ -402,7 +402,7 @@ public partial class StatementCompiler
                         if (definedParameterType.Invoke(passedParameterType))
                         { continue; }
 
-                        Diagnostics.Add(DiagnosticAt.Error($"Wrong type of parameter passed to function \"{stringLiteral.Value}\". Parameter index: {i} Required type: \"{definedParameterType}\" Passed: \"{passedParameterType}\"", function.Definition.Parameters[i].Type, function.Parameters[i].File));
+                        Diagnostics.Add(DiagnosticAt.Error($"Wrong type of parameter passed to function \"{stringLiteral.Value}\" at index {i}.", function.Definition.Parameters[i].Type, ignoreOnPartialSource: passedParameterType.Equals(BuiltinType.Any)));
                     }
                     break;
                 }
@@ -555,10 +555,8 @@ public partial class StatementCompiler
         }
     }
 
-    bool CompileFunctionDefinition(FunctionDefinition function, CompiledStruct? context, [NotNullWhen(true)] out CompiledFunctionDefinition? result)
+    bool CompileFunctionDefinition(FunctionDefinition function, CompiledStruct? context, out CompiledFunctionDefinition result)
     {
-        result = null;
-
         if (function.Template is not null)
         {
             GenericParameters.Push(function.Template.Parameters);
@@ -566,17 +564,19 @@ public partial class StatementCompiler
             { typeParameter.AnalyzedType = TokenAnalyzedType.TypeParameter; }
         }
 
-        if (!CompileType(function.Type, out GeneralType? type, Diagnostics)) return false;
+        bool success = true;
+
+        if (!CompileType(function.Type, out GeneralType? type, Diagnostics)) success = false;
 
         ImmutableArray<CompiledParameter>.Builder parameters = ImmutableArray.CreateBuilder<CompiledParameter>(function.Parameters.Length);
         foreach (ParameterDefinition item in function.Parameters.Parameters)
         {
-            if (!CompileType(item.Type, out GeneralType? parameterType, Diagnostics)) return false;
-            parameters.Add(new CompiledParameter(parameterType, item));
+            if (!CompileType(item.Type, out GeneralType? parameterType, Diagnostics)) success = false;
+            parameters.Add(new CompiledParameter(parameterType ?? BuiltinType.Any, item));
         }
 
         result = new(
-            type,
+            type ?? BuiltinType.Any,
             parameters.MoveToImmutable(),
             context,
             function
@@ -624,7 +624,7 @@ public partial class StatementCompiler
 
         CompileFunctionAttributes(result);
 
-        return true;
+        return success;
     }
 
     bool CompileOperatorDefinition(FunctionDefinition function, CompiledStruct? context, [NotNullWhen(true)] out CompiledOperatorDefinition? result)
@@ -804,10 +804,7 @@ public partial class StatementCompiler
 
         foreach (FunctionDefinition function in FunctionDefinitions)
         {
-            if (!CompileFunctionDefinition(function, null, out CompiledFunctionDefinition? compiled))
-            {
-                continue;
-            }
+            CompileFunctionDefinition(function, null, out CompiledFunctionDefinition? compiled);
 
             if (CompiledFunctions.Any(other => FunctionEquality(compiled, other)))
             {
@@ -951,10 +948,7 @@ public partial class StatementCompiler
                     Context = method.Context,
                 };
 
-                if (!CompileFunctionDefinition(copy, compiledStruct, out CompiledFunctionDefinition? methodWithPointer))
-                {
-                    continue;
-                }
+                CompileFunctionDefinition(copy, compiledStruct, out CompiledFunctionDefinition? methodWithPointer);
 
                 if (CompiledFunctions.Any(methodWithPointer.IsSame))
                 {
@@ -1039,7 +1033,7 @@ public partial class StatementCompiler
 
     CompilerResult CompileMainFile(string file)
     {
-        SourceCodeManagerResult res = SourceCodeManager.Collect(file, Diagnostics, PreprocessorVariables, Settings.AdditionalImports, Settings.SourceProviders, Settings.TokenizerSettings, Settings.Cache, Logger);
+        SourceCodeManagerResult res = SourceCodeManager.Collect(file, Diagnostics, Settings.GetSourceManagerSettings() with { PreprocessorVariables = PreprocessorVariables }, Logger);
 
         foreach (ParsedFile parsedFile in res.ParsedFiles)
         { AddAST(parsedFile, parsedFile.File != res.ResolvedEntry); }
@@ -1061,7 +1055,7 @@ public partial class StatementCompiler
 
     CompilerResult CompileFiles(ReadOnlySpan<string> files)
     {
-        SourceCodeManagerResult res = SourceCodeManager.CollectMultiple(files, Diagnostics, PreprocessorVariables, Settings.AdditionalImports, Settings.SourceProviders, Settings.TokenizerSettings, Settings.Cache, Logger);
+        SourceCodeManagerResult res = SourceCodeManager.CollectMultiple(files, Diagnostics, Settings.GetSourceManagerSettings() with { PreprocessorVariables = PreprocessorVariables }, Logger);
 
         foreach (ParsedFile parsedFile in res.ParsedFiles)
         { AddAST(parsedFile, parsedFile.File != res.ResolvedEntry); }

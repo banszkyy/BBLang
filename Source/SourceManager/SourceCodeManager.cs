@@ -5,6 +5,26 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Compiler;
 
+public struct SourceManagerSettings
+{
+    public ImmutableHashSet<string> PreprocessorVariables { get; set; }
+    public ImmutableArray<string> AdditionalImports { get; set; }
+    public ImmutableArray<ISourceProvider> SourceProviders { get; set; }
+    public TokenizerSettings? TokenizerSettings { get; set; }
+    public IDictionary<Uri, CacheItem>? Cache { get; set; }
+    public bool SourcePartiallyAvaliable { get; set; }
+
+    public SourceManagerSettings(SourceManagerSettings other)
+    {
+        PreprocessorVariables = other.PreprocessorVariables;
+        AdditionalImports = other.AdditionalImports;
+        SourceProviders = other.SourceProviders;
+        TokenizerSettings = other.TokenizerSettings;
+        Cache = other.Cache;
+        SourcePartiallyAvaliable = other.SourcePartiallyAvaliable;
+    }
+}
+
 public class ImportIndex
 {
     public readonly List<ImportIndex> Children = new();
@@ -48,24 +68,21 @@ public class SourceCodeManager
 {
     readonly HashSet<Uri> CompiledUris;
     readonly DiagnosticsCollection Diagnostics;
-    readonly ImmutableHashSet<string> PreprocessorVariables;
-    readonly ImmutableArray<ISourceProvider> SourceProviders;
-    readonly TokenizerSettings TokenizerSettings;
-    readonly IDictionary<Uri, CacheItem> Cache;
+    readonly SourceManagerSettings Settings;
     readonly List<PendingFile> PendingFiles;
     readonly List<ParsedFile> ParsedFiles;
     readonly ILogger? Logger;
 
-    public SourceCodeManager(DiagnosticsCollection diagnostics, ImmutableHashSet<string> preprocessorVariables, ImmutableArray<ISourceProvider> sourceProviders, TokenizerSettings? tokenizerSettings, IDictionary<Uri, CacheItem>? cache, ILogger? logger)
+    public SourceCodeManager(DiagnosticsCollection diagnostics, SourceManagerSettings settings, ILogger? logger)
     {
+        settings.TokenizerSettings ??= TokenizerSettings.Default;
+        settings.Cache ??= new Dictionary<Uri, CacheItem>();
+
+        Settings = settings;
         CompiledUris = new();
         Diagnostics = diagnostics;
-        PreprocessorVariables = preprocessorVariables;
         PendingFiles = new();
         ParsedFiles = new();
-        SourceProviders = sourceProviders;
-        TokenizerSettings = tokenizerSettings ?? TokenizerSettings.Default;
-        Cache = cache ?? new Dictionary<Uri, CacheItem>();
         Logger = logger;
     }
 
@@ -104,7 +121,7 @@ public class SourceCodeManager
                 if (finishedFile.Initiator is null)
                 { Diagnostics.Add(Diagnostic.Error($"File \"{finishedFile.Uri}\" not found")); }
                 else
-                { Diagnostics.Add(DiagnosticAt.Error($"File \"{finishedFile.Uri}\" not found", finishedFile.Initiator)); }
+                { Diagnostics.Add(DiagnosticAt.Error($"File \"{finishedFile.Uri}\" not found ow", finishedFile.Initiator)); }
                 break;
             }
 
@@ -115,8 +132,8 @@ public class SourceCodeManager
                 text,
                 Diagnostics,
                 finishedFile.Uri,
-                PreprocessorVariables,
-                TokenizerSettings
+                Settings.PreprocessorVariables,
+                Settings.TokenizerSettings
             );
 
             ParserResult ast = Parser.Parser.Parse(tokens.Tokens, finishedFile.Uri, Diagnostics);
@@ -125,7 +142,7 @@ public class SourceCodeManager
             { Logger?.LogDebug("Loading files ..."); }
 
             ParsedFiles.Add(new ParsedFile(finishedFile.Uri, finishedFile.Initiator, tokens, ast, finishedFile.Index, text));
-            Cache[finishedFile.Uri] = new CacheItem(
+            Settings.Cache![finishedFile.Uri] = new CacheItem(
                 finishedFile.Version,
                 text,
                 tokens,
@@ -144,7 +161,7 @@ public class SourceCodeManager
         resolvedUri = null;
         bool wasHandlerFound = false;
 
-        foreach (ISourceProvider sourceProvider in SourceProviders)
+        foreach (ISourceProvider sourceProvider in Settings.SourceProviders)
         {
             ulong version = 0;
 
@@ -166,7 +183,7 @@ public class SourceCodeManager
                     {
                         if (versionProvider.TryGetVersion(query, out version) && version != 0)
                         {
-                            if (Cache.TryGetValue(query, out CacheItem? cache) && cache.Version == version)
+                            if (Settings.Cache!.TryGetValue(query, out CacheItem? cache) && cache.Version == version)
                             {
                                 resolvedUri = query;
                                 if (initiator is not null) initiator.CompiledUri = resolvedUri;
@@ -292,16 +309,16 @@ public class SourceCodeManager
         if (initiator is not null)
         {
             if (wasHandlerFound)
-            { Diagnostics.Add(DiagnosticAt.Error($"File \"{requestedFile}\" not found", initiator)); }
+            { Diagnostics.Add(DiagnosticAt.Error($"File \"{requestedFile}\" not found", initiator, ignoreOnPartialSource: true)); }
             else
-            { Diagnostics.Add(DiagnosticAt.Error($"No handler exists for \"{requestedFile}\"", initiator)); }
+            { Diagnostics.Add(DiagnosticAt.Error($"No handler exists for \"{requestedFile}\"", initiator, ignoreOnPartialSource: true)); }
         }
         else
         {
             if (wasHandlerFound)
-            { Diagnostics.Add(Diagnostic.Error($"File \"{requestedFile}\" not found")); }
+            { Diagnostics.Add(Diagnostic.Error($"File \"{requestedFile}\" not found", ignoreOnPartialSource: true)); }
             else
-            { Diagnostics.Add(Diagnostic.Error($"No handler exists for \"{requestedFile}\"")); }
+            { Diagnostics.Add(Diagnostic.Error($"No handler exists for \"{requestedFile}\"", ignoreOnPartialSource: true)); }
         }
         return false;
     }
@@ -474,28 +491,20 @@ public class SourceCodeManager
     public static SourceCodeManagerResult Collect(
         string? file,
         DiagnosticsCollection diagnostics,
-        ImmutableHashSet<string> preprocessorVariables,
-        ImmutableArray<string> additionalImports,
-        ImmutableArray<ISourceProvider> sourceProviders,
-        TokenizerSettings? tokenizerSettings,
-        IDictionary<Uri, CacheItem>? cache,
+        SourceManagerSettings settings,
         ILogger? logger = null)
     {
-        SourceCodeManager sourceCodeManager = new(diagnostics, preprocessorVariables, sourceProviders, tokenizerSettings, cache, logger);
-        return sourceCodeManager.Entry(file is null ? ReadOnlySpan<string>.Empty : new string[] { file }, additionalImports);
+        SourceCodeManager sourceCodeManager = new(diagnostics, settings, logger);
+        return sourceCodeManager.Entry(file is null ? ReadOnlySpan<string>.Empty : new string[] { file }, settings.AdditionalImports);
     }
 
     public static SourceCodeManagerResult CollectMultiple(
         ReadOnlySpan<string> files,
         DiagnosticsCollection diagnostics,
-        ImmutableHashSet<string> preprocessorVariables,
-        ImmutableArray<string> additionalImports,
-        ImmutableArray<ISourceProvider> sourceProviders,
-        TokenizerSettings? tokenizerSettings,
-        IDictionary<Uri, CacheItem>? cache,
+        SourceManagerSettings settings,
         ILogger? logger = null)
     {
-        SourceCodeManager sourceCodeManager = new(diagnostics, preprocessorVariables, sourceProviders, tokenizerSettings, cache, logger);
-        return sourceCodeManager.Entry(files, additionalImports);
+        SourceCodeManager sourceCodeManager = new(diagnostics, settings, logger);
+        return sourceCodeManager.Entry(files, settings.AdditionalImports);
     }
 }

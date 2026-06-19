@@ -53,6 +53,17 @@ public struct CompilerSettings
     public IDictionary<Uri, CacheItem>? Cache { get; set; }
     public CancellationToken CancellationToken { get; set; }
     public bool OptimizationDiagnostics { get; set; }
+    public bool SourcePartiallyAvaliable { get; set; }
+
+    public SourceManagerSettings GetSourceManagerSettings() => new()
+    {
+        PreprocessorVariables = PreprocessorVariables,
+        AdditionalImports = AdditionalImports,
+        Cache = Cache,
+        SourcePartiallyAvaliable = SourcePartiallyAvaliable,
+        SourceProviders = SourceProviders,
+        TokenizerSettings = TokenizerSettings,
+    };
 
     [SetsRequiredMembers]
     public CompilerSettings(CompilerSettings other)
@@ -77,5 +88,6 @@ public struct CompilerSettings
         Cache = other.Cache;
         CancellationToken = other.CancellationToken;
         OptimizationDiagnostics = other.OptimizationDiagnostics;
+        SourcePartiallyAvaliable = other.SourcePartiallyAvaliable;
     }
 }

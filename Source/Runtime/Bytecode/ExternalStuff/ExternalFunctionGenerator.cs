@@ -28,7 +28,7 @@ public static unsafe class ExternalFunctionGenerator
 
         if (result is null)
         {
-            exception = new PossibleDiagnostic($"External function \"{name}\" not found");
+            exception = new PossibleDiagnostic($"External function \"{name}\" not found", ignoreOnPartialSource: true);
             return false;
         }
 

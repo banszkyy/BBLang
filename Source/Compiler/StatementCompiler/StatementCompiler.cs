@@ -92,7 +92,7 @@ public partial class StatementCompiler
         if (!GetLiteralType(LiteralType.Integer, out GeneralType? intType, out PossibleDiagnostic? typeError))
         {
             intType = SizeofStatementType;
-            Diagnostics.Add(DiagnosticAt.Warning($"No type defined for integer literals, using the default {intType}", sizeLocation).WithSuberrors(typeError.ToError(sizeLocation, false)));
+            Diagnostics.Add(DiagnosticAt.Warning($"No type defined for integer literals, using the default {intType}", sizeLocation, ignoreOnPartialSource: true).WithSuberrors(typeError.ToError(sizeLocation, false)));
         }
 
         ImmutableArray<CompiledExpression> argumentExpressions = ImmutableArray.Create<CompiledExpression>(new CompiledConstantValue()
@@ -380,7 +380,7 @@ public partial class StatementCompiler
             }
 
             result = null;
-            diagnostics.Add(DiagnosticAt.Error($"Can't find type `{type}`", type).WithSuberrors(ImmutableArray.Create(
+            diagnostics.Add(DiagnosticAt.Error($"Can't find type `{type}`", type, ignoreOnPartialSource: true).WithSuberrors(ImmutableArray.Create(
                 aliasError?.ToError(type),
                 structError?.ToError(type),
                 enumError?.ToError(type)
@@ -1256,7 +1256,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{target.Content}\" not found", target)
+        Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{target.Content}\" not found", target, ignoreOnPartialSource: true)
             .WithSuberrors(
                 parameterNotFoundError.ToError(target),
                 variableNotFoundError.ToError(target),
@@ -1367,7 +1367,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Type `{prevType}` doesn't have any fields", target.Identifier, target.File));
+        Diagnostics.Add(DiagnosticAt.Error($"Type `{prevType}` doesn't have any fields", target.Identifier, target.File, ignoreOnPartialSource: prev.Type.Equals(BuiltinType.Any)));
         return false;
     }
     bool CompileSetter(IndexCallExpression target, Expression value, [NotNullWhen(true)] out CompiledStatement? compiledStatement)
@@ -1576,14 +1576,11 @@ public partial class StatementCompiler
         using var _1 = _m2.Auto();
 #endif
 
-        if (LanguageConstants.KeywordList.Contains(function.Definition.Identifier.Content))
+        if (LanguageConstants.KeywordList.Except(BuiltinFunctionIdentifiers.All).Contains(function.Definition.Identifier.Content))
         {
             Diagnostics.Add(DiagnosticAt.Error($"The identifier \"{function.Definition.Identifier}\" is reserved as a keyword. Do not use it as a function name", function.Definition.Identifier, function.File));
             goto end;
         }
-
-        if (function.Definition.Identifier is not null)
-        { function.Definition.Identifier.AnalyzedType = TokenAnalyzedType.FunctionName; }
 
         if (function is IExternalFunctionDefinition externalFunctionDefinition &&
             externalFunctionDefinition.ExternalFunctionName is not null &&

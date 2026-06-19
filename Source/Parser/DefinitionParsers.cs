@@ -379,10 +379,10 @@ public sealed partial class Parser
             return false;
         }
 
-        if (possibleNameT.Content is
-            not BuiltinFunctionIdentifiers.IndexerGet and
-            not BuiltinFunctionIdentifiers.IndexerSet and
-            not BuiltinFunctionIdentifiers.Destructor)
+        if (possibleNameT.Content
+            is not BuiltinFunctionIdentifiers.IndexerGet
+            and not BuiltinFunctionIdentifiers.IndexerSet
+            and not BuiltinFunctionIdentifiers.Destructor)
         {
             diagnostic.Add(0, DiagnosticAt.Error($"Invalid identifier `{possibleNameT.Content}` for general function definition", possibleNameT, File, false));
             savepoint.Restore();
@@ -404,7 +404,7 @@ public sealed partial class Parser
             return false;
         }
 
-        possibleNameT.AnalyzedType = TokenAnalyzedType.FunctionName;
+        possibleNameT.AnalyzedType = TokenAnalyzedType.Keyword;
 
         CheckModifiers(modifiers, GeneralFunctionModifiers);
 

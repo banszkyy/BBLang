@@ -1873,7 +1873,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
         if (type is null)
         {
-            error = new PossibleDiagnostic($"No type definition found with attribute `{AttributeConstants.InternalType}`", false);
+            error = new PossibleDiagnostic($"No type definition found with attribute `{AttributeConstants.InternalType}`", false, ignoreOnPartialSource: true);
             return false;
         }
         else

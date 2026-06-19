@@ -570,7 +570,7 @@ public partial class StatementCompiler
 
         if (!CompileExpression(anyCall.Expression, out CompiledExpression? functionValue))
         {
-            Diagnostics.Add(DiagnosticAt.Error("Function not found", anyCall.Expression)
+            Diagnostics.Add(DiagnosticAt.Error("Function not found", anyCall.Expression, ignoreOnPartialSource: true)
                 .WithSuberrors(notFound?.ToError(anyCall)));
             return false;
         }
@@ -703,7 +703,7 @@ public partial class StatementCompiler
             if (!leftType.TryGetNumericType(out NumericType leftNType) ||
                 !rightType.TryGetNumericType(out NumericType rightNType))
             {
-                Diagnostics.Add(notFoundError.ToError(@operator));
+                Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{@operator.Operator.Content}\"", @operator.Operator, @operator.File, ignoreOnPartialSource: true).WithSuberrors(notFoundError.ToError(@operator.Operator, @operator.File)));
                 return false;
             }
 
@@ -811,7 +811,7 @@ public partial class StatementCompiler
                         case BinaryOperatorCallExpression.CompGEQ:
                         case BinaryOperatorCallExpression.CompEQ:
                         case BinaryOperatorCallExpression.CompNEQ:
-                            if (!GetUsedBy(InternalTypes.Boolean, out GeneralType? booleanType, out PossibleDiagnostic? internalTypeError))
+                            if (!GetUsedBy(InternalTypes.Boolean, out GeneralType? booleanType, out _))
                             {
                                 resultType = BooleanType;
                             }
@@ -1714,7 +1714,10 @@ public partial class StatementCompiler
 
                 if (!GetLiteralType(LiteralType.Char, out GeneralType? literalType, out PossibleDiagnostic? literalTypeError))
                 {
-                    Diagnostics.Add(literalTypeError.ToError(literal));
+                    if (!Settings.SourcePartiallyAvaliable)
+                    {
+                        Diagnostics.Add(literalTypeError.ToError(literal));
+                    }
                     compiledStatement = default;
                     return false;
                 }
@@ -2004,7 +2007,7 @@ public partial class StatementCompiler
             }
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{variable.Content}\" not found", variable)
+        Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{variable.Content}\" not found", variable, ignoreOnPartialSource: true)
             .WithSuberrors(
                 constantNotFoundError.ToError(variable),
                 parameterNotFoundError.ToError(variable),
@@ -2309,7 +2312,7 @@ public partial class StatementCompiler
 
         if (!prev.Type.Is(out StructType? structType))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Type `{prev.Type}` doesn't have any fields", field.Identifier, field.File));
+            Diagnostics.Add(DiagnosticAt.Error($"Type `{prev.Type}` doesn't have any fields", field.Identifier, field.File, ignoreOnPartialSource: prev.Type.Equals(BuiltinType.Any)));
             return false;
         }
 
@@ -2383,7 +2386,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type \"{baseStatement.Type}\" not found", index).WithSuberrors(notFoundError.ToError(index)));
+        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type \"{baseStatement.Type}\" not found", index, ignoreOnPartialSource: true).WithSuberrors(notFoundError.ToError(index)));
         return false;
     }
     bool CompileExpression(ArgumentExpression modifiedStatement, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)

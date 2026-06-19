@@ -17,7 +17,7 @@ struct C
   B* a;
   B* b;
 
-  destructor()
+  delete()
   {
     delete this.a;
     delete this.b;

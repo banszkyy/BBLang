@@ -48,7 +48,7 @@ export struct List<T>
         this._ptr = new T[4]*;
     }
 
-    export destructor()
+    export delete()
     {
         if (this._ptr)
         { delete this._ptr; }

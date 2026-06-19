@@ -90,7 +90,7 @@ export struct Pair<TKey, TValue>
         this.value = value;
     }
 
-    export destructor()
+    export delete()
     {
         delete this.key;
         delete this.value;
@@ -108,10 +108,10 @@ export struct HashMap<TKey, TValue>
         this.add(key, value);
     }
 
-    export TValue indexer_get(temp TKey key)
+    export TValue& indexer_get(temp TKey key)
     {
-        TValue result;
-        if (!this.get(temp key, &result)) crash "key isn't present in the hashmap";
+        TValue& result = this.get_ref(temp key);
+        if (!result) crash "Key isn't present in the hashmap";
         return result;
     }
 
@@ -138,11 +138,37 @@ export struct HashMap<TKey, TValue>
         }
     }
 
-    export u8 get(temp TKey key, TValue* value)
+    TValue& get_ref(temp TKey key)
     {
         if (!this._ptr)
         {
-            return (u8)0;
+            return 0 as TValue&;
+        }
+
+        int hash = hash(key);
+        int i = hash % this._capacity;
+        int started = i;
+
+        while (this._ptr[i])
+        {
+            if (equals(this._ptr[i].key, key))
+            {
+                return &this._ptr[i].value;
+            }
+
+            i++;
+            if (i >= this._capacity) i = 0;
+            if (started == i) break;
+        }
+
+        return 0 as TValue&;
+    }
+
+    export bool get(temp TKey key, TValue* value)
+    {
+        if (!this._ptr)
+        {
+            return false;
         }
 
         int hash = hash(key);
@@ -154,7 +180,7 @@ export struct HashMap<TKey, TValue>
             if (equals(this._ptr[i].key, key))
             {
                 *value = this._ptr[i].value;
-                return (u8)1;
+                return true;
             }
 
             i++;
@@ -162,16 +188,16 @@ export struct HashMap<TKey, TValue>
             if (started == i) break;
         }
 
-        return (u8)0;
+        return false;
     }
 
-    export u8 add(TKey key, TValue value)
+    export bool add(TKey key, TValue value)
     {
         this.ensure_capacity(this._length + 1);
-        this.add_noresize(key, value);
+        return this.add_noresize(key, value);
     }
 
-    u8 add_noresize(TKey key, TValue value)
+    bool add_noresize(TKey key, TValue value)
     {
         if (!this._ptr)
         {
@@ -180,18 +206,26 @@ export struct HashMap<TKey, TValue>
 
         int hash = hash(key);
         int i = hash % this._capacity;
+        int started = i;
 
         while (this._ptr[i])
         {
+            if (equals(this._ptr[i].key, key))
+            {
+                return false;
+            }
+
             i++;
             if (i >= this._capacity) i = 0;
+            if (started == i) break;
         }
 
         this._ptr[i] = new Pair<TKey, TValue>*(key, value);
         this._length++;
+        return true;
     }
 
-    export u8 remove(temp TKey key)
+    export bool remove(temp TKey key)
     {
         int hash = hash(key);
         int i = hash % this._capacity;
@@ -203,7 +237,7 @@ export struct HashMap<TKey, TValue>
             {
                 this._ptr[i] = 0;
                 this._length--;
-                return (u8)1;
+                return true;
             }
 
             i++;
@@ -211,10 +245,10 @@ export struct HashMap<TKey, TValue>
             if (started == i) break;
         }
 
-        return (u8)0;
+        return false;
     }
 
-    export destructor()
+    export delete()
     {
         if (this._ptr)
         {

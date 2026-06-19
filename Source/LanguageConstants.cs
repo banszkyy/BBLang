@@ -315,9 +315,15 @@ public static class BuiltinFunctions
 
 public static class BuiltinFunctionIdentifiers
 {
-    public const string Destructor = "destructor";
+    public const string Destructor = "delete";
     public const string IndexerGet = "indexer_get";
     public const string IndexerSet = "indexer_set";
+
+    public static readonly ImmutableArray<string> All = ImmutableArray.Create(
+        Destructor,
+        IndexerGet,
+        IndexerSet
+    );
 }
 
 public static class ExternalFunctionNames

@@ -61,7 +61,7 @@ export struct Stack<T>
         return this._array[this._length];
     }
 
-    export destructor()
+    export delete()
     {
         if (this._array) delete this._array;
     }

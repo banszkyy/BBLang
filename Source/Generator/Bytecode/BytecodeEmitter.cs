@@ -253,6 +253,28 @@ public class BytecodeEmitter
 
         if (prev1.Opcode == Opcode.Move
             && prev1.Operand1.Value.Type.IsRegisterPointer()
+            && prev1.Operand1.Value.Type.BitwidthOfPointer() == BitWidth._8
+            && prev1.Operand2.Value.Type.IsImmediate()
+
+            && prev0.Opcode == Opcode.Move
+            && prev0.Operand1.Value.Type.IsRegisterPointer()
+            && prev0.Operand1.Value.Type.BitwidthOfPointer() == BitWidth._8
+            && prev1.Operand2.Value.Type.IsImmediate()
+
+            && prev0.Operand1.Value.Type.RegisterOfPointer() == prev1.Operand1.Value.Type.RegisterOfPointer()
+            && prev0.Operand1.Value.Value - 1 == prev1.Operand1.Value.Value)
+        {
+            RemoveAt(i--);
+            Code[i] = new PreparationInstruction(
+                Opcode.Move,
+                new InstructionOperand(prev1.Operand1.Value.Value, prev1.Operand1.Value.Type.ChangeRegisterBitwidth(BitWidth._16)),
+                new InstructionOperand(prev1.Operand2.Value.Value | (prev0.Operand2.Value.Value << 8), InstructionOperandType.Immediate16)
+            );
+            return true;
+        }
+
+        if (prev1.Opcode == Opcode.Move
+            && prev1.Operand1.Value.Type.IsRegisterPointer()
             && prev1.Operand1.Value.Type.BitwidthOfPointer() == BitWidth._16
             && prev1.Operand2.Value.Type.IsImmediate()
 

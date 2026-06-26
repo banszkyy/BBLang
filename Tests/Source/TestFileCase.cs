@@ -18,7 +18,7 @@ sealed class TestFileCase
 
     public void DoMain(bool heapShouldBeEmpty = true, Action<List<IExternalFunction>>? externalFunctionAdder = null)
     {
-        (InterpreterRunner.MainResult optimized, InterpreterRunner.MainResult unoptimized) = InterpreterRunner.Run(SourceFile, Input, externalFunctionAdder);
+        (InterpreterRunner.MainResult optimized, InterpreterRunner.MainResult unoptimized) = InterpreterRunner.Run(SourceFile, Input, externalFunctionAdder, ExpectedResult.ExposedFunctionTests);
 
         ExpectedResult.Assert(optimized, heapShouldBeEmpty);
         ExpectedResult.Assert(unoptimized, heapShouldBeEmpty);

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 using LanguageCore.Runtime;
 
@@ -7,6 +8,7 @@ readonly struct ExpectedResult
 {
     public readonly string StdOutput;
     public readonly int ExitCode;
+    public readonly ImmutableArray<InterpreterRunner.ExposedFunctionTest> ExposedFunctionTests;
 
     enum ExpectedResultParserState
     {
@@ -19,6 +21,8 @@ readonly struct ExpectedResult
     public ExpectedResult(string resultFile)
     {
         string resultText = File.ReadAllText(resultFile);
+        List<InterpreterRunner.ExposedFunctionTest> exposedFunctionTests = [];
+
         StringBuilder builder = new(resultFile.Length);
         StringBuilder? tagBuilder = null;
         List<string> tags = new();
@@ -92,11 +96,71 @@ readonly struct ExpectedResult
         for (int i = 0; i < tags.Count; i++)
         {
             string tag = tags[i].Trim().ToLowerInvariant();
-            string[] parts = tag.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            ReadOnlySpan<string> parts = tag.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            string identifier = parts[0];
+            ReadOnlySpan<string> arguments = parts.Length > 1 ? parts[1..] : [];
 
-            if (parts.Length == 2 && parts[0] == "exitcode")
-            { int.TryParse(parts[1], System.Globalization.CultureInfo.InvariantCulture, out ExitCode); }
+            switch (identifier)
+            {
+                case "exitcode":
+                    if (arguments.Length != 1) throw new FormatException($"Invalid result syntax in {resultFile}");
+                    if (!int.TryParse(arguments[0], System.Globalization.CultureInfo.InvariantCulture, out ExitCode)) throw new FormatException($"Invalid result syntax in {resultFile}");
+                    break;
+                case "exposed":
+                    if (arguments.Length == 0) throw new FormatException($"Invalid result syntax in {resultFile}");
+                    string name = arguments[0];
+                    byte[] passingArguments = Array.Empty<byte>();
+                    byte[] expectedReturn = Array.Empty<byte>();
+
+                    List<byte> args = [];
+                    List<byte> ret = [];
+
+                    for (int j = 1; j < arguments.Length; j++)
+                    {
+                        if (arguments[j] == "=>")
+                        {
+                            passingArguments = args.ToArray();
+                            args.Clear();
+                            ret = args;
+                            continue;
+                        }
+
+                        int k = arguments[j].IndexOf(':');
+                        if (k == -1) throw new FormatException($"Invalid result syntax in {resultFile}");
+                        string type = arguments[j][..k];
+                        string value = arguments[j][(k + 1)..];
+                        switch (type)
+                        {
+                            case "i8":
+                                args.Add((byte)int.Parse(value));
+                                break;
+                            case "i16":
+                                args.AddRange(((short)int.Parse(value)).ToBytes());
+                                break;
+                            case "i32":
+                                args.AddRange(int.Parse(value).ToBytes());
+                                break;
+                            case "f32":
+                                args.AddRange(float.Parse(value).ToBytes());
+                                break;
+                            default:
+                                throw new FormatException($"Invalid result syntax in {resultFile}");
+                        }
+                    }
+
+                    expectedReturn = ret.ToArray();
+
+                    exposedFunctionTests.Add(new InterpreterRunner.ExposedFunctionTest(name, passingArguments, v =>
+                    {
+                        if (!v.SequenceEqual(expectedReturn)) throw new AssertFailedException($"Exposed function \"{name}\" returned invalid value");
+                    }));
+                    break;
+                default:
+                    throw new FormatException($"Invalid result syntax in {resultFile}");
+            }
         }
+
+        ExposedFunctionTests = exposedFunctionTests.ToImmutableArray();
     }
 
     public ExpectedResult Assert(IResult other)

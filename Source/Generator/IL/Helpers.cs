@@ -26,8 +26,8 @@ public partial class CodeGeneratorForIL : CodeGenerator
                     case BasicType.F32: il.Emit(OpCodes.Ldind_R4); return true;
                     case BasicType.Void:
                     case BasicType.Any:
-                    default:
                         break;
+                    default: throw new UnreachableException();
                 }
                 break;
             case StructType v:
@@ -36,7 +36,14 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 return true;
             case PointerType:
             case ReferenceType:
+            case FunctionType:
                 il.Emit(OpCodes.Ldind_Ref);
+                return true;
+            case EnumType v:
+                return LoadIndirect(v.Definition.Type, il, out error);
+            case ArrayType v:
+                if (!ToType(v, out Type? _type2, out error)) return false;
+                il.Emit(OpCodes.Ldobj, _type2);
                 return true;
             default:
                 break;
@@ -66,8 +73,8 @@ public partial class CodeGeneratorForIL : CodeGenerator
                     case BasicType.F32: il.Emit(OpCodes.Stind_R4); return true;
                     case BasicType.Void:
                     case BasicType.Any:
-                    default:
                         break;
+                    default: throw new UnreachableException();
                 }
                 break;
             case StructType v:
@@ -76,7 +83,14 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 return true;
             case PointerType:
             case ReferenceType:
+            case FunctionType:
                 il.Emit(OpCodes.Stind_Ref);
+                return true;
+            case EnumType v:
+                return StoreIndirect(v.Definition.Type, il, out error);
+            case ArrayType v:
+                if (!ToType(v, out Type? _type2, out error)) return false;
+                il.Emit(OpCodes.Stobj, _type2);
                 return true;
             default:
                 break;
@@ -105,7 +119,6 @@ public partial class CodeGeneratorForIL : CodeGenerator
         else if (!type.IsPrimitive && type.IsValueType && !type.IsEnum) { il.Emit(OpCodes.Ldobj, type); return true; }
         else
         {
-            Debugger.Break();
             error = new PossibleDiagnostic($"Unimplemented dereference for type {type}");
             return false;
         }
@@ -132,7 +145,6 @@ public partial class CodeGeneratorForIL : CodeGenerator
         else if (type == typeof(nuint)) { il.Emit(OpCodes.Stind_I); return true; }
         else
         {
-            Debugger.Break();
             error = new PossibleDiagnostic($"{type}");
             return false;
         }
@@ -179,41 +191,23 @@ public partial class CodeGeneratorForIL : CodeGenerator
         error = null;
         switch (type)
         {
-            case BasicType.Void:
-                return true;
-            case BasicType.U8:
-                il.Emit(OpCodes.Ldc_I4_S, (byte)0);
-                return true;
-            case BasicType.I8:
-                il.Emit(OpCodes.Ldc_I4_S, (sbyte)0);
-                return true;
-            case BasicType.U16:
-                il.Emit(OpCodes.Ldc_I4_0);
-                return true;
-            case BasicType.I16:
-                il.Emit(OpCodes.Ldc_I4_0);
-                return true;
-            case BasicType.I32:
-                il.Emit(OpCodes.Ldc_I4_0);
-                return true;
-            case BasicType.U32:
-                il.Emit(OpCodes.Ldc_I4_0);
-                return true;
-            case BasicType.U64:
-                il.Emit(OpCodes.Ldc_I8, (ulong)0);
-                return true;
-            case BasicType.I64:
-                il.Emit(OpCodes.Ldc_I8, (long)0);
-                return true;
-            case BasicType.F32:
-                il.Emit(OpCodes.Ldc_R4, 0f);
-                return true;
+            case BasicType.Void: return true;
+            case BasicType.U8: il.Emit(OpCodes.Ldc_I4_S, (byte)0); return true;
+            case BasicType.I8: il.Emit(OpCodes.Ldc_I4_S, (sbyte)0); return true;
+            case BasicType.U16: il.Emit(OpCodes.Ldc_I4_0); return true;
+            case BasicType.I16: il.Emit(OpCodes.Ldc_I4_0); return true;
+            case BasicType.I32: il.Emit(OpCodes.Ldc_I4_0); return true;
+            case BasicType.U32: il.Emit(OpCodes.Ldc_I4_0); return true;
+            case BasicType.U64: il.Emit(OpCodes.Ldc_I8, (ulong)0); return true;
+            case BasicType.I64: il.Emit(OpCodes.Ldc_I8, (long)0); return true;
+            case BasicType.F32: il.Emit(OpCodes.Ldc_R4, 0f); return true;
             case BasicType.Any:
             default:
                 error = new PossibleDiagnostic($"Type {type} doesn't have a value");
                 return false;
         }
     }
+
     bool EmitDefaultValue(GeneralType type, ILProxy il, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
@@ -226,6 +220,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             }
             case PointerType:
             case ReferenceType:
+            case FunctionType:
             {
                 il.Emit(OpCodes.Ldnull);
                 return true;
@@ -238,6 +233,19 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 il.Emit(OpCodes.Initobj, t);
                 LoadLocal(il, l.LocalIndex);
                 return true;
+            }
+            case ArrayType v:
+            {
+                if (!ToType(v, out Type? t, out error)) return false;
+                LocalBuilder l = il.DeclareLocal(t);
+                il.Emit(OpCodes.Ldloca, l);
+                il.Emit(OpCodes.Initobj, t);
+                LoadLocal(il, l.LocalIndex);
+                return true;
+            }
+            case EnumType v:
+            {
+                return EmitDefaultValue(v.Definition.Type, il, out error);
             }
             default:
                 Debugger.Break();

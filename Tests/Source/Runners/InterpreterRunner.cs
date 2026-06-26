@@ -34,7 +34,21 @@ static class InterpreterRunner
         StackSize = BytecodeInterpreterSettings.Default.StackSize,
     };
 
-    public static (MainResult Optimized, MainResult Unoptimized) Run(string file, string input, Action<List<IExternalFunction>>? externalFunctionAdder = null)
+    public readonly struct ExposedFunctionTest
+    {
+        public readonly string Identifier;
+        public readonly byte[] Arguments;
+        public readonly Action<byte[]> Validator;
+
+        public ExposedFunctionTest(string identifier, byte[] arguments, Action<byte[]> validator)
+        {
+            Identifier = identifier;
+            Arguments = arguments;
+            Validator = validator;
+        }
+    }
+
+    public static (MainResult Optimized, MainResult Unoptimized) Run(string file, string input, Action<List<IExternalFunction>>? externalFunctionAdder = null, ImmutableArray<ExposedFunctionTest> exposedFunctionTests = default)
     {
         FixedIO io = new(input);
         List<IExternalFunction> externalFunctions = BytecodeProcessor.GetExternalFunctions(io);
@@ -138,10 +152,21 @@ static class InterpreterRunner
                 code.GeneratedUnmanagedFunctions
             );
 
-            while (!interpreter.IsDone)
-            { interpreter.Tick(); }
+            interpreter.RunUntilCompletion();
 
-            return new MainResult(io.Output.ToString(), string.Empty, interpreter);
+            MainResult res = new(io.Output.ToString(), string.Empty, interpreter);
+
+            if (!exposedFunctionTests.IsDefault)
+            {
+                foreach (ExposedFunctionTest exposedFunctionTest in exposedFunctionTests)
+                {
+                    if (!code.ExposedFunctions.TryGetValue(exposedFunctionTest.Identifier, out ExposedFunction function)) Assert.Fail($"Exposed function \"{exposedFunctionTest.Identifier}\" not found");
+                    byte[] ret = interpreter.CallUnsafeSync(function, exposedFunctionTest.Arguments);
+                    exposedFunctionTest.Validator(ret);
+                }
+            }
+
+            return res;
         }
 
         MainResult result = Execute(generatedOptimized);

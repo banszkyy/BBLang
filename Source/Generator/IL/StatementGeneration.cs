@@ -130,6 +130,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                         throw new UnreachableException();
                 }
             case PointerType:
+            case FunctionType:
                 il.Emit(OpCodes.Ldnull);
                 return;
             default:
@@ -409,7 +410,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 return;
             }
 
-            case "-":
+            case CompiledUnaryOperatorCall.UnaryMinus:
             {
                 EmitStatement(statement.Expression, il, ref successful);
                 il.Emit(OpCodes.Neg);
@@ -417,14 +418,14 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 return;
             }
 
-            case "+":
+            case CompiledUnaryOperatorCall.UnaryPlus:
             {
                 EmitStatement(statement.Expression, il, ref successful);
 
                 return;
             }
 
-            case "~":
+            case CompiledUnaryOperatorCall.BinaryNOT:
             {
                 EmitStatement(statement.Expression, il, ref successful);
                 il.Emit(OpCodes.Not);
@@ -528,12 +529,12 @@ public partial class CodeGeneratorForIL : CodeGenerator
     {
         CompiledExpression _object = statement.Object;
 
-        if (!_object.Type.Is(out PointerType? objectType))
+        if (!_object.Type.Is(out IReferenceType? objectType))
         {
             _object = new CompiledGetReference()
             {
                 Of = _object,
-                Type = objectType = new PointerType(_object.Type),
+                Type = ((objectType = new PointerType(_object.Type)) as PointerType)!,
                 Location = _object.Location,
                 SaveValue = true,
             };
@@ -541,7 +542,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         EmitStatement(_object, il, ref successful);
 
-        while (objectType.To.Is(out PointerType? indirectPointer))
+        while (objectType.To.Is(out IReferenceType? indirectPointer))
         {
             il.Emit(OpCodes.Ldind_Ref);
             objectType = indirectPointer;
@@ -754,12 +755,12 @@ public partial class CodeGeneratorForIL : CodeGenerator
     {
         CompiledExpression _object = statement.Object;
 
-        if (!_object.Type.Is(out PointerType? objectType))
+        if (!_object.Type.Is(out IReferenceType? objectType))
         {
             _object = new CompiledGetReference()
             {
                 Of = _object,
-                Type = objectType = new PointerType(_object.Type),
+                Type = ((objectType = new PointerType(_object.Type)) as PointerType)!,
                 Location = _object.Location,
                 SaveValue = true,
             };
@@ -767,7 +768,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         EmitStatement(_object, il, ref successful);
 
-        while (objectType.To.Is(out PointerType? indirectPointer))
+        while (objectType.To.Is(out IReferenceType? indirectPointer))
         {
             il.Emit(OpCodes.Ldind_Ref);
             objectType = indirectPointer;
@@ -826,7 +827,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
     void EmitSetter(CompiledElementAccess statement, CompiledExpression value, ILProxy il, ref bool successful)
     {
-        if (statement.Base.Type.Is(out PointerType? basePointerType) &&
+        if (statement.Base.Type.Is(out IReferenceType? basePointerType) &&
             basePointerType.To.Is(out ArrayType? baseArrayType))
         {
             if (!ToType(baseArrayType.Of, out _, out PossibleDiagnostic? typeError))
@@ -1512,7 +1513,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 il.Emit(OpCodes.Throw);
                 break;
             default:
-                Diagnostics.Add(DiagnosticAt.Internal($"Unimplemented value for crash reason", statement.Value));
+                Diagnostics.Add(DiagnosticAt.Internal($"Unimplemented crash reason value", statement.Value));
                 successful = false;
                 break;
         }
@@ -1708,7 +1709,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
     void EmitStatement(CompiledElementAccess statement, ILProxy il, ref bool successful)
     {
-        if (statement.Base.Type.Is(out PointerType? basePointerType) &&
+        if (statement.Base.Type.Is(out IReferenceType? basePointerType) &&
             basePointerType.To.Is(out ArrayType? baseArrayType))
         {
             if (!ToType(baseArrayType.Of, out _, out PossibleDiagnostic? typeError))
@@ -2069,11 +2070,11 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
     string GenerateTypeId_(GeneralType type) => type.FinalValue switch
     {
-        ArrayType v => $"{GenerateTypeId_(v.Of)}[{v.Length?.ToString() ?? ""}]",
-        BuiltinType v => v.Type.ToString(),
-        FunctionType => $"fnc",
-        PointerType => $"ptr",
-        ReferenceType => $"ref",
+        ArrayType v => MakeUnique($"{GenerateTypeId_(v.Of)}__{v.Length?.ToString() ?? ""}"),
+        BuiltinType v => MakeUnique(v.Type.ToString()),
+        FunctionType => MakeUnique("fnc"),
+        PointerType => MakeUnique("ptr"),
+        ReferenceType => MakeUnique("ref"),
         StructType v => MakeUnique(v.Struct.Identifier),
         _ => throw new UnreachableException(),
     };

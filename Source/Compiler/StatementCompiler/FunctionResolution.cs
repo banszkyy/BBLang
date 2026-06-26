@@ -453,7 +453,7 @@ public partial class StatementCompiler
         else
         {
             result = default;
-            error = new PossibleDiagnostic($"There are no functions bruh");
+            error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found");
             return false;
         }
     }

@@ -36,10 +36,10 @@ public class DiagnosticAt :
     }
 
 #if UNITY
-    public new DiagnosticAt WithSuberrors(Diagnostic? suberror) => suberror is null ? this : new(Level, Message, Position, File, false, ImmutableArray.Create(suberror), ImmutableArray<DiagnosticRelatedInformation>.Empty, Tag);
+    public new DiagnosticAt WithSuberrors(Diagnostic? suberror) => suberror is null ? this : new(Level, Message, Position, File, false, IgnoreOnPartialSource, ImmutableArray.Create(suberror), ImmutableArray<DiagnosticRelatedInformation>.Empty, Tag);
     public new DiagnosticAt WithSuberrors(params Diagnostic?[] suberrors) => WithSuberrors(suberrors.Where(v => v is not null).ToImmutableArray()!);
     public new DiagnosticAt WithSuberrors(IEnumerable<Diagnostic?> suberrors) => WithSuberrors(suberrors.Where(v => v is not null).ToImmutableArray()!);
-    public new DiagnosticAt WithSuberrors(ImmutableArray<Diagnostic> suberrors) => suberrors.IsDefaultOrEmpty ? this : new(Level, Message, Position, File, false, SubErrors.AddRange(suberrors), ImmutableArray<DiagnosticRelatedInformation>.Empty, Tag);
+    public new DiagnosticAt WithSuberrors(ImmutableArray<Diagnostic> suberrors) => suberrors.IsDefaultOrEmpty ? this : new(Level, Message, Position, File, false, IgnoreOnPartialSource, SubErrors.AddRange(suberrors), ImmutableArray<DiagnosticRelatedInformation>.Empty, Tag);
 #else
     public override DiagnosticAt WithSuberrors(Diagnostic? suberror) => suberror is null ? this : new(Level, Message, Position, File, false, IgnoreOnPartialSource, ImmutableArray.Create(suberror), ImmutableArray<DiagnosticRelatedInformation>.Empty, Tag);
     public override DiagnosticAt WithSuberrors(params Diagnostic?[] suberrors) => WithSuberrors(suberrors.Where(v => v is not null).ToImmutableArray()!);
@@ -48,10 +48,10 @@ public class DiagnosticAt :
 #endif
 
 #if UNITY
-    public new DiagnosticAt WithRelatedInfo(DiagnosticRelatedInformation? relatedInfo) => relatedInfo is null ? this : new(Level, Message, Position, File, false, SubErrors, ImmutableArray.Create(relatedInfo), Tag);
+    public new DiagnosticAt WithRelatedInfo(DiagnosticRelatedInformation? relatedInfo) => relatedInfo is null ? this : new(Level, Message, Position, File, false, IgnoreOnPartialSource, SubErrors, ImmutableArray.Create(relatedInfo), Tag);
     public new DiagnosticAt WithRelatedInfo(params DiagnosticRelatedInformation?[] relatedInfo) => WithRelatedInfo(relatedInfo.Where(v => v is not null).ToImmutableArray()!);
     public new DiagnosticAt WithRelatedInfo(IEnumerable<DiagnosticRelatedInformation?> relatedInfo) => WithRelatedInfo(relatedInfo.Where(v => v is not null).ToImmutableArray()!);
-    public new DiagnosticAt WithRelatedInfo(ImmutableArray<DiagnosticRelatedInformation> relatedInfo) => relatedInfo.IsDefaultOrEmpty ? this : new(Level, Message, Position, File, false, SubErrors, RelatedInformation.AddRange(relatedInfo), Tag);
+    public new DiagnosticAt WithRelatedInfo(ImmutableArray<DiagnosticRelatedInformation> relatedInfo) => relatedInfo.IsDefaultOrEmpty ? this : new(Level, Message, Position, File, false, IgnoreOnPartialSource, SubErrors, RelatedInformation.AddRange(relatedInfo), Tag);
 #else
     public override DiagnosticAt WithRelatedInfo(DiagnosticRelatedInformation? relatedInfo) => relatedInfo is null ? this : new(Level, Message, Position, File, false, IgnoreOnPartialSource, SubErrors, ImmutableArray.Create(relatedInfo), Tag);
     public override DiagnosticAt WithRelatedInfo(params DiagnosticRelatedInformation?[] relatedInfo) => WithRelatedInfo(relatedInfo.Where(v => v is not null).ToImmutableArray()!);

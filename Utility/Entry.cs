@@ -637,7 +637,7 @@ public static class Entry
 
                 DiagnosticsCollection diagnostics = new();
 
-                CompilerSettings compilerSettings = new(CodeGeneratorForMain.DefaultCompilerSettings)
+                CompilerSettings compilerSettings = new(IL.Generator.CodeGeneratorForIL.DefaultCompilerSettings)
                 {
                     Optimizations = arguments.DontOptimize ? OptimizationSettings.None : OptimizationSettings.All,
                     ExternalFunctions = externalFunctions.ToImmutableArray(),
@@ -979,7 +979,10 @@ public static class Entry
                             },
                         }
                     ),
-                    PointerSize = nint.Size,
+                    RuntimeInfo = new()
+                    {
+                        PointerSize = nint.Size,
+                    },
                 };
                 MainGeneratorSettings mainGeneratorSettings = new(MainGeneratorSettings.Default)
                 {

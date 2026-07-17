@@ -788,10 +788,7 @@ public class InterpreterRenderer
                     if (!processor.Memory.AsSpan().TryGet<int>(pointerAddress, out int valueAddress)) continue;
                     if (valueAddress <= 0) continue;
 
-                    if (!StatementCompiler.FindSize(pointerType.To, out int valueSize, out _, new RuntimeInfoProvider()
-                    {
-                        PointerSize = CodeGeneratorForMain.DefaultCompilerSettings.PointerSize,
-                    }))
+                    if (!StatementCompiler.FindSize(pointerType.To, out int valueSize, out _, CodeGeneratorForMain.DefaultCompilerSettings.RuntimeInfo))
                     {
                         valueSize = 0;
                     }
@@ -902,10 +899,7 @@ public class InterpreterRenderer
                 if (!processor.Memory.AsSpan().TryGet<int>(pointerAddress, out int valueAddress)) continue;
                 if (valueAddress <= 0) continue;
 
-                if (!StatementCompiler.FindSize(pointerType.To, out int valueSize, out _, new RuntimeInfoProvider()
-                {
-                    PointerSize = CodeGeneratorForMain.DefaultCompilerSettings.PointerSize,
-                }))
+                if (!StatementCompiler.FindSize(pointerType.To, out int valueSize, out _, CodeGeneratorForMain.DefaultCompilerSettings.RuntimeInfo))
                 {
                     valueSize = 0;
                 }

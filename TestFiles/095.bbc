@@ -1,0 +1,53 @@
+using System;
+
+struct B
+{
+    byte _a;
+    string _b;
+
+    delete() {
+        delete this._b;
+    }
+}
+
+struct A
+{
+    float _a;
+    B* _b;
+    float _c;
+
+    delete() {
+        delete this._b;
+    }
+}
+
+void fc(A a)
+{
+    printline(a._b._b);
+}
+
+void fb(A* a)
+{
+    float la = 69f;
+    byte lb = (byte)42;
+    fc(*a);
+}
+
+void fa()
+{
+    temp A la = new A;
+    temp A lb = new A;
+    temp A* lc = new A*;
+    
+    la._b = new B*;
+    lb._b = new B*;
+    lc._b = new B*;
+
+    la._b._b = "asdasdasdasd1";
+    lb._b._b = "asdasdasdasd2";
+    lc._b._b = "asdasdasdasd3";
+
+    fb(lc);
+}
+
+fa();

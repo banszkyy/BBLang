@@ -1,0 +1,9 @@
+using System;
+
+void func(int item)
+{
+	printline(item);
+}
+
+var callback = func;
+callback(5);

@@ -1,0 +1,12 @@
+using System;
+using "46b";
+
+int yeah;
+
+yeah = 55;
+
+setbruh();
+
+yeah += getbruh();
+
+return yeah;

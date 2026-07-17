@@ -1,5 +1,0 @@
-using System;
-
-temp string text = "abc";
-
-print(text);

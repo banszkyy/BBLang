@@ -5,7 +5,7 @@ using LanguageCore.Tokenizing;
 
 namespace LanguageCore.Compiler;
 
-public partial class StatementCompiler : IRuntimeInfoProvider
+public partial class StatementCompiler
 {
     #region Fields
 
@@ -28,7 +28,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     public BuiltinType ArrayLengthType => Settings.ArrayLengthType;
     public BuiltinType BooleanType => Settings.BooleanType;
-    public int PointerSize => Settings.PointerSize;
+    public int PointerSize => Settings.RuntimeInfo.PointerSize;
     public BuiltinType SizeofStatementType => Settings.SizeofStatementType;
     public BuiltinType ExitCodeType => Settings.ExitCodeType;
 
@@ -3211,7 +3211,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
     }
     bool TryCompute(CompiledSizeof functionCall, EvaluationContext context, out CompiledValue value, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        if (!FindSize(functionCall.Of, out int size, out error, this))
+        if (!FindSize(functionCall.Of, out int size, out error, Settings.RuntimeInfo))
         {
             value = CompiledValue.Null;
             error = error.Populated(functionCall);
@@ -3849,7 +3849,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
 
     #region Find Size
 
-    public static bool FindBitWidth(GeneralType type, out BitWidth size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    public static bool FindBitWidth(GeneralType type, out BitWidth size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = default;
         if (!FindSize(type, out int s, out error, runtime)) return false;
@@ -3865,7 +3865,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         }
     }
 
-    public static bool FindSize(GeneralType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime) => type switch
+    public static bool FindSize(GeneralType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime) => type switch
     {
         PointerType v => FindSize(v, out size, out error, runtime),
         ReferenceType v => FindSize(v, out size, out error, runtime),
@@ -3878,25 +3878,25 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         EnumType v => FindSize(v, out size, out error, runtime),
         _ => throw new NotImplementedException(),
     };
-    static bool FindSize(PointerType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(PointerType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = runtime.PointerSize;
         error = null;
         return true;
     }
-    static bool FindSize(ReferenceType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(ReferenceType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = runtime.PointerSize;
         error = null;
         return true;
     }
-    static bool FindSize(FunctionType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(FunctionType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = runtime.PointerSize;
         error = null;
         return true;
     }
-    static bool FindSize(ArrayType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(ArrayType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = default;
 
@@ -3912,7 +3912,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         error = null;
         return true;
     }
-    static bool FindSize(StructType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(StructType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = 0;
 
@@ -3927,13 +3927,13 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         error = null;
         return true;
     }
-    static bool FindSize(GenericType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(GenericType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = default;
         error = new PossibleDiagnostic($"Generic type doesn't have a size");
         return false;
     }
-    static bool FindSize(BuiltinType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(BuiltinType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = default;
         error = default;
@@ -3953,16 +3953,16 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             default: throw new UnreachableException();
         }
     }
-    static bool FindSize(AliasType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(AliasType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         return FindSize(type.Value, out size, out error, runtime);
     }
-    static bool FindSize(EnumType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(EnumType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         return FindSize(type.Definition.Type, out size, out error, runtime);
     }
 
-    public static bool FindSize(CompiledTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime) => type switch
+    public static bool FindSize(CompiledTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime) => type switch
     {
         CompiledPointerTypeExpression v => FindSize(v, out size, out error, runtime),
         CompiledReferenceTypeExpression v => FindSize(v, out size, out error, runtime),
@@ -3975,25 +3975,25 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         CompiledEnumTypeExpression v => FindSize(v, out size, out error, runtime),
         _ => throw new NotImplementedException(),
     };
-    static bool FindSize(CompiledPointerTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(CompiledPointerTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = runtime.PointerSize;
         error = null;
         return true;
     }
-    static bool FindSize(CompiledReferenceTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(CompiledReferenceTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = runtime.PointerSize;
         error = null;
         return true;
     }
-    static bool FindSize(CompiledFunctionTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(CompiledFunctionTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = runtime.PointerSize;
         error = null;
         return true;
     }
-    static bool FindSize(CompiledArrayTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(CompiledArrayTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = default;
 
@@ -4015,7 +4015,7 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         error = null;
         return true;
     }
-    static bool FindSize(CompiledStructTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(CompiledStructTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = 0;
 
@@ -4028,13 +4028,13 @@ public partial class StatementCompiler : IRuntimeInfoProvider
         error = null;
         return true;
     }
-    static bool FindSize(CompiledGenericTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(CompiledGenericTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = default;
         error = new PossibleDiagnostic($"Generic type doesn't have a size", type);
         return false;
     }
-    static bool FindSize(CompiledBuiltinTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(CompiledBuiltinTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         size = default;
         error = default;
@@ -4054,11 +4054,11 @@ public partial class StatementCompiler : IRuntimeInfoProvider
             default: throw new UnreachableException();
         }
     }
-    static bool FindSize(CompiledAliasTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(CompiledAliasTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         return FindSize(type.Value, out size, out error, runtime);
     }
-    static bool FindSize(CompiledEnumTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, IRuntimeInfoProvider runtime)
+    static bool FindSize(CompiledEnumTypeExpression type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error, RuntimeInfo runtime)
     {
         return FindSize(type.Definition.Type, out size, out error, runtime);
     }

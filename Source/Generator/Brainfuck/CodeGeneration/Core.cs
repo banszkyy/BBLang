@@ -70,7 +70,10 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 {
     public static readonly CompilerSettings DefaultCompilerSettings = new()
     {
-        PointerSize = 1,
+        RuntimeInfo = new()
+        {
+            PointerSize = 1,
+        },
         ArrayLengthType = BuiltinType.U8,
         BooleanType = BuiltinType.U8,
         ExitCodeType = BuiltinType.U8,
@@ -85,6 +88,11 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
             FileSourceProvider.Instance
         ),
         PreprocessorVariables = PreprocessorVariables.Brainfuck,
+    };
+
+    protected override RuntimeInfo RuntimeInfo => new()
+    {
+        PointerSize = 1,
     };
 
     const string ReturnVariableName = "@return";
@@ -267,11 +275,6 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
     string? VariableCanBeDiscarded;
 
     readonly int MaxRecursiveDepth;
-
-    public override int PointerSize => 1;
-    public override BuiltinType BooleanType => BuiltinType.U8;
-    public override BuiltinType SizeofStatementType => BuiltinType.U8;
-    public override BuiltinType ArrayLengthType => BuiltinType.U8;
 
     static readonly BuiltinType ExitCodeType = BuiltinType.U8;
 

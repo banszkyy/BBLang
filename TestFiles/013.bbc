@@ -1,0 +1,6 @@
+int func()
+{
+	
+}
+
+return func();

@@ -1,0 +1,10 @@
+void func(int* v)
+{
+	*v += 7;
+}
+
+int a = 3;
+
+func(&a);
+
+return a;

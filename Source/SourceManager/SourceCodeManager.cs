@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.Collections.Concurrent;
+using System.IO;
 using System.Threading.Tasks;
 using LanguageCore.Parser;
 using LanguageCore.Tokenizing;
@@ -76,7 +77,7 @@ public class SourceCodeManager
     public SourceCodeManager(DiagnosticsCollection diagnostics, SourceManagerSettings settings, ILogger? logger)
     {
         settings.TokenizerSettings ??= TokenizerSettings.Default;
-        settings.Cache ??= new Dictionary<Uri, CacheItem>();
+        settings.Cache ??= new ConcurrentDictionary<Uri, CacheItem>();
 
         Settings = settings;
         CompiledUris = new();
@@ -142,12 +143,15 @@ public class SourceCodeManager
             { Logger?.LogDebug("Loading files ..."); }
 
             ParsedFiles.Add(new ParsedFile(finishedFile.Uri, finishedFile.Initiator, tokens, ast, finishedFile.Index, text));
-            Settings.Cache![finishedFile.Uri] = new CacheItem(
+            if (Settings.Cache is not null)
+            {
+                Settings.Cache[finishedFile.Uri] = new CacheItem(
                 finishedFile.Version,
                 text,
                 tokens,
                 ast
             );
+            }
 
             foreach (UsingDefinition @using in ast.Usings)
             {

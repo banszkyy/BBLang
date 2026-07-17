@@ -1,0 +1,11 @@
+using System;
+
+temp string a = "";
+
+a = (temp a) + "a";
+
+printline(a);
+
+a = (temp a) + "a";
+
+printline(a);

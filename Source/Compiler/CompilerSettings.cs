@@ -36,11 +36,11 @@ public struct CompilerSettings
     public required ImmutableArray<IExternalFunction> ExternalFunctions { get; set; }
     public required ImmutableArray<ExternalConstant> ExternalConstants { get; set; }
     public required BuiltinType ExitCodeType { get; set; }
-    public required int PointerSize { get; set; }
     public required BuiltinType BooleanType { get; set; }
     public required BuiltinType SizeofStatementType { get; set; }
     public required BuiltinType ArrayLengthType { get; set; }
     public required ImmutableArray<ISourceProvider> SourceProviders { get; set; }
+    public required RuntimeInfo RuntimeInfo { get; set; }
 
     public Tokenizing.TokenizerSettings? TokenizerSettings { get; set; }
     public ImmutableHashSet<string> PreprocessorVariables { get; set; }
@@ -72,7 +72,7 @@ public struct CompilerSettings
         ExternalFunctions = other.ExternalFunctions;
         ExternalConstants = other.ExternalConstants;
         ExitCodeType = other.ExitCodeType;
-        PointerSize = other.PointerSize;
+        RuntimeInfo = other.RuntimeInfo;
         BooleanType = other.BooleanType;
         SizeofStatementType = other.SizeofStatementType;
         ArrayLengthType = other.ArrayLengthType;

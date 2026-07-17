@@ -24,6 +24,7 @@ public struct MainGeneratorSettings
     public GeneratorOptimizationSettings Optimizations;
     public bool CheckNullPointers;
     public int PointerSize;
+    public readonly BitWidth PointerBitWidth => (BitWidth)PointerSize;
     public int StackSize;
     public bool CleanupGlobalVaraibles;
     public ILGeneratorSettings? ILGeneratorSettings;

@@ -11,7 +11,7 @@ public partial class StatementCompiler
     {
         if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics)
         {
-            if (FindSize(type, out int typeSize, out PossibleDiagnostic? typeSizeError, this))
+            if (FindSize(type, out int typeSize, out PossibleDiagnostic? typeSizeError, Settings.RuntimeInfo))
             {
                 Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Allocation size computed as {typeSize}", type));
                 if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))

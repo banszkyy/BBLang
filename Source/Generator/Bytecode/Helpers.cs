@@ -177,11 +177,11 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (addressType.HasClosure)
         {
-            using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+            using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
             {
                 PopTo(reg.Register);
                 CheckPointerNull(reg.Register);
-                PushFrom(reg.Register, 0, PointerSize);
+                PushFrom(reg.Register, 0, Settings.PointerSize);
             }
         }
 
@@ -204,7 +204,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (captureGlobalVariables)
         {
-            PushFrom(AbsoluteGlobalAddress, PointerSize);
+            PushFrom(AbsoluteGlobalAddress, Settings.PointerSize);
         }
 
         Code.Emit(Opcode.Jump, label.Relative());
@@ -217,10 +217,10 @@ public partial class CodeGeneratorForMain : CodeGenerator
         PopTo(Register.BasePointer);
         if (HasCapturedGlobalVariables)
         {
-            Pop(PointerSize); // Pop AbsoluteGlobalOffset
+            Pop(Settings.PointerSize); // Pop AbsoluteGlobalOffset
         }
         Code.Emit(Opcode.Return);
-        ScopeSizes.LastRef -= PointerSize;
+        ScopeSizes.LastRef -= Settings.PointerSize;
     }
 
     #endregion
@@ -261,7 +261,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (CurrentContext is CompiledLambda compiledLambda)
         {
-            int offset = PointerSize;
+            int offset = Settings.PointerSize;
             foreach (CapturedLocal capturedLocal in compiledLambda.CapturedLocals)
             {
                 if (capturedLocal.Variable is not null)
@@ -296,7 +296,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (CurrentContext is CompiledLambda compiledLambda)
         {
-            int _offset = PointerSize;
+            int _offset = Settings.PointerSize;
             foreach (CapturedLocal capturedLocal in compiledLambda.CapturedLocals)
             {
                 if (capturedLocal.Parameter is not null)
@@ -365,7 +365,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return;
         }
 
-        if (PointerBitWidth != BitWidth._64)
+        if (Settings.PointerBitWidth != BitWidth._64)
         {
             int dwordCount = size / 4;
             size %= 4;
@@ -398,7 +398,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     void PopTo(InstructionOperand destination, BitWidth size)
     {
-        if (PointerBitWidth == BitWidth._64 &&
+        if (Settings.PointerBitWidth == BitWidth._64 &&
             size is BitWidth._8 or BitWidth._32)
         { throw new NotImplementedException(); }
 
@@ -434,8 +434,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             case AddressPointer addressPointer:
             {
-                PushFrom(addressPointer.PointerAddress, PointerSize);
-                using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+                PushFrom(addressPointer.PointerAddress, Settings.PointerSize);
+                using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
                 {
                     PopTo(reg.Register);
                     PopTo(new AddressRegisterPointer(reg.Register), size, address.Offset);
@@ -454,7 +454,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             default:
             {
                 GenerateAddressResolver(address);
-                using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+                using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
                 {
                     PopTo(reg.Register);
                     PopTo(new AddressRegisterPointer(reg.Register), size);
@@ -466,8 +466,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     void PopTo(AddressPointer address, int size)
     {
-        PushFrom(address.PointerAddress, PointerSize);
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        PushFrom(address.PointerAddress, Settings.PointerSize);
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             PopTo(new AddressRegisterPointer(reg.Register), size);
@@ -487,13 +487,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
 #endif
             )
             {
-                if (PointerBitWidth == BitWidth._64 &&
+                if (Settings.PointerBitWidth == BitWidth._64 &&
                     checkBitWidth == BitWidth._32)
                 { continue; }
 
                 int checkSize = (int)checkBitWidth;
                 if (size - currentOffset < checkSize) continue;
-                if (PointerSize < checkSize) continue;
+                if (Settings.PointerSize < checkSize) continue;
 
                 PopTo(address.Register.ToPtr(currentOffset + offset, checkBitWidth), checkBitWidth);
                 currentOffset += checkSize;
@@ -505,7 +505,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     void PopTo(AddressRuntimePointer address, int size)
     {
         GenerateAddressResolver(address);
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             PopTo(new AddressRegisterPointer(reg.Register), size);
@@ -515,7 +515,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     void PopTo(AddressRuntimeIndex address, int size)
     {
         GenerateAddressResolver(address);
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             PopTo(new AddressRegisterPointer(reg.Register), size);
@@ -535,13 +535,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
 #endif
             )
             {
-                if (PointerBitWidth == BitWidth._64 &&
+                if (Settings.PointerBitWidth == BitWidth._64 &&
                     checkBitWidth == BitWidth._32)
                 { continue; }
 
                 int checkSize = (int)checkBitWidth;
                 if (size - currentOffset < checkSize) continue;
-                if (PointerSize < checkSize) continue;
+                if (Settings.PointerSize < checkSize) continue;
 
                 PopTo(new AddressAbsolute(address.Value + currentOffset), checkBitWidth);
                 currentOffset += checkSize;
@@ -618,8 +618,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             case AddressPointer addressPointer:
             {
-                PushFrom(addressPointer.PointerAddress, PointerSize);
-                using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+                PushFrom(addressPointer.PointerAddress, Settings.PointerSize);
+                using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
                 {
                     PopTo(reg.Register);
                     PushFrom(reg.Register, address.Offset, size);
@@ -637,7 +637,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             default:
             {
                 GenerateAddressResolver(address);
-                using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+                using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
                 {
                     PopTo(reg.Register);
                     PushFrom(reg.Register, 0, size);
@@ -653,7 +653,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         while (currentOffset > 0)
         {
-            if (currentOffset >= 8 && PointerSize >= 8)
+            if (currentOffset >= 8 && Settings.PointerSize >= 8)
             {
                 Push(register.ToPtr(currentOffset - 8 + offset, BitWidth._64));
                 currentOffset -= 8;
@@ -682,8 +682,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     void PushFrom(AddressPointer address, int size)
     {
-        PushFrom(address.PointerAddress, PointerSize);
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        PushFrom(address.PointerAddress, Settings.PointerSize);
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             PushFrom(reg.Register, 0, size);
@@ -698,7 +698,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     void PushFrom(AddressRuntimePointer address, int size)
     {
         GenerateAddressResolver(address);
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             PushFrom(reg.Register, 0, size);
@@ -708,7 +708,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     void PushFrom(AddressRuntimeIndex address, int size)
     {
         GenerateAddressResolver(address);
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             PushFrom(reg.Register, 0, size);
@@ -745,15 +745,15 @@ public partial class CodeGeneratorForMain : CodeGenerator
         if (!Settings.CheckNullPointers)
         {
             if (!preservePointer)
-            { Pop(PointerSize); }
+            { Pop(Settings.PointerSize); }
             return;
         }
 
         AddComment($"Check for pointer zero {{");
         if (preservePointer)
-        { PushFrom(StackTop, PointerSize); }
+        { PushFrom(StackTop, Settings.PointerSize); }
 
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             Code.Emit(Opcode.Compare, reg.Register, InstructionOperand.Immediate(0, reg.Register.BitWidth()));
@@ -793,7 +793,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         GenerateAddressResolver(address);
         CheckPointerNull();
 
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             for (int i = size - 1; i >= 0; i--)
@@ -806,7 +806,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         GenerateAddressResolver(address);
         CheckPointerNull();
 
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             PopTo(new AddressRegisterPointer(reg.Register), size);
@@ -976,10 +976,10 @@ public partial class CodeGeneratorForMain : CodeGenerator
     readonly PointerType BasePointerType = new(BuiltinType.I32);
 
     bool HasCapturedGlobalVariables { get; set; }
-    int AbsGlobalAddressSize => PointerSize;
-    // int StackPointerSize => PointerSize;
-    int CodePointerSize => PointerSize;
-    int BasePointerSize => PointerSize;
+    int AbsGlobalAddressSize => Settings.PointerSize;
+    // int StackPointerSize => Settings.PointerSize;
+    int CodePointerSize => Settings.PointerSize;
+    int BasePointerSize => Settings.PointerSize;
 
     int StackFrameTags => BasePointerSize + (HasCapturedGlobalVariables ? AbsGlobalAddressSize : 0) + CodePointerSize;
     int TopLevelStackFrameTags => BasePointerSize + (HasCapturedGlobalVariables ? AbsGlobalAddressSize : 0);

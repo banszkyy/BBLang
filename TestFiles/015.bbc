@@ -1,0 +1,8 @@
+int a = 1;
+
+int func() {
+	a++;
+	return a;
+}
+
+return a + func();

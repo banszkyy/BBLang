@@ -1,2 +1,0 @@
-char c = (char)48;
-return (int)c;

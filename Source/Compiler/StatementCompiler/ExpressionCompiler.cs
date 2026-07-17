@@ -175,9 +175,9 @@ public partial class StatementCompiler
                 { Diagnostics.Add(error.ToError(argument)); }
                 compiledArgument = assignedArgument;
 
-                if (!FindSize(compiledArgument.Type, out int argumentSize, out PossibleDiagnostic? argumentSizeError, this))
+                if (!FindSize(compiledArgument.Type, out int argumentSize, out PossibleDiagnostic? argumentSizeError, Settings.RuntimeInfo))
                 { Diagnostics.Add(argumentSizeError.ToError(compiledArgument)); }
-                else if (!FindSize(parameterType, out int parameterSize, out PossibleDiagnostic? parameterSizeError, this))
+                else if (!FindSize(parameterType, out int parameterSize, out PossibleDiagnostic? parameterSizeError, Settings.RuntimeInfo))
                 { Diagnostics.Add(parameterSizeError.ToError(parameter.Definition)); }
                 else if (argumentSize != parameterSize)
                 { Diagnostics.Add(DiagnosticAt.Internal($"Bad argument type passed: expected \"{parameterType}\" ({parameterSize} bytes) passed \"{compiledArgument.Type}\" ({argumentSize} bytes)", argument)); }
@@ -707,13 +707,13 @@ public partial class StatementCompiler
                 return false;
             }
 
-            if (!FindBitWidth(leftType, out BitWidth leftBitWidth, out PossibleDiagnostic? e1, this))
+            if (!FindBitWidth(leftType, out BitWidth leftBitWidth, out PossibleDiagnostic? e1, Settings.RuntimeInfo))
             {
                 Diagnostics.Add(e1.ToError(left));
                 return false;
             }
 
-            if (!FindBitWidth(rightType, out BitWidth rightBitWidth, out PossibleDiagnostic? e2, this))
+            if (!FindBitWidth(rightType, out BitWidth rightBitWidth, out PossibleDiagnostic? e2, Settings.RuntimeInfo))
             {
                 Diagnostics.Add(e2.ToError(right));
                 return false;
@@ -779,13 +779,13 @@ public partial class StatementCompiler
                         leftBType.Type == BasicType.F32 ||
                         rightBType.Type == BasicType.F32;
 
-                    if (!FindBitWidth(leftType, out leftBitWidth, out e1, this))
+                    if (!FindBitWidth(leftType, out leftBitWidth, out e1, Settings.RuntimeInfo))
                     {
                         Diagnostics.Add(e1.ToError(@operator.Left));
                         return false;
                     }
 
-                    if (!FindBitWidth(rightType, out rightBitWidth, out e2, this))
+                    if (!FindBitWidth(rightType, out rightBitWidth, out e2, Settings.RuntimeInfo))
                     {
                         Diagnostics.Add(e2.ToError(@operator.Right));
                         return false;
@@ -878,13 +878,13 @@ public partial class StatementCompiler
                         ok = false;
                     }
 
-                    if (!FindBitWidth(leftType, out BitWidth leftBitwidth, out PossibleDiagnostic? error, this))
+                    if (!FindBitWidth(leftType, out BitWidth leftBitwidth, out PossibleDiagnostic? error, Settings.RuntimeInfo))
                     {
                         Diagnostics.Add(error.ToError(@operator.Left));
                         ok = false;
                     }
 
-                    if (!FindBitWidth(rightType, out BitWidth rightBitwidth, out error, this))
+                    if (!FindBitWidth(rightType, out BitWidth rightBitwidth, out error, Settings.RuntimeInfo))
                     {
                         Diagnostics.Add(error.ToError(@operator.Right));
                         ok = false;
@@ -1296,7 +1296,7 @@ public partial class StatementCompiler
                 int closureSize = 0;
                 foreach (CapturedLocal? item in closure)
                 {
-                    if (!FindSize((item.Variable?.Type ?? item.Parameter?.Type)!, out int itemSize, out PossibleDiagnostic? sizeError, this))
+                    if (!FindSize((item.Variable?.Type ?? item.Parameter?.Type)!, out int itemSize, out PossibleDiagnostic? sizeError, Settings.RuntimeInfo))
                     {
                         Diagnostics.Add(sizeError.ToError((item.Variable?.Location ?? item.Parameter?.Definition.Location)!));
                     }
@@ -1486,7 +1486,7 @@ public partial class StatementCompiler
                     SetStatementType(literal, expectedType);
 
                     compiledStatement = null;
-                    if (!FindSize(BuiltinType.U8, out int charSize, out PossibleDiagnostic? sizeError, this))
+                    if (!FindSize(BuiltinType.U8, out int charSize, out PossibleDiagnostic? sizeError, Settings.RuntimeInfo))
                     {
                         Diagnostics.Add(sizeError.ToError(literal));
                     }
@@ -1513,7 +1513,7 @@ public partial class StatementCompiler
                     SetStatementType(literal, expectedType);
 
                     compiledStatement = null;
-                    if (!FindSize(BuiltinType.Char, out int charSize, out PossibleDiagnostic? sizeError, this))
+                    if (!FindSize(BuiltinType.Char, out int charSize, out PossibleDiagnostic? sizeError, Settings.RuntimeInfo))
                     {
                         Diagnostics.Add(sizeError.ToError(literal));
                     }
@@ -1574,7 +1574,7 @@ public partial class StatementCompiler
                         return false;
                     }
 
-                    if (!FindSize(charType, out int charSize, out PossibleDiagnostic? sizeError, this))
+                    if (!FindSize(charType, out int charSize, out PossibleDiagnostic? sizeError, Settings.RuntimeInfo))
                     {
                         Diagnostics.Add(sizeError.ToError(literal));
                         return false;
@@ -1722,7 +1722,7 @@ public partial class StatementCompiler
                     return false;
                 }
 
-                if (!FindSize(literalType, out int charSize, out PossibleDiagnostic? sizeError, this))
+                if (!FindSize(literalType, out int charSize, out PossibleDiagnostic? sizeError, Settings.RuntimeInfo))
                 {
                     Diagnostics.Add(sizeError.ToError(literal));
                     compiledStatement = default;
@@ -2463,8 +2463,8 @@ public partial class StatementCompiler
             && targetType is PointerType targetPointerType
             && targetPointerType.To is ArrayType targetArrayPointerType
             && !targetArrayPointerType.Length.HasValue
-            && FindSize(statementPointerType.To, out int size1, out _, this)
-            && FindSize(targetArrayPointerType.Of, out int size2, out _, this)
+            && FindSize(statementPointerType.To, out int size1, out _, Settings.RuntimeInfo)
+            && FindSize(targetArrayPointerType.Of, out int size2, out _, Settings.RuntimeInfo)
             && size1 % size2 == 0)
         {
             targetType = new PointerType(new ArrayType(targetArrayPointerType.Of, size1 / size2));
@@ -2473,11 +2473,11 @@ public partial class StatementCompiler
         SetStatementType(reinterpret, targetType);
         SetStatementType(reinterpret.Type, targetType);
 
-        if (!FindSize(targetType, out int targetSize, out PossibleDiagnostic? sizeError, this))
+        if (!FindSize(targetType, out int targetSize, out PossibleDiagnostic? sizeError, Settings.RuntimeInfo))
         {
             Diagnostics.Add(sizeError.ToError(reinterpret.Type));
         }
-        else if (!FindSize(value.Type, out int valueSize, out sizeError, this))
+        else if (!FindSize(value.Type, out int valueSize, out sizeError, Settings.RuntimeInfo))
         {
             Diagnostics.Add(sizeError.ToError(value));
         }

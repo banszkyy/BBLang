@@ -1,5 +1,0 @@
-using System;
-
-temp string txt = "62";
-int val = parseint(txt);
-return val;

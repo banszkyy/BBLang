@@ -1,4 +1,0 @@
-[External("test")]
-void test(int a, int b, int c, int d);
-
-test(1, 2, 3, 4);

@@ -101,15 +101,15 @@ public class BytecodeProcessor
         }
         catch (RuntimeException runtimeException)
         {
+            Registers = state.Registers;
+            HotFunctions = state.HotFunctions;
             runtimeException.DebugInformation = DebugInformation;
             runtimeException.Context ??= GetContext();
             throw;
         }
-        finally
-        {
-            Registers = state.Registers;
-            HotFunctions = state.HotFunctions;
-        }
+
+        Registers = state.Registers;
+        HotFunctions = state.HotFunctions;
     }
 
     /// <returns>

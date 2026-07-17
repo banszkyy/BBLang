@@ -183,7 +183,7 @@ public class RuntimeException : LanguageException
                 result.Append("..."); return;
             }
 
-            RuntimeInfoProvider runtimeInfoProvider = new()
+            RuntimeInfo runtimeInfo = new()
             {
                 PointerSize = 4,
             };
@@ -191,7 +191,7 @@ public class RuntimeException : LanguageException
             if (colored) result.ResetStyle();
             if (range.Start < 0 || range.End + 1 >= context.Memory.Length)
             {
-                result.Append("<invalid address>");
+                result.Append("<invalid>");
                 return;
             }
             ReadOnlySpan<byte> value = context.Memory.AsSpan()[range.Start..(range.End + 1)];
@@ -237,7 +237,7 @@ public class RuntimeException : LanguageException
                         result.Append(" -> ");
                         result.Append("[ ? ]");
                     }
-                    else if (StatementCompiler.FindSize(pointerType.To, out int _s, out _, runtimeInfoProvider))
+                    else if (StatementCompiler.FindSize(pointerType.To, out int _s, out _, runtimeInfo))
                     {
                         Range<int> pointerTo = new(value.To<int>(), value.To<int>() + _s);
                         AppendValue(pointerTo, pointerType.To, depth + 1);
@@ -255,7 +255,7 @@ public class RuntimeException : LanguageException
                     result.Append(" -> ");
                     result.Append('?');
                 }
-                else if (StatementCompiler.FindSize(pointerType.To, out int _s, out _, runtimeInfoProvider))
+                else if (StatementCompiler.FindSize(pointerType.To, out int _s, out _, runtimeInfo))
                 {
                     Range<int> pointerTo = new(value.To<int>(), value.To<int>() + _s);
                     AppendValue(pointerTo, pointerType.To, depth + 1);
@@ -278,7 +278,7 @@ public class RuntimeException : LanguageException
                     result.Append(": ");
                     GeneralType fieldType = structType.ReplaceType(field.Type, out _);
 
-                    if (StatementCompiler.FindSize(fieldType, out int _s, out _, runtimeInfoProvider))
+                    if (StatementCompiler.FindSize(fieldType, out int _s, out _, runtimeInfo))
                     {
                         Range<int> fieldRange = new(range.Start + offset, range.Start + offset + _s);
                         AppendValue(fieldRange, fieldType, depth + 1);
@@ -296,7 +296,7 @@ public class RuntimeException : LanguageException
             else if (type.Is(out ArrayType? arrayType))
             {
                 result.Append('[');
-                if (arrayType.Length.HasValue && StatementCompiler.FindSize(arrayType.Of, out int elementSize, out _, runtimeInfoProvider))
+                if (arrayType.Length.HasValue && StatementCompiler.FindSize(arrayType.Of, out int elementSize, out _, runtimeInfo))
                 {
                     for (int i = 0; i < arrayType.Length.Value; i++)
                     {
@@ -322,7 +322,7 @@ public class RuntimeException : LanguageException
                     {
                         result.Append("NULL");
                     }
-                    else if (StatementCompiler.FindSize(PointerType.Any, out int _s, out _, runtimeInfoProvider))
+                    else if (StatementCompiler.FindSize(PointerType.Any, out int _s, out _, runtimeInfo))
                     {
                         Range<int> pointerTo = new(value.To<int>(), value.To<int>() + _s);
                         AppendValue(pointerTo, new FunctionType(functionType.ReturnType, functionType.Parameters, false), depth);
@@ -411,103 +411,121 @@ public class RuntimeException : LanguageException
             result.AppendLine();
         }
 
-        bool AppendFrame(FunctionInformation frame, CallTraceItem callTraceItem)
+        void AppendFrame(FunctionInformation frame, CallTraceItem callTraceItem)
         {
-            if (frame.Function is null) return false;
-            if (DebugInformation.IsEmpty) return false;
-
-            ImmutableArray<ScopeInformation> scopes = DebugInformation.GetScopes(frame.Instructions.Start);
-
-            ICompiledFunctionDefinition function = frame.Function;
-            if (colored) result.SetGraphics(Ansi.BrightForegroundYellow);
-            if (function is CompiledFunctionDefinition compiledFunctionDefinition1)
+            if (frame.IsTopLevelStub)
             {
-                result.Append(compiledFunctionDefinition1.Identifier);
-            }
-            else if (function is CompiledOperatorDefinition compiledOperatorDefinition)
-            {
-                result.Append(compiledOperatorDefinition.Identifier);
-            }
-            else if (function is CompiledGeneralFunctionDefinition compiledGeneralFunctionDefinition)
-            {
-                result.Append(compiledGeneralFunctionDefinition.Identifier);
-            }
-            else if (function is CompiledConstructorDefinition compiledConstructorDefinition)
-            {
-                result.Append(compiledConstructorDefinition.Type.ToString());
-            }
-            else if (function is CompiledLambda)
-            {
-                result.Append("<lambda>");
-            }
-            else
-            {
-                result.Append("<unknown function>");
-            }
-            if (colored) result.ResetStyle();
-            result.Append('(');
-            for (int j = 0; j < function.Parameters.Length; j++)
-            {
-                if (j > 0) result.Append(", ");
-                if (function.Parameters[j].Definition.Modifiers.Length > 0)
+                result.Append("<top level statements>");
+                if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation))
                 {
-                    if (colored) result.SetGraphics(Ansi.ForegroundBlue);
-                    result.AppendJoin(' ', function.Parameters[j].Definition.Modifiers);
-                    if (colored) result.ResetStyle();
                     result.Append(' ');
+                    result.Append(LanguageExceptionAt.Format(null, sourceLocation.Location));
                 }
-
-                if (function is not ICompiledFunctionDefinition compiledFunction)
+            }
+            else if (frame.Function is not null)
+            {
+                ICompiledFunctionDefinition function = frame.Function;
+                if (colored) result.SetGraphics(Ansi.BrightForegroundYellow);
+                if (function is CompiledFunctionDefinition compiledFunctionDefinition1)
                 {
-                    result.Append(function.Parameters[j].Type.ToString());
+                    result.Append(compiledFunctionDefinition1.Identifier);
+                }
+                else if (function is CompiledOperatorDefinition compiledOperatorDefinition)
+                {
+                    result.Append(compiledOperatorDefinition.Identifier);
+                }
+                else if (function is CompiledGeneralFunctionDefinition compiledGeneralFunctionDefinition)
+                {
+                    result.Append(compiledGeneralFunctionDefinition.Identifier);
+                }
+                else if (function is CompiledConstructorDefinition compiledConstructorDefinition)
+                {
+                    result.Append(compiledConstructorDefinition.Type.ToString());
+                }
+                else if (function is CompiledLambda)
+                {
+                    result.Append("<lambda>");
                 }
                 else
                 {
-                    AppendType(compiledFunction.Parameters[j].Type);
-                    if (colored) result.ResetStyle();
+                    result.Append($"<{function.GetType()}>");
                 }
+                if (colored) result.ResetStyle();
 
-                result.Append(' ');
-                result.Append(function.Parameters[j].Identifier);
+                ImmutableArray<ScopeInformation> scopes = DebugInformation.IsEmpty ? ImmutableArray<ScopeInformation>.Empty : DebugInformation.GetScopes(callTraceItem.InstructionPointer);
 
-                bool f = false;
-                foreach (ScopeInformation scope in scopes)
+                result.Append('(');
+                for (int j = 0; j < function.Parameters.Length; j++)
                 {
-                    if (f) break;
-                    foreach (StackElementInformation item in scope.Stack)
+                    if (j > 0) result.Append(", ");
+                    if (function.Parameters[j].Definition.Modifiers.Length > 0)
                     {
-                        if (item.Kind != StackElementKind.Parameter) continue;
-                        if (item.Identifier != function.Parameters[j].Identifier) continue;
-                        result.Append(" = ");
-                        AppendValue(item.GetRange(callTraceItem.BasePointer, context.StackStart), item.Type, 0);
-                        f = true;
-                        break;
+                        if (colored) result.SetGraphics(Ansi.ForegroundBlue);
+                        result.AppendJoin(' ', function.Parameters[j].Definition.Modifiers);
+                        if (colored) result.ResetStyle();
+                        result.Append(' ');
+                    }
+
+                    if (function is not ICompiledFunctionDefinition compiledFunction)
+                    {
+                        result.Append(function.Parameters[j].Type.ToString());
+                    }
+                    else
+                    {
+                        AppendType(compiledFunction.Parameters[j].Type);
+                        if (colored) result.ResetStyle();
+                    }
+
+                    result.Append(' ');
+                    result.Append(function.Parameters[j].Identifier);
+
+                    bool f = false;
+                    foreach (ScopeInformation scope in scopes)
+                    {
+                        if (f) break;
+                        foreach (StackElementInformation item in scope.Stack)
+                        {
+                            if (item.Kind != StackElementKind.Parameter) continue;
+                            if (item.Identifier != function.Parameters[j].Identifier) continue;
+                            result.Append(" = ");
+                            AppendValue(item.GetRange(callTraceItem.BasePointer, context.StackStart), item.Type, 0);
+                            f = true;
+                            break;
+                        }
                     }
                 }
-            }
-            result.Append(')');
-            result.Append(' ');
+                result.Append(')');
 
-            if (DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation))
-            {
-                result.Append(LanguageExceptionAt.Format(null, sourceLocation.Location));
-            }
-            else if (function is CompiledFunctionDefinition compiledFunctionDefinition2)
-            {
-                result.Append(LanguageExceptionAt.Format(null, compiledFunctionDefinition2.Definition.Identifier.Position, function.File));
+                if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation))
+                {
+                    result.Append(' ');
+                    result.Append(LanguageExceptionAt.Format(null, sourceLocation.Location));
+                }
+                else if (function is CompiledFunctionDefinition compiledFunctionDefinition2)
+                {
+                    result.Append(' ');
+                    result.Append(LanguageExceptionAt.Format(null, compiledFunctionDefinition2.Definition.Identifier.Position, function.File));
+                }
+                else
+                {
+                    result.Append(' ');
+                    result.Append(LanguageExceptionAt.Format(null, Position.UnknownPosition, function.File));
+                }
             }
             else
             {
-                result.Append(LanguageExceptionAt.Format(null, Position.UnknownPosition, function.File));
+                result.Append("<unknown>");
+                if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation))
+                {
+                    result.Append(' ');
+                    result.Append(LanguageExceptionAt.Format(null, sourceLocation.Location));
+                }
             }
-
-            return true;
         }
 
         FunctionInformation currentFrame = DebugInformation.IsEmpty ? default : DebugInformation.GetFunctionInformation(context.Registers.CodePointer);
         result.Append(' ', CallStackIndent);
-        if (!AppendFrame(currentFrame, new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer)))
-        { result.Append($"<unknown> {context.Registers.CodePointer}"); }
+        AppendFrame(currentFrame, new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer));
         result.AppendLine();
 
         if (details) AppendScope(new CallTraceItem(context.Registers.BasePointer, context.Registers.CodePointer));
@@ -526,16 +544,7 @@ public class RuntimeException : LanguageException
                 {
                     result.Append(' ', CallStackIndent);
 
-                    if (!AppendFrame(callStack[i], CallTrace[i]))
-                    {
-                        result.Append($"<unknown> {CallTrace[i].InstructionPointer}");
-
-                        if (DebugInformation.TryGetSourceLocation(CallTrace[i].InstructionPointer, out SourceCodeLocation sourceLocation))
-                        {
-                            result.Append(' ');
-                            result.Append(sourceLocation.Location.ToString());
-                        }
-                    }
+                    AppendFrame(callStack[i], CallTrace[i]);
 
                     result.AppendLine();
 

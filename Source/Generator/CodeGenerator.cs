@@ -2,7 +2,7 @@
 
 namespace LanguageCore.Compiler;
 
-public abstract class CodeGenerator : IRuntimeInfoProvider
+public abstract class CodeGenerator
 {
     public readonly struct ControlFlowBlock
     {
@@ -33,15 +33,9 @@ public abstract class CodeGenerator : IRuntimeInfoProvider
     protected bool InFunction;
     protected readonly Dictionary<string, GeneralType> TypeArguments;
     protected DebugInformation? DebugInfo;
+    protected abstract RuntimeInfo RuntimeInfo { get; }
 
     internal readonly DiagnosticsCollection Diagnostics;
-
-    public abstract int PointerSize { get; }
-    public BitWidth PointerBitWidth => (BitWidth)PointerSize;
-
-    public abstract BuiltinType BooleanType { get; }
-    public abstract BuiltinType SizeofStatementType { get; }
-    public abstract BuiltinType ArrayLengthType { get; }
 
     public readonly ImmutableArray<CompiledStatement> TopLevelStatements;
     public readonly ImmutableArray<CompiledFunction> Functions;
@@ -151,13 +145,13 @@ public abstract class CodeGenerator : IRuntimeInfoProvider
     };
     protected virtual bool FindSize(ReferenceType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        size = PointerSize;
+        size = RuntimeInfo.PointerSize;
         error = null;
         return true;
     }
     protected virtual bool FindSize(PointerType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        size = PointerSize;
+        size = RuntimeInfo.PointerSize;
         error = null;
         return true;
     }
@@ -167,7 +161,7 @@ public abstract class CodeGenerator : IRuntimeInfoProvider
 
         if (type.Length is null)
         {
-            error = new PossibleDiagnostic($"Array type doesn't have a size");
+            error = new PossibleDiagnostic($"Array type doesn't have a length");
             return false;
         }
 
@@ -179,7 +173,7 @@ public abstract class CodeGenerator : IRuntimeInfoProvider
     }
     protected virtual bool FindSize(FunctionType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
-        size = PointerSize;
+        size = RuntimeInfo.PointerSize;
         error = null;
         return true;
     }

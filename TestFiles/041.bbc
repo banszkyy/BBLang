@@ -1,0 +1,17 @@
+using System;
+
+temp string builder = "";
+
+printline(builder);
+
+builder = (temp builder) + "a";
+printline(builder);
+
+builder = (temp builder) + "b";
+printline(builder);
+
+builder = (temp builder) + "c";
+printline(builder);
+
+builder = (temp builder) + "d";
+printline(builder);

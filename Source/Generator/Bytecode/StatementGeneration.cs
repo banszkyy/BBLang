@@ -132,13 +132,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
     bool GenerateSize(ReferenceType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
-        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(PointerSize, result.BitWidth()));
+        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(Settings.PointerSize, result.BitWidth()));
         return true;
     }
     bool GenerateSize(PointerType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
-        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(PointerSize, result.BitWidth()));
+        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(Settings.PointerSize, result.BitWidth()));
         return true;
     }
     bool GenerateSize(ArrayType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -168,7 +168,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     bool GenerateSize(FunctionType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
-        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(PointerSize, result.BitWidth()));
+        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(Settings.PointerSize, result.BitWidth()));
         return true;
     }
     bool GenerateSize(StructType type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -205,13 +205,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
     bool GenerateSize(CompiledPointerTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
-        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(PointerSize, result.BitWidth()));
+        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(Settings.PointerSize, result.BitWidth()));
         return true;
     }
     bool GenerateSize(CompiledReferenceTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
-        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(PointerSize, result.BitWidth()));
+        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(Settings.PointerSize, result.BitWidth()));
         return true;
     }
     bool GenerateSize(CompiledArrayTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -260,7 +260,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     bool GenerateSize(CompiledFunctionTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         error = null;
-        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(PointerSize, result.BitWidth()));
+        Code.Emit(Opcode.MathAdd, result, InstructionOperand.Immediate(Settings.PointerSize, result.BitWidth()));
         return true;
     }
     bool GenerateSize(CompiledStructTypeExpression type, Register result, [NotNullWhen(false)] out PossibleDiagnostic? error)
@@ -450,7 +450,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         GenerateCodeForStatement(keywordCall.Value);
 
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             InstructionLabel offsetLabel = Code.DefineLabel();
@@ -1077,7 +1077,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         AddComment("Set string data {");
 
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             // Save pointer
             Code.Emit(Opcode.Move, reg.Register, (InstructionOperand)StackTop);
@@ -1148,14 +1148,14 @@ public partial class CodeGeneratorForMain : CodeGenerator
             if (compiledLambda.Allocator is null) throw new UnreachableException();
             GenerateCodeForStatement(compiledLambda.Allocator);
 
-            using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+            using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
             {
                 Code.Emit(Opcode.Move, reg.Register, (InstructionOperand)StackTop);
 
                 AddComment("Save function pointer:");
-                Code.Emit(Opcode.Move, reg.Register.ToPtr(0, PointerBitWidth), label.Absolute());
+                Code.Emit(Opcode.Move, reg.Register.ToPtr(0, Settings.PointerBitWidth), label.Absolute());
 
-                int offset = PointerSize;
+                int offset = Settings.PointerSize;
                 foreach (CapturedLocal capturedLocal in compiledLambda.CapturedLocals)
                 {
                     if (capturedLocal.Variable is not null)
@@ -1493,12 +1493,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
             {
                 prevType = referenceType.To;
 
-                using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+                using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
                 {
                     PopTo(reg.Register);
                     PushFrom(new AddressRegisterPointer(
                         reg.Register),
-                        PointerSize
+                        Settings.PointerSize
                     );
                 }
                 CheckPointerNull();
@@ -1516,7 +1516,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 return;
             }
 
-            using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+            using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
             {
                 PopTo(reg.Register);
                 PushFrom(new AddressOffset(
@@ -1586,7 +1586,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             {
                 GenerateAddressResolver(address);
 
-                using (RegisterUsage.Auto regPtr = Registers.GetFree(PointerBitWidth))
+                using (RegisterUsage.Auto regPtr = Registers.GetFree(Settings.PointerBitWidth))
                 {
                     PopTo(regPtr.Register);
 
@@ -1624,7 +1624,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         {
             case AddressPointer runtimePointer:
             {
-                PushFrom(runtimePointer.PointerAddress, PointerSize);
+                PushFrom(runtimePointer.PointerAddress, Settings.PointerSize);
                 break;
             }
             case AddressRegisterPointer registerPointer:
@@ -1635,7 +1635,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case AddressOffset addressOffset:
             {
                 GenerateAddressResolver(addressOffset.Base);
-                using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+                using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
                 {
                     PopTo(reg.Register);
                     Code.Emit(Opcode.MathAdd, reg.Register, InstructionOperand.Immediate(addressOffset.Offset, reg.Register.BitWidth()));
@@ -1665,7 +1665,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                     && runtimeIndex.IndexValue is CompiledConstantValue evaluatedIndex)
                 {
                     int indexValue = (int)evaluatedIndex.Value;
-                    using (RegisterUsage.Auto regBase = Registers.GetFree(PointerBitWidth))
+                    using (RegisterUsage.Auto regBase = Registers.GetFree(Settings.PointerBitWidth))
                     {
                         PopTo(regBase.Register);
                         Code.Emit(Opcode.MathAdd, regBase.Register, InstructionOperand.Immediate(indexValue * runtimeIndex.ElementSize, regBase.Register.BitWidth()));
@@ -1680,7 +1680,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                     {
                         PopTo(regIndex.Register);
                         Code.Emit(Opcode.MathMultU, regIndex.Register, InstructionOperand.Immediate(runtimeIndex.ElementSize, regIndex.Register.BitWidth()));
-                        using (RegisterUsage.Auto regBase = Registers.GetFree(PointerBitWidth))
+                        using (RegisterUsage.Auto regBase = Registers.GetFree(Settings.PointerBitWidth))
                         {
                             PopTo(regBase.Register);
                             Code.Emit(Opcode.MathAdd, regBase.Register, regIndex.Register);
@@ -1782,13 +1782,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
             {
                 if (typeCast.Allocator is null) throw new NotImplementedException();
                 GenerateCodeForStatement(typeCast.Allocator);
-                PushFrom(StackTop, PointerSize);
-                using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+                PushFrom(StackTop, Settings.PointerSize);
+                using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
                 {
                     PopTo(reg.Register);
                     CheckPointerNull(reg.Register);
                     GenerateCodeForStatement(typeCast.Value);
-                    PopTo(new AddressRegisterPointer(reg.Register), PointerSize);
+                    PopTo(new AddressRegisterPointer(reg.Register), Settings.PointerSize);
                 }
                 return;
             }
@@ -2429,7 +2429,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForValueSetter(CompiledDereference statementToSet, CompiledExpression value)
     {
-        if (FindBitWidth(statementToSet.Address.Type, statementToSet.Address) != PointerBitWidth)
+        if (FindBitWidth(statementToSet.Address.Type, statementToSet.Address) != Settings.PointerBitWidth)
         {
             Diagnostics.Add(DiagnosticAt.Error($"Type \"{statementToSet.Address.Type}\" cant be a pointer", statementToSet.Address));
             return;
@@ -2439,7 +2439,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         GenerateCodeForStatement(statementToSet.Address);
 
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             PopTo(new AddressRegisterPointer(reg.Register), FindSize(value.Type, value));
@@ -3087,7 +3087,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         EmitIR(statement.Value);
         EmitIR(statement.TargetAddress);
-        using (RegisterUsage.Auto reg = Registers.GetFree(PointerBitWidth))
+        using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
         {
             PopTo(reg.Register);
             PopTo(new AddressRegisterPointer(reg.Register), FindSize(statement.Value.Type));

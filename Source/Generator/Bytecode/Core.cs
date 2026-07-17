@@ -163,7 +163,10 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
     public static readonly CompilerSettings DefaultCompilerSettings = new()
     {
-        PointerSize = 4,
+        RuntimeInfo = new()
+        {
+            PointerSize = 4,
+        },
         ArrayLengthType = BuiltinType.I32,
         BooleanType = BuiltinType.U8,
         ExitCodeType = BuiltinType.I32,
@@ -176,6 +179,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
             FileSourceProvider.Instance
         ),
     };
+
+    protected override RuntimeInfo RuntimeInfo => new()
+    {
+        PointerSize = 4,
+    };
+
     readonly CodeGeneratorForIL? ILGenerator;
 
     #region Fields
@@ -205,10 +214,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
     readonly Stack<ScopeInformation> CurrentScopeDebug = new();
     readonly MainGeneratorSettings Settings;
 
-    public override int PointerSize { get; }
-    public override BuiltinType BooleanType => BuiltinType.U8;
-    public override BuiltinType SizeofStatementType => BuiltinType.I32;
-    public override BuiltinType ArrayLengthType => BuiltinType.I32;
     readonly Stack<int> ScopeSizes = new();
 
     readonly List<GeneratedString> Strings = new();
@@ -260,7 +265,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
         UndefinedFunctionOffsets = new();
         Settings = settings;
         Registers = new(this);
-        PointerSize = settings.PointerSize;
         DebugInfo = new(compilerResult.RawTokens.Select(v => new KeyValuePair<Uri, ImmutableArray<Tokenizing.Token>>(v.File, v.Tokens.Tokens)))
         {
             StackOffsets = new()

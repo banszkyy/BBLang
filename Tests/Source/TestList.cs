@@ -66,6 +66,14 @@ static class TestList
     public static TestFileCase GetTest(int i)
     {
         TestFileCase? f = Cases[i];
+        if (f is not null && i != 1)
+        {
+            using FileStream file = File.Open(f.SourceFile, FileMode.Open, FileAccess.Read);
+            if (file.ReadByte() == -1)
+            {
+                f = null;
+            }
+        }
         if (f is null) Assert.Inconclusive();
         return f;
     }

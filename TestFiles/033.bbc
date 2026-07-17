@@ -1,0 +1,16 @@
+using System.Memory;
+
+void func(int* v)
+{
+	*v += 7;
+}
+
+int* a = alloc(4) as int*;
+*a = 3;
+
+func(a);
+
+int result = *a;
+free(a);
+
+return result;

@@ -358,7 +358,7 @@ public partial class StatementCompiler
                         break;
                     }
 
-                    CheckExternalFunctionDeclaration(this, function.Definition, externalFunction, type, (function as ICompiledFunctionDefinition).Parameters.ToImmutableArray(v => v.Type), Diagnostics);
+                    CheckExternalFunctionDeclaration(Settings.RuntimeInfo, function.Definition, externalFunction, type, (function as ICompiledFunctionDefinition).Parameters.ToImmutableArray(v => v.Type), Diagnostics);
 
                     break;
                 }
@@ -511,13 +511,13 @@ public partial class StatementCompiler
         return false;
     }
 
-    public static void CheckExternalFunctionDeclaration<TFunction>(IRuntimeInfoProvider runtime, TFunction definition, IExternalFunction externalFunction, DiagnosticsCollection diagnostics)
+    public static void CheckExternalFunctionDeclaration<TFunction>(RuntimeInfo runtime, TFunction definition, IExternalFunction externalFunction, DiagnosticsCollection diagnostics)
         where TFunction : ICompiledFunctionDefinition, ICompiledDefinition<FunctionThingDefinition>
     {
         CheckExternalFunctionDeclaration(runtime, definition.Definition, externalFunction, definition.Type, definition.Parameters.ToImmutableArray(v => v.Type), diagnostics);
     }
 
-    public static void CheckExternalFunctionDeclaration(IRuntimeInfoProvider runtime, FunctionThingDefinition definition, IExternalFunction externalFunction, GeneralType returnType, IReadOnlyList<GeneralType> parameterTypes, DiagnosticsCollection diagnostics)
+    public static void CheckExternalFunctionDeclaration(RuntimeInfo runtime, FunctionThingDefinition definition, IExternalFunction externalFunction, GeneralType returnType, IReadOnlyList<GeneralType> parameterTypes, DiagnosticsCollection diagnostics)
     {
         int passedParametersSize = 0;
         int passedReturnType;

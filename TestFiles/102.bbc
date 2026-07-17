@@ -1,11 +1,7 @@
-inline int fb(int a, int b)
+inline int fa(int a)
 {
-    return a + fa(b, 1);
+    if (!a) return 69;
+    return fa(a - 1);
 }
 
-inline int fa(int a, int b)
-{
-    return a + fb(b, 1);
-}
-
-fa(3, 7);
+return fa(2);

@@ -2232,7 +2232,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         {
             case AddressPointer runtimePointer:
             {
-                return PushFrom(runtimePointer.PointerAddress, PointerSize);
+                return PushFrom(runtimePointer.PointerAddress, 1);
             }
             case AddressRegisterPointer: throw new UnreachableException();
             case AddressOffset addressOffset:
@@ -3388,7 +3388,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 return;
             }
 
-            compiledParameters.Add(new BrainfuckVariable(newInstanceAddress, false, false, null, PointerSize, new CompiledVariableDefinition()
+            compiledParameters.Add(new BrainfuckVariable(newInstanceAddress, false, false, null, 1, new CompiledVariableDefinition()
             {
                 Identifier = function.Parameters[0].Identifier,
                 InitialValue = null,
@@ -3406,7 +3406,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
         }
         else if (newInstanceType.Is<StructType>())
         {
-            compiledParameters.Add(new BrainfuckVariable(newInstanceAddress, true, false, null, PointerSize, new CompiledVariableDefinition()
+            compiledParameters.Add(new BrainfuckVariable(newInstanceAddress, true, false, null, 1, new CompiledVariableDefinition()
             {
                 Identifier = function.Parameters[0].Identifier,
                 InitialValue = null,

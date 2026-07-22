@@ -678,29 +678,29 @@ public static class Entry
                     {
                         builder.NewLine();
                         builder.NewLine();
-                        Stringifier.Stringify(type, builder);
+                        Stringifier.StringifyDefinition(type, builder);
                     }
                     foreach (MethodInfo method in res.Module.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance).Where(v => !methods.Any(w => v.Equals(w))))
                     {
                         builder.NewLine();
                         builder.NewLine();
-                        Stringifier.Stringify(method, builder);
+                        Stringifier.StringifyDefinition(method, builder);
                     }
                     foreach (FieldInfo field in res.Module.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance))
                     {
                         builder.NewLine();
                         builder.NewLine();
-                        Stringifier.Stringify(field, builder);
+                        Stringifier.StringifyDefinition(field, builder);
                     }
                     foreach (DynamicMethod method in methods)
                     {
                         builder.NewLine();
                         builder.NewLine();
-                        Stringifier.Stringify(method, builder);
+                        Stringifier.StringifyDefinition(method, builder);
                     }
                     builder.NewLine();
                     builder.NewLine();
-                    Stringifier.Stringify(res.EntryPoint, builder);
+                    Stringifier.StringifyDefinition(res.EntryPoint, builder);
 
                     File.WriteAllText(output, builder.ToString());
                 }

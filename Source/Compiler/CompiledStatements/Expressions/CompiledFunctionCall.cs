@@ -4,6 +4,8 @@ public class CompiledFunctionCall : CompiledExpression
 {
     public required TemplateInstance<ICompiledFunctionDefinition> Function { get; init; }
     public required ImmutableArray<CompiledArgument> Arguments { get; init; }
+    public bool IsAtTail { get; set; }
+    public bool IsAtTailReturn { get; set; }
 
     public override string ToString() => $"{Function.Template switch
     {

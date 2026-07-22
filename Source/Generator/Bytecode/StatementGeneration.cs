@@ -52,7 +52,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         AddComment(" .:");
 
         InstructionLabel label = LabelForDefinition(cleanup.Deallocator);
-        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables));
+        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), false);
 
         if (!label.IsMarked)
         { UndefinedFunctionOffsets.Add(new UndefinedOffset(cleanup.Location, cleanup.Deallocator.UnsafeTo<IHaveInstructionOffset>())); }
@@ -101,7 +101,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         AddComment(" .:");
 
         InstructionLabel label = LabelForDefinition(cleanup.Destructor);
-        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables));
+        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), false);
 
         if (!label.IsMarked)
         { UndefinedFunctionOffsets.Add(new UndefinedOffset(cleanup.Location, cleanup.Destructor.UnsafeTo<IHaveInstructionOffset>())); }
@@ -503,7 +503,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             Pop(FindSize(passedParameter.TrashType, passedParameter));
         }
     }
-    void GenerateCodeForFunctionCall_MSIL(CompiledExternalFunctionCall caller)
+    void GenerateCodeForFunctionCall_MSIL(CompiledExternalFunctionCall caller, bool isTailCall)
     {
         CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, caller.Declaration) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, null));
         if (f is null)
@@ -535,7 +535,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
 
         InstructionLabel label = LabelForDefinition(TemplateInstance.New(caller.Declaration, null));
-        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables));
+        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), isTailCall);
 
         if (!label.IsMarked)
         { UndefinedFunctionOffsets.Add(new(caller, TemplateInstance.New<IHaveInstructionOffset>(caller.Declaration, null))); }
@@ -588,6 +588,65 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return;
         }
 
+        bool isTailCall = false;
+
+        if ((caller.IsAtTail || caller.IsAtTailReturn) && Settings.Optimizations.HasFlag(GeneratorOptimizationSettings.TailCall))
+        {
+            isTailCall = true;
+            DiagnosticAt error = DiagnosticAt.FailedOptimization($"Failed to generate tail-call for {caller}", caller);
+
+            if (isTailCall && HasCapturedGlobalVariables != f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables))
+            {
+                isTailCall = false;
+                Diagnostics.Add(error.WithSuberrors(DiagnosticAt.FailedOptimization($"This is not supported yet", caller)));
+            }
+
+            if (isTailCall && caller.Arguments.Length != CompiledParameters.Count)
+            {
+                isTailCall = false;
+                Diagnostics.Add(error.WithSuberrors(DiagnosticAt.FailedOptimization($"Callee and the current function has different number of arguments ({caller.Arguments.Length} != {CompiledParameters.Count}) which is not supported yet", caller)));
+            }
+
+            if (isTailCall)
+            {
+                for (int i = 0; i < caller.Arguments.Length; i++)
+                {
+                    if (caller.Arguments[i].Value is CompiledParameterAccess parameterAccess && Utils.ReferenceEquals(parameterAccess.Parameter, CompiledParameters[i]))
+                    {
+                        continue;
+                    }
+
+                    isTailCall = false;
+                    Diagnostics.Add(error.WithSuberrors(DiagnosticAt.FailedOptimization($"Argument {i + 1} is referencing a parameter which is not supported yet", caller)));
+                    break;
+                }
+            }
+
+            if (caller.IsAtTailReturn)
+            {
+                if (isTailCall && caller.Function.Template.ReturnSomething)
+                {
+                    if (CurrentReturnType is null || !CurrentReturnType.SameAs(caller.Type))
+                    {
+                        isTailCall = false;
+                        Diagnostics.Add(error.WithSuberrors(DiagnosticAt.FailedOptimization($"Callee's return type and the current function's return type are not the same which is not supported yet", caller)));
+                    }
+                }
+
+                if (isTailCall && caller.Function.Template.ReturnSomething && !caller.SaveValue)
+                {
+                    throw new UnreachableException();
+                }
+            }
+            else
+            {
+                if (isTailCall && caller.Function.Template.ReturnSomething && caller.SaveValue)
+                {
+                    throw new UnreachableException();
+                }
+            }
+        }
+
         if (ILGenerator is not null)
         {
             ILGenerator.Diagnostics.Clear();
@@ -632,7 +691,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                     Location = caller.Location,
                     SaveValue = caller.SaveValue,
                     Type = caller.Type,
-                });
+                }, isTailCall);
 
                 Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function {f.Function.ToReadable()} compiled into MSIL", caller));
 
@@ -650,34 +709,63 @@ public partial class CodeGeneratorForMain : CodeGenerator
             ILGenerator.Diagnostics.Clear();
         }
 
-        AddComment($"Call {caller.Function.Template.ToReadable()} {{");
-
-        if (caller.Function.Template.ReturnSomething)
+        if (isTailCall)
         {
-            AddComment($"Initial return value {{");
-            StackAlloc(FindSize(GeneralType.TryInsertTypeParameters(caller.Function.Template.Type, caller.Function.TypeArguments), caller), false);
-            AddComment($"}}");
+            AddComment($"Tailcall {caller.Function.Template.ToReadable()} {{");
+
+            AddComment("Cleanup function scopes {");
+            for (int i = CleanupStack2.Count - 1; i >= 0; i--)
+            {
+                CleanupVariables(CleanupStack2[i].Variables, caller.Location.Before(), true);
+                if (CleanupStack2[i].IsFunction) break;
+            }
+            AddComment("}");
+
+            PopTo(Register.BasePointer);
+
+            AddComment(" .:");
+
+            InstructionLabel label = LabelForDefinition(caller.Function);
+            Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), true);
+
+            if (!label.IsMarked)
+            { UndefinedFunctionOffsets.Add(new(caller, caller.Function.UnsafeTo<IHaveInstructionOffset>())); }
+
+            AddComment("}");
+
+            Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Tail-call generated", caller));
         }
-
-        Stack<CompiledCleanup> parameterCleanup = GenerateCodeForArguments(caller.Arguments, caller.Function.Template, caller.Function.TypeArguments);
-
-        AddComment(" .:");
-
-        InstructionLabel label = LabelForDefinition(caller.Function);
-        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables));
-
-        if (!label.IsMarked)
-        { UndefinedFunctionOffsets.Add(new(caller, caller.Function.UnsafeTo<IHaveInstructionOffset>())); }
-
-        GenerateCodeForParameterCleanup(parameterCleanup);
-
-        if (caller.Function.Template.ReturnSomething && !caller.SaveValue)
+        else
         {
-            AddComment(" Clear Return Value:");
-            Pop(FindSize(GeneralType.TryInsertTypeParameters(caller.Function.Template.Type, caller.Function.TypeArguments), caller));
-        }
+            AddComment($"Call {caller.Function.Template.ToReadable()} {{");
 
-        AddComment("}");
+            if (caller.Function.Template.ReturnSomething)
+            {
+                AddComment($"Initial return value {{");
+                StackAlloc(FindSize(GeneralType.TryInsertTypeParameters(caller.Function.Template.Type, caller.Function.TypeArguments), caller), false);
+                AddComment($"}}");
+            }
+
+            Stack<CompiledCleanup> parameterCleanup = GenerateCodeForArguments(caller.Arguments, caller.Function.Template, caller.Function.TypeArguments);
+
+            AddComment(" .:");
+
+            InstructionLabel label = LabelForDefinition(caller.Function);
+            Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), false);
+
+            if (!label.IsMarked)
+            { UndefinedFunctionOffsets.Add(new(caller, caller.Function.UnsafeTo<IHaveInstructionOffset>())); }
+
+            GenerateCodeForParameterCleanup(parameterCleanup);
+
+            if (caller.Function.Template.ReturnSomething && !caller.SaveValue)
+            {
+                AddComment(" Clear Return Value:");
+                Pop(FindSize(GeneralType.TryInsertTypeParameters(caller.Function.Template.Type, caller.Function.TypeArguments), caller));
+            }
+
+            AddComment("}");
+        }
     }
     void GenerateCodeForStatement(CompiledSizeof anyCall)
     {
@@ -1469,7 +1557,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         AddComment(" .:");
 
         InstructionLabel label = LabelForDefinition(constructorCall.Function);
-        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables));
+        Call(label, f.Flags.HasFlag(FunctionFlags.CapturesGlobalVariables), false);
 
         if (!label.IsMarked)
         { UndefinedFunctionOffsets.Add(new UndefinedOffset(constructorCall, constructorCall.Function.UnsafeTo<IHaveInstructionOffset>())); }
@@ -2286,10 +2374,10 @@ public partial class CodeGeneratorForMain : CodeGenerator
         AddComment("Clear Variables");
         for (int i = cleanupItems.Length - 1; i >= 0; i--)
         {
-            CleanupVariables(cleanupItems[i], location, justGenerateCode);
+            CleanupVariable(cleanupItems[i], location, justGenerateCode);
         }
     }
-    void CleanupVariables(CompiledCleanup cleanupItem, Location location, bool justGenerateCode)
+    void CleanupVariable(CompiledCleanup cleanupItem, Location location, bool justGenerateCode)
     {
         GenerateDestructor(cleanupItem);
         Pop(FindSize(cleanupItem.TrashType, cleanupItem));
@@ -2734,6 +2822,21 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         InstructionLabel returnLabel = Code.DefineLabel();
         ReturnInstructions.Push(new ControlFlowFrame(returnLabel));
+
+        for (int i = 0; i < body.Statements.Length; i++)
+        {
+            if (i == body.Statements.Length - 1
+                && body.Statements[i] is CompiledFunctionCall functionCallExpression)
+            {
+                functionCallExpression.IsAtTail = true;
+            }
+            else if (i == body.Statements.Length - 1
+                && body.Statements[i] is CompiledReturn compiledReturn
+                && compiledReturn.Value is CompiledFunctionCall compiledFunctionCall)
+            {
+                compiledFunctionCall.IsAtTailReturn = true;
+            }
+        }
 
         GenerateCodeForStatement(body, true);
 

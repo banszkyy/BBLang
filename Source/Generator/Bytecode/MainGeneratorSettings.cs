@@ -15,6 +15,7 @@ public enum GeneratorOptimizationSettings : uint
     TrimReturnBreak = 8,
     CrashStringOnStack = 16,
     ConditionTrimming = 32,
+    TailCall = 64,
 }
 
 [ExcludeFromCodeCoverage]

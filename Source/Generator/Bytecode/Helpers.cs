@@ -197,19 +197,26 @@ public partial class CodeGeneratorForMain : CodeGenerator
         Code.MarkLabel(returnLabel);
     }
 
-    void Call(InstructionLabel label, bool captureGlobalVariables)
+    void Call(InstructionLabel label, bool captureGlobalVariables, bool isTailCall)
     {
-        InstructionLabel returnLabel = Code.DefineLabel();
-        Code.Emit(Opcode.Push, returnLabel.Absolute());
-
-        if (captureGlobalVariables)
+        if (isTailCall)
         {
-            PushFrom(AbsoluteGlobalAddress, Settings.PointerSize);
+            Code.Emit(Opcode.Jump, label.Relative());
         }
+        else
+        {
+            InstructionLabel returnLabel = Code.DefineLabel();
+            Code.Emit(Opcode.Push, returnLabel.Absolute());
 
-        Code.Emit(Opcode.Jump, label.Relative());
+            if (captureGlobalVariables)
+            {
+                PushFrom(AbsoluteGlobalAddress, Settings.PointerSize);
+            }
 
-        Code.MarkLabel(returnLabel);
+            Code.Emit(Opcode.Jump, label.Relative());
+
+            Code.MarkLabel(returnLabel);
+        }
     }
 
     void Return()

@@ -66,10 +66,10 @@ public class MainTests
     {
         externalFunctions.AddExternalFunction(ExternalFunctionSync.Create(externalFunctions.GenerateId(), "test", static (int a, int b, int c, int d) =>
         {
-            Assert.AreEqual(a, 1, "parameter 0");
-            Assert.AreEqual(b, 2, "parameter 1");
-            Assert.AreEqual(c, 3, "parameter 2");
-            Assert.AreEqual(d, 4, "parameter 3");
+            Assert.AreEqual(1, a, "parameter 0");
+            Assert.AreEqual(2, b, "parameter 1");
+            Assert.AreEqual(3, c, "parameter 2");
+            Assert.AreEqual(4, d, "parameter 3");
         }));
     });
     [TestMethod, Timeout(Timeout)] public void Test056() => TestList.GetTest(56).DoMain();

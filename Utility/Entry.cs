@@ -295,7 +295,7 @@ public static class Entry
                         using StreamWriter f = new(arguments.IntermediateOutput);
                         Stringifier.BuilderBase res = new Stringifier.BuilderStream(f)
                         {
-                            Minimize = true,
+                            Minimize = false,
                         };
 
                         List<CompiledFunction> functions = compiled.Functions.ToList();

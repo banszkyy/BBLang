@@ -147,21 +147,7 @@ public static class DiagnosticsCollectionExtensions
     {
         foreach (Diagnostic diagnostic in diagnosticsCollection.DiagnosticsWithoutContext)
         {
-            switch (diagnostic.Level)
-            {
-                case DiagnosticsLevel.Error:
-                    logger.Log(LogType.Error, diagnostic.Message);
-                    break;
-                case DiagnosticsLevel.Warning:
-                    logger.Log(LogType.Warning, diagnostic.Message);
-                    break;
-                case DiagnosticsLevel.Information:
-                    logger.Log(LogType.Normal, diagnostic.Message);
-                    break;
-                case DiagnosticsLevel.Hint:
-                    logger.Log(LogType.Normal, diagnostic.Message);
-                    break;
-            }
+            logger.LogDiagnostic(diagnostic, sourceProviders);
         }
 
         foreach (DiagnosticAt diagnostic in diagnosticsCollection.Diagnostics)

@@ -34,13 +34,17 @@ public class BytecodeEmitter
 
     public void WriteTo(StreamWriter writer, bool comments)
     {
+        int marginLeft = (int)Math.Log10(Code.Count) + 1;
+
         if (!comments)
         {
-            int marginLeft = (int)Math.Log10(Code.Count) + 1;
             for (int i = 0; i < Code.Count; i++)
             {
-                FunctionInformation f1 = DebugInfo.FunctionInformation.FirstOrDefault(v => v.Instructions.Start == i);
-                if (f1.IsValid) writer.WriteLine(f1.ReadableIdentifier() + ":");
+                foreach (FunctionInformation f in DebugInfo.FunctionInformation.Where(v => v.IsValid && v.Instructions.Start == i))
+                {
+                    writer.WriteLine(f.ReadableIdentifier());
+                }
+
                 foreach (InstructionLabel label in Labels)
                 {
                     if (label.Address != i) continue;
@@ -49,6 +53,7 @@ public class BytecodeEmitter
                     writer.Write(':');
                     writer.WriteLine();
                 }
+
                 writer.Write(i.ToString().PadLeft(marginLeft, ' '));
                 writer.Write(':');
                 writer.Write("  ");
@@ -62,18 +67,24 @@ public class BytecodeEmitter
 
         for (int i = 0; i < Code.Count; i++)
         {
-            FunctionInformation f = DebugInfo.FunctionInformation.FirstOrDefault(v => v.Instructions.Contains(i));
+            bool inFunction = DebugInfo.FunctionInformation.Any(v => v.IsValid && v.Instructions.Contains(i));
+            bool atFunctionStart = inFunction && DebugInfo.FunctionInformation.Any(v => v.IsValid && v.Instructions.Start == i);
+            bool atFunctionEnd = inFunction && DebugInfo.FunctionInformation.Any(v => v.IsValid && v.Instructions.End == i + 1);
 
             int subindent = 0;
 
-            if (f.IsValid)
+            if (inFunction)
             {
                 subindent += 2;
-                if (f.Instructions.Start == i)
+            }
+
+            if (atFunctionStart)
+            {
+                foreach (FunctionInformation f in DebugInfo.FunctionInformation.Where(v => v.IsValid && v.Instructions.Start == i))
                 {
                     writer.WriteLine(f.ReadableIdentifier());
-                    writer.WriteLine('{');
                 }
+                writer.WriteLine('{');
             }
 
             if (DebugInfo.CodeComments.TryGetValue(i, out List<string>? _comments))
@@ -99,17 +110,17 @@ public class BytecodeEmitter
                 writer.Write(new string(' ', indent + subindent));
                 writer.WriteLine($"{label}:");
             }
-            writer.Write($"{i,4}:");
+
+            writer.Write(i.ToString().PadLeft(marginLeft, ' '));
+            writer.Write(':');
+
             writer.Write(new string(' ', indent + subindent));
             writer.Write("  ");
             writer.WriteLine(Code[i].ToString());
 
-            if (f.IsValid)
+            if (atFunctionEnd)
             {
-                if (f.Instructions.End == i + 1)
-                {
-                    writer.WriteLine('}');
-                }
+                writer.WriteLine('}');
             }
         }
     }
@@ -118,6 +129,12 @@ public class BytecodeEmitter
     {
         Code.RemoveAt(index);
         OffsetCodeFrom(index, -1);
+    }
+
+    void RemoveRange(int index, int count)
+    {
+        Code.RemoveRange(index, count);
+        OffsetCodeFrom(index, -count);
     }
 
     void OffsetCodeFrom(int index, int offset)
@@ -172,6 +189,35 @@ public class BytecodeEmitter
     {
         if (!Optimizations.HasFlag(GeneratorOptimizationSettings.BytecodeLevel)) return false;
 
+        if (i == 0)
+        {
+            int unreachableStart = -1;
+
+            for (int j = 0; j < Code.Count; j++)
+            {
+                if (Labels.Any(v => v.Address == j))
+                {
+                    if (unreachableStart != -1)
+                    {
+                        if (unreachableStart == j)
+                        {
+                            unreachableStart = -1;
+                        }
+                        else
+                        {
+                            RemoveRange(unreachableStart, j - unreachableStart);
+                            return true;
+                        }
+                    }
+                }
+
+                if (Code[j].Opcode is Opcode.Jump or Opcode.Exit)
+                {
+                    unreachableStart = j + 1;
+                }
+            }
+        }
+
         PreparationInstruction prev0 = Code[i];
 
         if (prev0.Opcode
@@ -211,12 +257,25 @@ public class BytecodeEmitter
             return true;
         }
 
-        if (i < 1) return false;
+        if (i == 0) return false;
 
         if (Labels.Any(v => v.Address == i)) return false;
 
         PreparationInstruction prev1 = Code[i - 1];
         if (prev1.Operand1.Kind == PreparationInstructionOperandKind.Label || prev1.Operand2.Kind == PreparationInstructionOperandKind.Label) return false;
+
+        if (prev1.Opcode == Opcode.Move
+            && prev1.Operand1.Value.Type == InstructionOperandType.Register
+
+            && prev0.Opcode is Opcode.PopTo8 or Opcode.PopTo16 or Opcode.PopTo32 or Opcode.PopTo64
+            && prev0.Operand1.Value.Type == InstructionOperandType.Register
+
+            && prev0.Operand1.Value == prev1.Operand1.Value)
+        {
+            RemoveAt(i - 1);
+            i--;
+            return true;
+        }
 
         if (prev1.Opcode == Opcode.Move
             && prev1.Operand1.Value.Type == InstructionOperandType.Register

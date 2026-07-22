@@ -88,6 +88,9 @@ public class ConsoleLogger : ILogger
     public void LogDiagnostic(DiagnosticAt diagnostic, IEnumerable<ISourceProvider>? sourceProviders = null)
         => LogDiagnostic(diagnostic, 0, sourceProviders);
 
+    public void LogDiagnostic(Diagnostic diagnostic, IEnumerable<ISourceProvider>? sourceProviders = null)
+        => LogDiagnostic(diagnostic, 0, sourceProviders);
+
     void LogDiagnostic(Diagnostic diagnostic, int depth, IEnumerable<ISourceProvider>? sourceProviders = null, Diagnostic? parent = null)
     {
         DiagnosticsLevel level = diagnostic.Level;

@@ -3585,6 +3585,19 @@ public partial class StatementCompiler
 
                 value = context.Frames.LastOrDefault.ReturnValue.Value;
             }
+            else
+            {
+                if (context.Frames?.LastOrDefault is null)
+                { throw new InternalExceptionWithoutContext(); }
+
+                if (context.Frames.LastOrDefault.ReturnValue.HasValue)
+                {
+                    error = new PossibleDiagnostic($"Function \"{function.ToReadable()}\" did return something");
+                    return false;
+                }
+
+                value = CompiledValue.Null;
+            }
         }
 
         runtimeStatements = context.RuntimeStatements.ToImmutableArray();
@@ -4375,7 +4388,9 @@ public partial class StatementCompiler
 
     static ImmutableArray<CompiledStatement> ReduceStatements(CompiledStatement statement, DiagnosticsCollection diagnostics, bool didNotify = false)
     {
-        if (statement is CompiledEmptyStatement)
+        if (statement
+            is CompiledEmptyStatement
+            or CompiledMeowExpression)
         {
             return ImmutableArray<CompiledStatement>.Empty;
         }

@@ -305,17 +305,34 @@ public partial class StatementCompiler
             runtimeStatements.Length == 0)
         {
             SetPredictedValue(caller, returnValue.Value);
-            Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result \"{returnValue.Value}\"", caller));
-            if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+            if (returnValue.Value.IsNull)
             {
-                compiledStatement = new CompiledConstantValue()
+                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result \"void\"", caller));
+                if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
                 {
-                    Value = returnValue.Value,
-                    Location = caller.Location,
-                    SaveValue = caller.SaveValue,
-                    Type = GeneralType.TryInsertTypeParameters(callee.Type, typeArguments),
-                };
-                return true;
+                    compiledStatement = new CompiledMeowExpression()
+                    {
+                        Location = caller.Location,
+                        SaveValue = caller.SaveValue,
+                        Type = GeneralType.TryInsertTypeParameters(callee.Type, typeArguments),
+                    };
+                    return true;
+                }
+            }
+            else
+            {
+                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result \"{returnValue.Value}\"", caller));
+                if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
+                {
+                    compiledStatement = new CompiledConstantValue()
+                    {
+                        Value = returnValue.Value,
+                        Location = caller.Location,
+                        SaveValue = caller.SaveValue,
+                        Type = GeneralType.TryInsertTypeParameters(callee.Type, typeArguments),
+                    };
+                    return true;
+                }
             }
         }
 
@@ -933,7 +950,7 @@ public partial class StatementCompiler
                 TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                 evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
             {
-                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
+                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result {casted}", @operator));
                 SetPredictedValue(@operator, casted);
                 if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                 {
@@ -1012,7 +1029,7 @@ public partial class StatementCompiler
                 TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                 evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
             {
-                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
+                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result {casted}", @operator));
                 SetPredictedValue(@operator, casted);
                 if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                 {
@@ -1025,7 +1042,8 @@ public partial class StatementCompiler
             operatorDefinition.Function.AddReference(@operator);
             return true;
         }
-        else if (LanguageOperators.UnaryOperators.Contains(@operator.Operator.Content))
+
+        if (LanguageOperators.UnaryOperators.Contains(@operator.Operator.Content))
         {
             switch (@operator.Operator.Content)
             {
@@ -1056,7 +1074,7 @@ public partial class StatementCompiler
                         TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
-                        Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
+                        Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result {casted}", @operator));
                         SetPredictedValue(@operator, casted);
                         if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                         {
@@ -1081,7 +1099,7 @@ public partial class StatementCompiler
                         TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
-                        Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
+                        Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result {casted}", @operator));
                         SetPredictedValue(@operator, casted);
                         if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                         {
@@ -1106,7 +1124,7 @@ public partial class StatementCompiler
                         TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
-                        Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
+                        Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result {casted}", @operator));
                         SetPredictedValue(@operator, casted);
                         if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                         {
@@ -1131,7 +1149,7 @@ public partial class StatementCompiler
                         TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
-                        Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result \"{casted}\"", @operator));
+                        Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result {casted}", @operator));
                         SetPredictedValue(@operator, casted);
                         if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                         {
@@ -1142,17 +1160,12 @@ public partial class StatementCompiler
                     return true;
                 }
                 default:
-                {
-                    Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{@operator.Operator.Content}\"", @operator.Operator, @operator.File));
-                    return false;
-                }
+                    throw new UnreachableException();
             }
         }
-        else
-        {
-            Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{@operator.Operator.Content}\"", @operator.Operator, @operator.File).WithSuberrors(operatorNotFoundError.ToError(@operator)));
-            return false;
-        }
+
+        Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{@operator.Operator.Content}\"", @operator.Operator, @operator.File).WithSuberrors(operatorNotFoundError.ToError(@operator)));
+        return false;
     }
     bool CompileExpression(LambdaExpression lambdaStatement, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)
     {
@@ -2486,6 +2499,21 @@ public partial class StatementCompiler
             Diagnostics.Add(DiagnosticAt.Error($"Cannot reinterpret type {value.Type} ({valueSize} bytes) as {targetType} ({targetSize} bytes)", reinterpret));
         }
 
+        if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating)
+            && value is CompiledConstantValue constantValue
+            && targetType.Is(out BuiltinType? builtinType)
+            && builtinType.TryGetRuntimeType(out RuntimeType runtimeType))
+        {
+            compiledStatement = new CompiledConstantValue()
+            {
+                Value = CompiledValue.CreateUnsafe(constantValue.Value.I32, runtimeType),
+                Type = targetType,
+                Location = reinterpret.Location,
+                SaveValue = reinterpret.SaveValue,
+            };
+            return true;
+        }
+
         compiledStatement = new CompiledReinterpretation()
         {
             Value = value,
@@ -2589,7 +2617,7 @@ public partial class StatementCompiler
             return false;
         }
 
-        return statement switch
+        bool res = statement switch
         {
             ListExpression v => CompileExpression(v, out compiledStatement, expectedType),
             BinaryOperatorCallExpression v => CompileExpression(v, out compiledStatement, expectedType),
@@ -2609,6 +2637,21 @@ public partial class StatementCompiler
             LambdaExpression v => CompileExpression(v, out compiledStatement, expectedType),
             _ => throw new NotImplementedException($"Expression {statement.GetType().Name} is not implemented"),
         };
+
+        if (compiledStatement is not CompiledConstantValue
+            && (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics)
+            && TryCompute(compiledStatement, out CompiledValue evaluated, out _)
+            && evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
+        {
+            Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Expression evaluated with result {casted}", compiledStatement));
+            SetPredictedValue(statement, casted);
+            if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
+            {
+                compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
+            }
+        }
+
+        return res;
     }
     bool CompileExpression(IEnumerable<Expression> expressions, out ImmutableArray<CompiledExpression> compiledExpressions)
     {

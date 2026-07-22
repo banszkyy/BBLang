@@ -21,6 +21,16 @@ public interface ILogger
         DiagnosticsLevel.FailedOptimization => LogType.Normal,
         _ => LogType.Normal,
     }, diagnostic.ToString());
+    void LogDiagnostic(Diagnostic diagnostic, IEnumerable<ISourceProvider>? sourceProviders) => Log(diagnostic.Level switch
+    {
+        DiagnosticsLevel.Error => LogType.Error,
+        DiagnosticsLevel.Warning => LogType.Warning,
+        DiagnosticsLevel.Information => LogType.Normal,
+        DiagnosticsLevel.Hint => LogType.Normal,
+        DiagnosticsLevel.OptimizationNotice => LogType.Normal,
+        DiagnosticsLevel.FailedOptimization => LogType.Normal,
+        _ => LogType.Normal,
+    }, diagnostic.ToString());
 
     IDisposableProgress<float> Progress(LogType level);
 

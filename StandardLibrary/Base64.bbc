@@ -1,6 +1,6 @@
 using System;
 
-/**
+/*
  * Source: https://github.com/elzoughby/Base64/blob/master/base64.c
  * Author: Ahmed Elzoughby
  */
@@ -58,7 +58,7 @@ export string base64_encode(temp byte[]* plain, int len)
     return cipher;
 }
 
-/**
+/*
  * Source: https://github.com/elzoughby/Base64/blob/master/base64.c
  * Author: Ahmed Elzoughby
  */

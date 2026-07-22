@@ -284,7 +284,7 @@ export int sqrt(int s)
     return x0;
 }
 
-/**
+/*
  * Returns the base 10 logarithm of `v`
  */
 export int log10(int v)
@@ -301,7 +301,7 @@ export int log10(int v)
     return 0;
 }
 
-/**
+/*
  * Returns the base 10 logarithm of `v`
  */
 export byte log10(byte v)
@@ -311,7 +311,7 @@ export byte log10(byte v)
     return 0;
 }
 
-/**
+/*
  * Returns the square root of `s`
  *
  * Source: https://en.wikipedia.org/wiki/Methods_of_computing_square_roots#Approximations_that_depend_on_the_floating_point_representation
@@ -324,7 +324,7 @@ export float sqrt(float z)
 	return _z as float;
 }
 
-/**
+/*
  * Returns `v` rounded to the nearest integer
  */
 export float round(float v)

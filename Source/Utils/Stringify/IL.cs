@@ -6,6 +6,8 @@ namespace LanguageCore;
 
 public static partial class Stringifier
 {
+    static readonly bool SimplifyTypes = true;
+
     static void StringifyValue(object? value, Builder builder)
     {
         switch (value)
@@ -22,7 +24,12 @@ public static partial class Stringifier
                 Type type = array.GetType();
                 Type elementType = type.GetElementType()!;
                 int length = array.GetLength(0);
-                builder.Append($"new {elementType}[{length}]");
+                builder.Append("new");
+                builder.Append(' ');
+                Stringify(elementType, builder);
+                builder.Append('[');
+                builder.Append(length.ToString());
+                builder.Append(']');
                 if (length > 0)
                 {
                     builder.Append(" { ");
@@ -38,6 +45,148 @@ public static partial class Stringifier
                 builder.Append(value.ToString() ?? string.Empty);
                 break;
         }
+    }
+
+    static void Stringify(Type? type, Builder builder)
+    {
+        if (type is null) return;
+
+        if (type.IsArray)
+        {
+            Stringify(type.GetElementType(), builder);
+            builder.Append('[');
+            builder.Append(',', type.GetArrayRank() - 1);
+            builder.Append(']');
+            if (type.IsByRef) builder.Append('&');
+            return;
+        }
+
+        if (SimplifyTypes)
+        {
+            if (type.Equals(typeof(void))) { builder.Append("void"); return; }
+            if (type.Equals(typeof(bool))) { builder.Append("bool"); return; }
+            if (type.Equals(typeof(byte))) { builder.Append("byte"); return; }
+            if (type.Equals(typeof(sbyte))) { builder.Append("sbyte"); return; }
+            if (type.Equals(typeof(char))) { builder.Append("char"); return; }
+            if (type.Equals(typeof(decimal))) { builder.Append("decimal"); return; }
+            if (type.Equals(typeof(double))) { builder.Append("double"); return; }
+            if (type.Equals(typeof(float))) { builder.Append("float"); return; }
+            if (type.Equals(typeof(int))) { builder.Append("int"); return; }
+            if (type.Equals(typeof(uint))) { builder.Append("uint"); return; }
+            if (type.Equals(typeof(nint))) { builder.Append("nint"); return; }
+            if (type.Equals(typeof(nuint))) { builder.Append("nuint"); return; }
+            if (type.Equals(typeof(long))) { builder.Append("long"); return; }
+            if (type.Equals(typeof(ulong))) { builder.Append("ulong"); return; }
+            if (type.Equals(typeof(short))) { builder.Append("short"); return; }
+            if (type.Equals(typeof(ushort))) { builder.Append("ushort"); return; }
+            if (type.Equals(typeof(object))) { builder.Append("object"); return; }
+            if (type.Equals(typeof(string))) { builder.Append("string"); return; }
+
+            if (type.Equals(typeof(bool).MakeByRefType())) { builder.Append("bool&"); return; }
+            if (type.Equals(typeof(byte).MakeByRefType())) { builder.Append("byte&"); return; }
+            if (type.Equals(typeof(sbyte).MakeByRefType())) { builder.Append("sbyte&"); return; }
+            if (type.Equals(typeof(char).MakeByRefType())) { builder.Append("char&"); return; }
+            if (type.Equals(typeof(decimal).MakeByRefType())) { builder.Append("decimal&"); return; }
+            if (type.Equals(typeof(double).MakeByRefType())) { builder.Append("double&"); return; }
+            if (type.Equals(typeof(float).MakeByRefType())) { builder.Append("float&"); return; }
+            if (type.Equals(typeof(int).MakeByRefType())) { builder.Append("int&"); return; }
+            if (type.Equals(typeof(uint).MakeByRefType())) { builder.Append("uint&"); return; }
+            if (type.Equals(typeof(nint).MakeByRefType())) { builder.Append("nint&"); return; }
+            if (type.Equals(typeof(nuint).MakeByRefType())) { builder.Append("nuint&"); return; }
+            if (type.Equals(typeof(long).MakeByRefType())) { builder.Append("long&"); return; }
+            if (type.Equals(typeof(ulong).MakeByRefType())) { builder.Append("ulong&"); return; }
+            if (type.Equals(typeof(short).MakeByRefType())) { builder.Append("short&"); return; }
+            if (type.Equals(typeof(ushort).MakeByRefType())) { builder.Append("ushort&"); return; }
+            if (type.Equals(typeof(object).MakeByRefType())) { builder.Append("object&"); return; }
+            if (type.Equals(typeof(string).MakeByRefType())) { builder.Append("string&"); return; }
+        }
+
+        if (type.DeclaringType is not null)
+        {
+            Stringify(type.DeclaringType, builder);
+            builder.Append('+');
+        }
+        else if (type.Namespace is not null)
+        {
+            builder.Append(type.Namespace);
+            builder.Append('.');
+        }
+
+        builder.Append(type.Name);
+
+        if (type.IsConstructedGenericType)
+        {
+            Type[] genericParameters = type.GetGenericArguments();
+            builder.Append('[');
+            for (int i = 0; i < genericParameters.Length; i++)
+            {
+                if (i > 0)
+                {
+                    builder.Append(',');
+                    builder.Append(' ');
+                }
+                Stringify(genericParameters[i], builder);
+            }
+            builder.Append(']');
+        }
+        else if (type.IsGenericType)
+        {
+            Debugger.Break();
+        }
+    }
+
+    static void Stringify(MethodBase? method, Builder builder)
+    {
+        if (method is null) return;
+
+        if (method is MethodInfo methodInfo)
+        {
+            Stringify(methodInfo.ReturnType, builder);
+        }
+        else if (method is ConstructorInfo)
+        {
+            Stringify(typeof(void), builder);
+        }
+
+        builder.Append(' ');
+        builder.Append(method.Name);
+
+        if (method.IsConstructedGenericMethod)
+        {
+            Type[] genericParameters = method.GetGenericArguments();
+            builder.Append('[');
+            for (int i = 0; i < genericParameters.Length; i++)
+            {
+                if (i > 0)
+                {
+                    builder.Append(',');
+                    builder.Append(' ');
+                }
+                Stringify(genericParameters[i], builder);
+            }
+            builder.Append(']');
+        }
+        else if (method.IsGenericMethod)
+        {
+            Debugger.Break();
+        }
+        else if (method.IsGenericMethodDefinition)
+        {
+            Debugger.Break();
+        }
+
+        builder.Append('(');
+        ParameterInfo[] parameters = method.GetParameters();
+        for (int i = 0; i < parameters.Length; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(',');
+                builder.Append(' ');
+            }
+            Stringify(parameters[i].ParameterType, builder);
+        }
+        builder.Append(')');
     }
 
     public static void Stringify(CustomAttributeData attribute, Builder builder)
@@ -66,7 +215,7 @@ public static partial class Stringifier
         builder.Append(']');
     }
 
-    public static void Stringify([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type, Builder builder)
+    public static void StringifyDefinition([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type type, Builder builder)
     {
         foreach (CustomAttributeData item in type.GetCustomAttributesData())
         {
@@ -92,7 +241,7 @@ public static partial class Stringifier
             builder.Space();
             builder.Append(':');
             builder.Space();
-            builder.Append(type.BaseType.Name);
+            Stringify(type.BaseType, builder);
         }
 
         builder.NewLine();
@@ -104,21 +253,21 @@ public static partial class Stringifier
         foreach (FieldInfo field in members.OfType<FieldInfo>())
         {
             builder.NewLine();
-            Stringify(field, builder);
+            StringifyDefinition(field, builder);
         }
 
         foreach (ConstructorInfo constructor in members.OfType<ConstructorInfo>())
         {
             builder.NewLine();
             builder.NewLine();
-            Stringify(constructor, builder);
+            StringifyDefinition(constructor, builder);
         }
 
         foreach (MethodInfo method in members.OfType<MethodInfo>())
         {
             builder.NewLine();
             builder.NewLine();
-            Stringify(method, builder);
+            StringifyDefinition(method, builder);
         }
 
         foreach (MemberInfo member in members)
@@ -137,7 +286,7 @@ public static partial class Stringifier
         builder.Append('}');
     }
 
-    public static void Stringify(FieldInfo field, Builder builder)
+    public static void StringifyDefinition(FieldInfo field, Builder builder)
     {
         foreach (CustomAttributeData item in field.GetCustomAttributesData())
         {
@@ -156,7 +305,7 @@ public static partial class Stringifier
             }
         }
 
-        builder.Append(field.FieldType.ToString());
+        Stringify(field.FieldType, builder);
         builder.Append(' ');
         builder.Append(field.Name);
 
@@ -196,7 +345,7 @@ public static partial class Stringifier
             }
         }
 
-        builder.Append(method.ReturnType.ToString());
+        Stringify(method.ReturnType, builder);
         builder.Append(' ');
         builder.Append(method.Name);
         builder.Append('(');
@@ -212,7 +361,7 @@ public static partial class Stringifier
                     builder.Append($"{attribute} ");
                 }
             }
-            builder.Append(parameter.ParameterType.ToString());
+            Stringify(parameter.ParameterType, builder);
             builder.Append(' ');
             builder.Append(parameter.Name ?? $"p{i}");
         }
@@ -259,7 +408,7 @@ public static partial class Stringifier
                     builder.Append($"{attribute} ");
                 }
             }
-            builder.Append(parameter.ParameterType.ToString());
+            Stringify(parameter.ParameterType, builder);
             builder.Append(' ');
             builder.Append(parameter.Name ?? $"p{i}");
         }
@@ -294,7 +443,7 @@ public static partial class Stringifier
                 foreach (LocalVariableInfo localVariable in body.LocalVariables)
                 {
                     builder.NewLine();
-                    builder.Append(localVariable.LocalType.ToString());
+                    Stringify(localVariable.LocalType, builder);
                     builder.Append(' ');
                     builder.Append($"l{localVariable.LocalIndex}");
                 }
@@ -324,7 +473,7 @@ public static partial class Stringifier
         builder.Append('}');
     }
 
-    public static void Stringify(MethodInfo method, Builder builder)
+    public static void StringifyDefinition(MethodInfo method, Builder builder)
     {
         StringifySignature(method, builder);
 
@@ -354,7 +503,7 @@ public static partial class Stringifier
         }
     }
 
-    public static void Stringify(ConstructorInfo constructor, Builder builder)
+    public static void StringifyDefinition(ConstructorInfo constructor, Builder builder)
     {
         StringifySignature(constructor, builder);
 

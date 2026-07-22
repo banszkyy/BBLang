@@ -72,7 +72,11 @@ public static partial class Stringifier
         builder.Append($"{instruction.OpCode,-10} ");
         try
         {
-            builder.Append($"{instruction.Field.FieldType} {instruction.Field.DeclaringType}.{instruction.Field.Name}");
+            Stringify(instruction.Field.FieldType, builder);
+            builder.Append(' ');
+            Stringify(instruction.Field.DeclaringType, builder);
+            builder.Append('.');
+            builder.Append(instruction.Field.Name);
         }
         catch (Exception ex)
         {
@@ -84,7 +88,12 @@ public static partial class Stringifier
         builder.Append($"{instruction.OpCode,-10} ");
         try
         {
-            builder.Append(instruction.Method.DeclaringType is null ? instruction.Method.ToString()! : $"{instruction.Method}/{instruction.Method.DeclaringType}");
+            Stringify(instruction.Method, builder);
+            if (instruction.Method.DeclaringType is not null)
+            {
+                builder.Append('/');
+                Stringify(instruction.Method.DeclaringType, builder);
+            }
         }
         catch (Exception ex)
         {
@@ -96,7 +105,7 @@ public static partial class Stringifier
         builder.Append($"{instruction.OpCode,-10} ");
         try
         {
-            builder.Append(instruction.Type.ToString());
+            Stringify(instruction.Type, builder);
         }
         catch (Exception ex)
         {
@@ -119,7 +128,17 @@ public static partial class Stringifier
         builder.Append($"{instruction.OpCode,-10} ");
         try
         {
-            builder.Append($"{instruction.Member}/{instruction.Member.DeclaringType}");
+            if (instruction.Member is MethodBase methodBase)
+            {
+                Stringify(methodBase, builder);
+            }
+            else
+            {
+                Debugger.Break();
+                builder.Append(instruction.Member.ToString() ?? string.Empty);
+            }
+            builder.Append('/');
+            Stringify(instruction.Member.DeclaringType, builder);
         }
         catch (Exception ex)
         {

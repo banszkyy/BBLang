@@ -1910,6 +1910,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             case CompiledLambda v: EmitStatement(v, il, ref successful); break;
             case CompiledCompilerVariableAccess v: EmitStatement(v, il, ref successful); break;
             case CompiledEnumMemberAccess v: EmitStatement(v, il, ref successful); break;
+            case CompiledMeowExpression: break;
             default: throw new NotImplementedException(statement.GetType().Name);
         }
     }

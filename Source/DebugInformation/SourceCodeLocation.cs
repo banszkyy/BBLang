@@ -5,6 +5,7 @@ public struct SourceCodeLocation
 {
     public MutableRange<int> Instructions;
     public Location Location;
+    public bool IsSubtle;
 
     public readonly bool Contains(int instruction) =>
         Instructions.Start <= instruction &&

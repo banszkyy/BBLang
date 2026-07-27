@@ -35,7 +35,7 @@ public class RuntimeException : LanguageException
         string? arrows = null;
         Position position;
 
-        if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(context.Registers.CodePointer, out SourceCodeLocation sourcePosition))
+        if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(context.Registers.CodePointer, out SourceCodeLocation sourcePosition, true))
         {
             position = sourcePosition.Location.Position;
             file = sourcePosition.Location.File;
@@ -416,7 +416,7 @@ public class RuntimeException : LanguageException
             if (frame.IsTopLevelStub)
             {
                 result.Append("<top level statements>");
-                if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation))
+                if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation, true))
                 {
                     result.Append(' ');
                     result.Append(LanguageExceptionAt.Format(null, sourceLocation.Location));
@@ -496,7 +496,7 @@ public class RuntimeException : LanguageException
                 }
                 result.Append(')');
 
-                if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation))
+                if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation, true))
                 {
                     result.Append(' ');
                     result.Append(LanguageExceptionAt.Format(null, sourceLocation.Location));
@@ -515,7 +515,7 @@ public class RuntimeException : LanguageException
             else
             {
                 result.Append("<unknown>");
-                if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation))
+                if (!DebugInformation.IsEmpty && DebugInformation.TryGetSourceLocation(callTraceItem.InstructionPointer, out SourceCodeLocation sourceLocation, true))
                 {
                     result.Append(' ');
                     result.Append(LanguageExceptionAt.Format(null, sourceLocation.Location));

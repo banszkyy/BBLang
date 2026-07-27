@@ -33,7 +33,7 @@ public class BrainfuckRuntimeException : Exception
         { return Message; }
 
         Position position;
-        if (!DebugInfo.TryGetSourceLocation(RuntimeContext.CodePointer, out SourceCodeLocation sourcePosition))
+        if (!DebugInfo.TryGetSourceLocation(RuntimeContext.CodePointer, out SourceCodeLocation sourcePosition, true))
         { position = Position.UnknownPosition; }
         else
         { position = sourcePosition.Location.Position; }

@@ -2040,7 +2040,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             default: throw new NotImplementedException($"Unimplemented statement \"{statement.GetType().Name}\"");
         }
 
-        if (startInstruction != Code.Offset && statement is not CompiledWhileLoop and not CompiledForLoop and not CompiledBranch and not CompiledBlock and not CompiledDummyExpression)
+        if (startInstruction != Code.Offset && statement is not CompiledExpression and not CompiledWhileLoop and not CompiledForLoop and not CompiledBranch and not CompiledBlock and not CompiledDummyExpression and not CompiledMeowExpression)
         {
             DebugInfo?.SourceCodeLocations.Add(new SourceCodeLocation()
             {
@@ -2087,12 +2087,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
             default: throw new NotImplementedException($"Unimplemented statement \"{statement.GetType().Name}\"");
         }
 
-        if (startInstruction != Code.Offset && statement is not CompiledDummyExpression)
+        if (startInstruction != Code.Offset && statement is not CompiledDummyExpression and not CompiledMeowExpression)
         {
             DebugInfo?.SourceCodeLocations.Add(new SourceCodeLocation()
             {
                 Instructions = (startInstruction, Code.Offset - 1),
                 Location = statement.Location,
+                IsSubtle = statement is CompiledConstantValue,
             });
         }
     }

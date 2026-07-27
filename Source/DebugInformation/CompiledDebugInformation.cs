@@ -26,7 +26,31 @@ public readonly struct CompiledDebugInformation
         }
         else
         {
-            SourceCodeLocations = debugInformation.SourceCodeLocations.ToImmutableArray();
+            List<SourceCodeLocation> sourceCodeLocations = new(debugInformation.SourceCodeLocations.Count);
+            foreach (SourceCodeLocation item in debugInformation.SourceCodeLocations)
+            {
+                if (sourceCodeLocations.Count == 0)
+                {
+                    sourceCodeLocations.Add(item);
+                    continue;
+                }
+
+                SourceCodeLocation l = sourceCodeLocations[^1];
+
+                if (item.Location != l.Location)
+                {
+                    sourceCodeLocations.Add(item);
+                    continue;
+                }
+
+                sourceCodeLocations.Add(new SourceCodeLocation()
+                {
+                    Instructions = (Math.Min(l.Instructions.Start, item.Instructions.Start), Math.Max(l.Instructions.End, item.Instructions.End)),
+                    Location = l.Location,
+                    IsSubtle = l.IsSubtle && item.IsSubtle,
+                });
+            }
+            SourceCodeLocations = sourceCodeLocations.ToImmutableArray();
             FunctionInformation = debugInformation.FunctionInformation.ToImmutableArray();
             ScopeInformation = debugInformation.ScopeInformation.ToImmutableArray();
             CodeComments = debugInformation.CodeComments.Select(v => new KeyValuePair<int, ImmutableArray<string>>(v.Key, v.Value.ToImmutableArray())).ToFrozenDictionary();
@@ -50,9 +74,9 @@ public readonly struct CompiledDebugInformation
         return result.ToImmutable();
     }
 
-    public bool TryGetSourceLocation(int instruction, out SourceCodeLocation sourceLocation)
+    public bool TryGetSourceLocation(int instruction, out SourceCodeLocation sourceLocation, bool fallback = false)
         => TryGetSourceLocation(SourceCodeLocations.AsSpan(), instruction, out sourceLocation);
-    public static bool TryGetSourceLocation(ReadOnlySpan<SourceCodeLocation> sourceCodeLocations, int instruction, out SourceCodeLocation sourceLocation)
+    public static bool TryGetSourceLocation(ReadOnlySpan<SourceCodeLocation> sourceCodeLocations, int instruction, out SourceCodeLocation sourceLocation, bool fallback = false)
     {
         sourceLocation = default;
         bool success = false;
@@ -69,6 +93,7 @@ public readonly struct CompiledDebugInformation
         }
 
         if (success) return true;
+        if (!fallback) return false;
 
         for (int i = 0; i < sourceCodeLocations.Length; i++)
         {

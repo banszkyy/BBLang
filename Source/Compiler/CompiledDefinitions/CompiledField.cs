@@ -17,8 +17,6 @@ public class CompiledField :
     public CompiledStruct Context { get; set; }
     public GeneralType Type { get; }
 
-    public HashSet<CompiledFieldAccess> Getters { get; } = new();
-    public HashSet<CompiledFieldAccess> Setters { get; } = new();
     public List<Reference<Expression>> References { get; } = new();
 
     public string Identifier => Definition.Identifier.Content;

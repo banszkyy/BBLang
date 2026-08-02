@@ -13,8 +13,6 @@ public class CompiledParameter :
 {
     public ParameterDefinition Definition { get; }
     public GeneralType Type { get; }
-    public HashSet<CompiledParameterAccess> Getters { get; } = new();
-    public HashSet<CompiledParameterAccess> Setters { get; } = new();
 
     public string Identifier => Definition.Identifier.Content;
     public Uri File => Definition.File;

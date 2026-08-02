@@ -4364,6 +4364,19 @@ public partial class StatementCompiler
             case CompiledCleanup v:
                 yield return v;
                 break;
+            case CompiledCompilerVariableAccess v:
+                yield return v;
+                break;
+            case CompiledList v:
+                yield return v;
+                foreach (CompiledStatement v1 in Visit(v.Values)) yield return v1;
+                break;
+            case CompiledMeowExpression v:
+                yield return v;
+                break;
+            case CompiledEnumMemberAccess v:
+                yield return v;
+                break;
             case null:
                 break;
             default:

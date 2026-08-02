@@ -12,8 +12,7 @@ public class CompiledVariableDefinition : CompiledStatement,
     public required CompiledExpression? InitialValue { get; init; }
     public required CompiledCleanup Cleanup { get; init; }
     public required bool IsGlobal { get; init; }
-    public HashSet<CompiledVariableAccess> Setters { get; } = new();
-    public HashSet<CompiledVariableAccess> Getters { get; } = new();
+    public bool IsOnlyUsedLocally { get; set; }
     public List<Reference<IdentifierExpression>> References { get; } = new();
 
     public override string ToString()

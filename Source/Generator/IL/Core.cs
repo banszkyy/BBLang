@@ -69,7 +69,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         foreach (CompiledVariableDefinition globalVariable in compilerResult.Statements.OfType<CompiledVariableDefinition>())
         {
-            if (!globalVariable.IsGlobal) continue;
+            if (!globalVariable.IsGlobal || globalVariable.IsOnlyUsedLocally) continue;
 
             if (!ToType(globalVariable.Type, out Type? type, out PossibleDiagnostic? typeError))
             {

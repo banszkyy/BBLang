@@ -440,7 +440,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
     void EmitStatement(CompiledVariableDefinition statement, ILProxy il, ref bool successful)
     {
-        if (statement.IsGlobal)
+        if (statement.IsGlobal && !statement.IsOnlyUsedLocally)
         {
             //Diagnostics.Add(Diagnostic.CriticalNoBreak($"Global variables not supported", statement));
             //successful = false;
@@ -489,7 +489,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
     void EmitStatement(CompiledVariableAccess statement, ILProxy il, ref bool successful)
     {
-        if (statement.Variable.IsGlobal)
+        if (statement.Variable.IsGlobal && !statement.Variable.IsOnlyUsedLocally)
         {
             //Diagnostics.Add(Diagnostic.CriticalNoBreak($"Global variables not supported", statement));
             //successful = false;
@@ -700,7 +700,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     }
     void EmitSetter(CompiledVariableAccess statement, CompiledExpression value, ILProxy il, ref bool successful)
     {
-        if (statement.Variable.IsGlobal)
+        if (statement.Variable.IsGlobal && !statement.Variable.IsOnlyUsedLocally)
         {
             //Diagnostics.Add(Diagnostic.CriticalNoBreak($"Global variables not supported", statement));
             //successful = false;
@@ -1047,7 +1047,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         switch (statement.Of)
         {
             case CompiledVariableAccess v:
-                if (v.Variable.IsGlobal)
+                if (v.Variable.IsGlobal && !v.Variable.IsOnlyUsedLocally)
                 {
                     //Diagnostics.Add(Diagnostic.CriticalNoBreak($"Global variables not supported", statement));
                     //successful = false;

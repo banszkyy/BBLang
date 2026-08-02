@@ -1843,36 +1843,19 @@ public partial class StatementCompiler
             if (frame.Value.CapturedParameters.Count > 0 || frame.Value.CapturedVariables.Count > 0) throw new UnreachableException();
         }
 
-        /*
-        var allStatements =
-            Visit(compiledTopLevelStatements)
-            .Concat(GeneratedFunctions.SelectMany(v => Visit(v.Body)));
-
-        foreach (var item in allStatements.OfType<CompiledVariableDeclaration>())
+        foreach (CompiledVariableDefinition item in Visit(CompiledTopLevelStatements).OfType<CompiledVariableDefinition>())
         {
-            item.Getters.Clear();
-            item.Setters.Clear();
+            if (!item.IsGlobal) continue;
+            foreach (CompiledVariableAccess possibleRef in GeneratedFunctions.SelectMany(v => Visit(v.Body)).OfType<CompiledVariableAccess>())
+            {
+                if (Utils.ReferenceEquals(possibleRef.Variable, item))
+                {
+                    goto skip;
+                }
+            }
+            item.IsOnlyUsedLocally = true;
+        skip:;
         }
-        foreach (var item in allStatements.OfType<CompiledInstructionLabelDeclaration>())
-        {
-            item.Getters.Clear();
-        }
-
-        foreach (var item in allStatements.OfType<CompiledVariableGetter>())
-        {
-            item.Variable.Getters.Add(item);
-        }
-
-        foreach (var item in allStatements.OfType<CompiledVariableSetter>())
-        {
-            item.Variable.Setters.Add(item);
-        }
-
-        foreach (var item in allStatements.OfType<InstructionLabelAddressGetter>())
-        {
-            item.InstructionLabel.Getters.Add(item);
-        }
-        */
 
         foreach (CompiledFunction function in GeneratedFunctions)
         {

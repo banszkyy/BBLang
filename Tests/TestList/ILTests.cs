@@ -1,6 +1,7 @@
 namespace LanguageCore.Tests;
 
 [Ignore]
+[DoNotParallelize]
 [TestClass, TestCategory("IL"), TestCategory("Generic")]
 public class ILTests
 {
@@ -48,7 +49,7 @@ public class ILTests
     [TestMethod, Timeout(Timeout)] public void Test040() => TestList.GetTest(40).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test041() => TestList.GetTest(41).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test042() => TestList.GetTest(42).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("Not supported")] public void Test043() => TestList.GetTest(43).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test043() => TestList.GetTest(43).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test044() => TestList.GetTest(44).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test045() => TestList.GetTest(45).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test046() => TestList.GetTest(46).DoIL();
@@ -99,15 +100,15 @@ public class ILTests
     [TestMethod, Timeout(Timeout)] public void Test091() => TestList.GetTest(91).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test092() => TestList.GetTest(92).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test093() => TestList.GetTest(93).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("Not implemented")] public void Test094() => TestList.GetTest(94).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("Not implemented")] public void Test095() => TestList.GetTest(95).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test094() => TestList.GetTest(94).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test095() => TestList.GetTest(95).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test096() => TestList.GetTest(96).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test097() => TestList.GetTest(97).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("Not implemented")] public void Test098() => TestList.GetTest(98).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("Not implemented")] public void Test099() => TestList.GetTest(99).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test098() => TestList.GetTest(98).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test099() => TestList.GetTest(99).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test100() => TestList.GetTest(100).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test101() => TestList.GetTest(101).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore] public void Test102() => TestList.GetTest(102).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test102() => TestList.GetTest(102).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test103() => TestList.GetTest(103).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test104() => TestList.GetTest(104).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test105() => TestList.GetTest(105).DoIL();
@@ -115,14 +116,14 @@ public class ILTests
     [TestMethod, Timeout(Timeout)] public void Test107() => TestList.GetTest(107).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test108() => TestList.GetTest(108).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test109() => TestList.GetTest(109).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("Not implemented")] public void Test110() => TestList.GetTest(110).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test110() => TestList.GetTest(110).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test111() => TestList.GetTest(111).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test112() => TestList.GetTest(112).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test113() => TestList.GetTest(113).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test114() => TestList.GetTest(114).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test115() => TestList.GetTest(115).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test116() => TestList.GetTest(116).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("none")] public void Test117() => TestList.GetTest(117).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test117() => TestList.GetTest(117).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test118() => TestList.GetTest(118).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test119() => TestList.GetTest(119).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test120() => TestList.GetTest(120).DoIL();
@@ -136,9 +137,9 @@ public class ILTests
     [TestMethod, Timeout(Timeout)] public void Test128() => TestList.GetTest(128).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test129() => TestList.GetTest(129).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test130() => TestList.GetTest(130).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("none")] public void Test131() => TestList.GetTest(131).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("none")] public void Test132() => TestList.GetTest(132).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("none")] public void Test133() => TestList.GetTest(133).DoIL();
-    [TestMethod, Timeout(Timeout), Ignore("none")] public void Test134() => TestList.GetTest(134).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test131() => TestList.GetTest(131).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test132() => TestList.GetTest(132).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test133() => TestList.GetTest(133).DoIL();
+    [TestMethod, Timeout(Timeout)] public void Test134() => TestList.GetTest(134).DoIL();
     [TestMethod, Timeout(Timeout)] public void Test135() => TestList.GetTest(135).DoIL();
 }

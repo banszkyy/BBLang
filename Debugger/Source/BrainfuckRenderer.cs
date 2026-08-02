@@ -540,7 +540,7 @@ public class BrainfuckRenderer
             e.Cancel = true;
         };
 
-        int tick = int.MaxValue;
+        int tick = 0;
         int freq = 10;
 
         try

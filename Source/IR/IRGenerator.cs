@@ -1,4 +1,3 @@
-#if false
 using LanguageCore.Compiler;
 
 namespace LanguageCore.IR;
@@ -512,6 +511,9 @@ class IRGenerator
         if (cleanup.Deallocator.Template.ReturnSomething)
         { throw new NotImplementedException(); }
 
+        throw new NotImplementedException();
+
+        /*
         AddComment(" .:");
 
         InstructionLabel label = LabelForDefinition(cleanup.Deallocator);
@@ -530,8 +532,9 @@ class IRGenerator
         }
 
         AddComment("}");
+        */
     }
-
+    /*
     void EmitDestructor(CompiledCleanup cleanup)
     {
         if (StatementCompiler.AllowDeallocate(cleanup.TrashType))
@@ -576,6 +579,7 @@ class IRGenerator
 
         AddComment("}");
     }
+    */
     IRValue EmitExpression(CompiledExternalFunctionCall expression, IRBuilder builder)
     {
         List<IRValue> arguments = new();
@@ -598,7 +602,7 @@ class IRGenerator
         {
             if (expression.Arguments[i].Cleanup is not null)
             {
-                expression.Arguments[i].Cleanup.Destructor
+                throw new NotImplementedException();
             }
         }
         return returnValue as IRValue ?? new IRVoid();
@@ -907,5 +911,4 @@ class IRGenerator
 
     public static IRSimpleBlock Generate(CompilerResult compilerResult) => new IRGenerator(compilerResult).Generate();
 }
-#endif
 

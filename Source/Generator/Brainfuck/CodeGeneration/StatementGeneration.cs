@@ -724,9 +724,11 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
                 }
                 else if (value is CompiledList literalList &&
                          arrayType.Length.HasValue &&
-                         arrayType.Length.Value == literalList.Values.Length &&
-                         FindSize(arrayType.Of, value) == 1)
+                         arrayType.Length.Value == literalList.Values.Length)
                 {
+                    if (FindSize(arrayType.Of, value) != 1)
+                    { throw new NotSupportedException($"I'm not smart enough to handle arrays with element sizes other than one (at least in brainfuck)", value); }
+
                     int arraySize = arrayType.Length.Value;
 
                     int size = Snippets.ARRAY_SIZE(arraySize);
@@ -1134,6 +1136,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             case CompiledEmptyStatement: break;
             case CompiledGoto v: GenerateCodeForStatement(v); break;
             case CompiledCompilerVariableAccess v: GenerateCodeForStatement(v); break;
+            case CompiledMeowExpression: break;
             default: throw new UnreachableException(statement.GetType().Name);
         }
     }

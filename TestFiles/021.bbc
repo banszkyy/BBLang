@@ -1,4 +1,5 @@
-int j;
+int j = 0;
+
 for (int i; i < 10; i++)
 {
 	if (i == 5)
@@ -8,4 +9,5 @@ for (int i; i < 10; i++)
 		return 69;
 	}
 }
+
 return j;

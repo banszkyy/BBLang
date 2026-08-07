@@ -4,6 +4,6 @@ struct Vector2
 	int y;
 }
 
-Vector2 vec;
+Vector2 vec = new Vector2;
 
 return vec.x;

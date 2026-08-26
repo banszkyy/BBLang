@@ -603,13 +603,47 @@ public static class Entry
                 {
                     if (Debugger.IsAttached)
                     {
-                        interpreter.RunUntilCompletion();
+                        if (!string.IsNullOrEmpty(arguments.ProfilerExport))
+                        {
+                            ProcessorState state = interpreter.GetState();
+                            Profiling.GoogleProfiler profiler = new(interpreter.DebugInformation);
+                            ulong tick = 0;
+                            while (!state.IsDone)
+                            {
+                                state.Tick();
+                                state.ThrowIfCrashed(interpreter.DebugInformation);
+                                profiler.Sample(in state, ++tick);
+                            }
+                            profiler.WriteTo(arguments.ProfilerExport);
+                            interpreter.Registers = state.Registers;
+                        }
+                        else
+                        {
+                            interpreter.RunUntilCompletion();
+                        }
                     }
                     else
                     {
                         try
                         {
-                            interpreter.RunUntilCompletion();
+                            if (!string.IsNullOrEmpty(arguments.ProfilerExport))
+                            {
+                                ProcessorState state = interpreter.GetState();
+                                Profiling.GoogleProfiler profiler = new(interpreter.DebugInformation);
+                                ulong tick = 0;
+                                while (!state.IsDone)
+                                {
+                                    state.Tick();
+                                    state.ThrowIfCrashed(interpreter.DebugInformation);
+                                    profiler.Sample(in state, ++tick);
+                                }
+                                profiler.WriteTo(arguments.ProfilerExport);
+                                interpreter.Registers = state.Registers;
+                            }
+                            else
+                            {
+                                interpreter.RunUntilCompletion();
+                            }
                         }
                         catch (RuntimeException error)
                         {

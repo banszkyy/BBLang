@@ -89,4 +89,9 @@ public class CommandLineOptions
         Required = false,
         HelpText = "Prints the memory after execution")]
     public bool PrintMemory { get; set; }
+
+    [Option("profiler-export",
+        Required = false,
+        HelpText = "meow")]
+    public string? ProfilerExport { get; set; }
 }

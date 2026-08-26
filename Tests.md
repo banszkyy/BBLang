@@ -1,7 +1,7 @@
 # Test Results
 
-![208 passed, 0 failed, 305 skipped](https://svg.test-summary.com/dashboard.svg?p=208&f=0&s=305)
-![208 passed](https://img.shields.io/badge/Passing-208-brightgreen?style=plastic]) ![0 failed](https://img.shields.io/badge/Failing-0-red?style=plastic]) ![305 skipped](https://img.shields.io/badge/Skipped-305-silver?style=plastic])
+![216 passed, 8 failed, 293 skipped](https://svg.test-summary.com/dashboard.svg?p=216&f=8&s=293)
+![216 passed](https://img.shields.io/badge/Passing-216-brightgreen?style=plastic]) ![8 failed](https://img.shields.io/badge/Failing-8-red?style=plastic]) ![293 skipped](https://img.shields.io/badge/Skipped-293-silver?style=plastic])
 
 | File | Bytecode | Brainfuck |
 | :--: | :------: | :-------: |
@@ -44,7 +44,7 @@
 | [37](https://github.com/banszkyy/BBLang/blob/master/TestFiles/37.bbc) | ✅ | ✅ |
 | [38](https://github.com/banszkyy/BBLang/blob/master/TestFiles/38.bbc) | ✅ | ✅ |
 | [39](https://github.com/banszkyy/BBLang/blob/master/TestFiles/39.bbc) | ✅ | ✅ |
-| [40](https://github.com/banszkyy/BBLang/blob/master/TestFiles/40.bbc) | ✅ | ✅ |
+| [40](https://github.com/banszkyy/BBLang/blob/master/TestFiles/40.bbc) | ✅ | ❌ |
 | [41](https://github.com/banszkyy/BBLang/blob/master/TestFiles/41.bbc) | ✅ | ✅ |
 | [42](https://github.com/banszkyy/BBLang/blob/master/TestFiles/42.bbc) | ✅ | ✅ |
 | [43](https://github.com/banszkyy/BBLang/blob/master/TestFiles/43.bbc) | ✅ | ➖ |
@@ -63,11 +63,14 @@
 | [56](https://github.com/banszkyy/BBLang/blob/master/TestFiles/56.bbc) | ✅ | ✅ |
 | [57](https://github.com/banszkyy/BBLang/blob/master/TestFiles/57.bbc) | ✅ | ✅ |
 | [58](https://github.com/banszkyy/BBLang/blob/master/TestFiles/58.bbc) | ✅ | ✅ |
-| [59](https://github.com/banszkyy/BBLang/blob/master/TestFiles/59.bbc) | ✅ | ➖ |
+| [59](https://github.com/banszkyy/BBLang/blob/master/TestFiles/59.bbc) | ✅ | ❌ |
 | [60](https://github.com/banszkyy/BBLang/blob/master/TestFiles/60.bbc) | ✅ | ✅ |
 | [61](https://github.com/banszkyy/BBLang/blob/master/TestFiles/61.bbc) | ✅ | ✅ |
+| [62](https://github.com/banszkyy/BBLang/blob/master/TestFiles/62.bbc) | ✅ | ➖ |
+| [63](https://github.com/banszkyy/BBLang/blob/master/TestFiles/63.bbc) | ✅ | ➖ |
+| [64](https://github.com/banszkyy/BBLang/blob/master/TestFiles/64.bbc) | ✅ | ➖ |
 | [70](https://github.com/banszkyy/BBLang/blob/master/TestFiles/70.bbc) | ✅ | ✅ |
-| [71](https://github.com/banszkyy/BBLang/blob/master/TestFiles/71.bbc) | ✅ | ✅ |
+| [71](https://github.com/banszkyy/BBLang/blob/master/TestFiles/71.bbc) | ✅ | ❌ |
 | [72](https://github.com/banszkyy/BBLang/blob/master/TestFiles/72.bbc) | ✅ | ✅ |
 | [73](https://github.com/banszkyy/BBLang/blob/master/TestFiles/73.bbc) | ✅ | ➖ |
 | [74](https://github.com/banszkyy/BBLang/blob/master/TestFiles/74.bbc) | ✅ | ➖ |
@@ -87,22 +90,25 @@
 | [88](https://github.com/banszkyy/BBLang/blob/master/TestFiles/88.bbc) | ✅ | ✅ |
 | [89](https://github.com/banszkyy/BBLang/blob/master/TestFiles/89.bbc) | ✅ | ✅ |
 | [90](https://github.com/banszkyy/BBLang/blob/master/TestFiles/90.bbc) | ✅ | ✅ |
-| [91](https://github.com/banszkyy/BBLang/blob/master/TestFiles/91.bbc) | ✅ | ✅ |
+| [91](https://github.com/banszkyy/BBLang/blob/master/TestFiles/91.bbc) | ✅ | ❌ |
 | [92](https://github.com/banszkyy/BBLang/blob/master/TestFiles/92.bbc) | ✅ | ✅ |
 | [93](https://github.com/banszkyy/BBLang/blob/master/TestFiles/93.bbc) | ✅ | ✅ |
+| [95](https://github.com/banszkyy/BBLang/blob/master/TestFiles/95.bbc) | ✅ | ❌ |
 | [96](https://github.com/banszkyy/BBLang/blob/master/TestFiles/96.bbc) | ✅ | ✅ |
 | [97](https://github.com/banszkyy/BBLang/blob/master/TestFiles/97.bbc) | ✅ | ➖ |
 | [98](https://github.com/banszkyy/BBLang/blob/master/TestFiles/98.bbc) | ✅ | ➖ |
 | [99](https://github.com/banszkyy/BBLang/blob/master/TestFiles/99.bbc) | ✅ | ✅ |
+| [100](https://github.com/banszkyy/BBLang/blob/master/TestFiles/100.bbc) | ✅ | ✅ |
 | [101](https://github.com/banszkyy/BBLang/blob/master/TestFiles/101.bbc) | ✅ | ✅ |
+| [102](https://github.com/banszkyy/BBLang/blob/master/TestFiles/102.bbc) | ✅ | ✅ |
 | [103](https://github.com/banszkyy/BBLang/blob/master/TestFiles/103.bbc) | ✅ | ➖ |
-| [104](https://github.com/banszkyy/BBLang/blob/master/TestFiles/104.bbc) | ✅ | ➖ |
+| [104](https://github.com/banszkyy/BBLang/blob/master/TestFiles/104.bbc) | ✅ | ❌ |
 | [105](https://github.com/banszkyy/BBLang/blob/master/TestFiles/105.bbc) | ✅ | ✅ |
 | [106](https://github.com/banszkyy/BBLang/blob/master/TestFiles/106.bbc) | ✅ | ✅ |
 | [107](https://github.com/banszkyy/BBLang/blob/master/TestFiles/107.bbc) | ✅ | ✅ |
 | [108](https://github.com/banszkyy/BBLang/blob/master/TestFiles/108.bbc) | ✅ | ✅ |
-| [109](https://github.com/banszkyy/BBLang/blob/master/TestFiles/109.bbc) | ✅ | ➖ |
-| [110](https://github.com/banszkyy/BBLang/blob/master/TestFiles/110.bbc) | ✅ | ➖ |
+| [109](https://github.com/banszkyy/BBLang/blob/master/TestFiles/109.bbc) | ✅ | ❌ |
+| [110](https://github.com/banszkyy/BBLang/blob/master/TestFiles/110.bbc) | ✅ | ❌ |
 | [111](https://github.com/banszkyy/BBLang/blob/master/TestFiles/111.bbc) | ✅ | ✅ |
 | [112](https://github.com/banszkyy/BBLang/blob/master/TestFiles/112.bbc) | ✅ | ✅ |
 | [113](https://github.com/banszkyy/BBLang/blob/master/TestFiles/113.bbc) | ✅ | ✅ |

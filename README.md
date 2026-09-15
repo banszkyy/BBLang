@@ -47,47 +47,26 @@ printline("hello, world");
 `BBLang [options...] source`
 
 - `--help` Prints some information about the program
-
 - `--verbose` Prints some information about the compilation process
-
-- `--format format` Specifies which generator to use. Supported formats are `bytecode`, `brainfuck` and `assembly`.
-
-- `--debug` Launches the debugger screen (only avaliable on Windows) [More info](https://github.com/banszkyy/BBLang/wiki/Debugger)
-
-- `--output file` Writes the generated code to the specified file (this option only works for brainfuck)
-
-- `--throw-errors` Crashes the program whenever an exception thrown. This useful for me when debugging the compiler.
-
+- `--format bytecode|brainfuck|il` Specifies which generator to use.
+- `--debug` Launches the debugger screen
+- `--output <file>` Writes the generated code to the specified file (this option only works for brainfuck)
+- `--throw-errors` Crashes the program whenever an exception thrown. This is useful for me for debugging.
 - `--print-instructions` Prints the generated instructions before execution
-
 - `--print-memory` Prints the memory after execution
-
-- `--basepath directory` Sets the path where source files will be searched for `using` statements
-
+- `--basepath directory` Sets the path where source files will be searched for `using` statements. [read more](https://github.com/banszkyy/BBLang/wiki/Basic-Features#imports)
 - `--dont-optimize` Disables all optimization
-
-- `--no-debug-info` Disables debug information generation (if you compiling into brainfuck, generating debug informations will take a lots of time)
-
+- `--no-debug-info` Disables debug information (if you compiling into brainfuck, generating debug information will take a lot of time)
 - `--stack-size size` Specifies the stack size
-
 - `--heap-size size` Specifies the heap size
 
 > [!NOTE]
-> For brainfuck, if you specify zero the heap will not be initialized and wherever you try to access it, it will not compile.
-
-> [!NOTE]
-> Because of how heap represented, its size can't be larger than 126.
+> **Heap size in Brainfuck:**
+> 
+> - If you specify zero the heap will not be initialized and wherever you try to access it, it will not compile.
+> - The heap size cannot be larger than 126, sorry 🤷‍♀️
 
 - `--no-nullcheck` Disables null check generation when dereferencing a pointer
-
-## Project Structure
-
-- `/Examples` Examples for using the project as a library.
-- `/StandardLibrary` Preimplemented functions and structures and some "external function" declarations.
-- `/TestFiles` Test files I use for testing.
-- `/Source` The core functionality.
-- `/Utility` The command line interface.
-- `/Debugger` A terminal based debugger.
 
 ## Building
 
@@ -131,3 +110,12 @@ dotnet publish Utility/Utility.csproj --configuration Release --output ./out/lin
 ### api-ms-win-crt-string-l1-1-0.dll Missing Error
 
 install [this](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+
+## Project Structure
+
+- `/Examples` Examples for using the project as a library.
+- `/StandardLibrary` Preimplemented functions and structures and some "external function" declarations.
+- `/TestFiles` Test files for testing.
+- `/Source` The core functionality.
+- `/Utility` The command line interface.
+- `/Debugger` A terminal based debugger.

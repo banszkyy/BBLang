@@ -89,42 +89,40 @@ printline("hello, world");
 - `/Utility` The command line interface.
 - `/Debugger` A terminal based debugger.
 
-## Project Dependencies
-
-### Core Library
-
-- [System.Collections.Immutable](https://www.nuget.org/packages/System.Collections.Immutable)
-
-> [!NOTE]
-> With .NET 9 this is already installed.
-
-### Command Line Utility
-
-- Core
-- Debugger
-- [CommandLineParser](https://www.nuget.org/packages/CommandLineParser)
-
-### Debugger
-
-- Core
-
-## Unity
-
-- Import the `/Unity/package.json` to the Unity project.
-- Make sure to make a symlink to the Sources directory. Run this inside the `/Unity` directory:
+## Building
 
 ```sh
-ln -s ../Source Runtime
+git clone https://github.com/banszkyy/BBLang
+cd BBLang
+dotnet publish Utility/Utility.csproj --configuration Release --output ./out/linux-x64
 ```
 
-> [!NOTE]
-> If you are on Windows, move and rename the `/Source` directory to `/Unity/Runtime`.
+### Unity
 
-- Inside Unity, naviage to `Edit > Project Settings... > Player > Other Settings > Scripting Define Symbols` and add the `UNITY` variable.
-- If you are using the Burst compiler, add `UNITY_BURST` too.
+- Import the `/Unity/package.json` using the Unity Package Manager. [read more](https://docs.unity3d.com/6000.0/Documentation/Manual/upm-ui-local.html)
+- Create a symlink at `/Unity/Source` pointing at `/Source`
+
+<details>
+    <summary>help</summary>
+    Run this inside the `/Unity` directory:
+
+    Linux:
+    ```sh
+    ln -s ../Source Runtime
+    ```
+
+    Windows:
+    ```sh
+    mklink /J "Runtime" "..\Source"
+    ```
+</details>
+
+- In Unity, naviage to `Edit > Project Settings... > Player > Other Settings > Scripting Define Symbols` and add the `UNITY` variable. [read more](https://docs.unity3d.com/2022.3/Documentation//Manual/CustomScriptingSymbols.html)
+- If you are using the [Burst compiler](https://docs.unity3d.com/Packages/com.unity.burst@latest), add `UNITY_BURST` too.
 - If you are not using the Burst compiler, remove the `Unity.Burst` reference from `/Unity/BBLang.asmdef`.
-- If you want some profiler analytics, add `UNITY_PROFILER` too.
-- You can install the necessary NuGet packages with this tool: [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity) or import the dll-s manually.
+- If you want some [profiler analytics](https://docs.unity3d.com/6000.3/Documentation/Manual/profiler-introduction.html), add `UNITY_PROFILER` too.
+- You can install the necessary NuGet packages with this tool: [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity) or import the dll-s manually. You only need to install these:
+    - [System.Collections.Immutable](https://www.nuget.org/packages/System.Collections.Immutable)
 
 ## [Tests](https://github.com/banszkyy/BBLang/blob/master/Tests.md)
 

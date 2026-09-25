@@ -587,8 +587,7 @@ public partial class StatementCompiler
 
         if (!CompileExpression(anyCall.Expression, out CompiledExpression? functionValue))
         {
-            Diagnostics.Add(DiagnosticAt.Error("Function not found", anyCall.Expression, ignoreOnPartialSource: true)
-                .WithSuberrors(notFound?.ToError(anyCall)));
+            if (notFound is not null) Diagnostics.Add(notFound?.ToError(anyCall));
             return false;
         }
 

@@ -633,7 +633,7 @@ public sealed partial class Parser
     {
         //ParseRestorePoint savepoint = SavePoint();
 
-        if (!ExpectOneValue(out result))
+        if (!ExpectAnyExpression(out result))
         {
             return false;
         }

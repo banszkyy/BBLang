@@ -97,7 +97,13 @@ public partial class StatementCompiler
                 {
                     if (perfectus <= ConstantPerfectus.File ||
                         notFoundError is null)
-                    { notFoundError = new PossibleDiagnostic($"Constant \"{_constant.Identifier}\" not found: multiple constants found"); }
+                    {
+                        notFoundError = new PossibleDiagnostic($"Constant \"{_constant.Identifier}\" not found: multiple constants found")
+                        .WithRelatedInfo(ImmutableArray.Create(
+                            new DiagnosticRelatedInformationAt("Constant defined here", constant.Location),
+                            new DiagnosticRelatedInformationAt("Constant defined here", _constant.Location)
+                        ));
+                    }
                     return false;
                 }
 
@@ -129,7 +135,13 @@ public partial class StatementCompiler
             {
                 if (perfectus <= ConstantPerfectus.File ||
                     notFoundError is null)
-                { notFoundError = new PossibleDiagnostic($"Constant \"{identifier}\" not found: multiple constants found"); }
+                {
+                    notFoundError = new PossibleDiagnostic($"Constant \"{identifier}\" not found: multiple constants found")
+                        .WithRelatedInfo(ImmutableArray.Create(
+                            new DiagnosticRelatedInformationAt("Constant defined here", constant.Location),
+                            new DiagnosticRelatedInformationAt("Constant defined here", _constant.Location)
+                        ));
+                }
                 return false;
             }
 
@@ -1232,6 +1244,13 @@ public partial class StatementCompiler
             if (perfectus >= GlobalVariablePerfectus.File)
             {
                 error_ = new PossibleDiagnostic($"Global variable \"{variableName}\" not found: multiple variables matched in the same file");
+                if (result_ is not null)
+                {
+                    error_ = error_.WithRelatedInfo(ImmutableArray.Create(
+                        new DiagnosticRelatedInformationAt("Constant defined here", variable.Location),
+                        new DiagnosticRelatedInformationAt("Constant defined here", result_.Location)
+                    ));
+                }
                 // Debugger.Break();
             }
 
@@ -4375,6 +4394,9 @@ public partial class StatementCompiler
                 yield return v;
                 break;
             case CompiledEnumMemberAccess v:
+                yield return v;
+                break;
+            case CompiledLambda v:
                 yield return v;
                 break;
             case null:

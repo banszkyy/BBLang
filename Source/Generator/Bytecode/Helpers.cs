@@ -164,7 +164,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         if (!address.Type.Is(out FunctionType? addressType))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"This should be a function pointer and not \"{address.Type}\"", address));
+            Diagnostics.Add(DiagnosticAt.Error($"This should be a function pointer and not `{address.Type}`", address));
             return;
         }
 

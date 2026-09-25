@@ -18,7 +18,7 @@ public partial struct CompiledValue
             RuntimeType.U32 => new CompiledValue((uint)(a.U32 + b.U32)),
             RuntimeType.I32 => new CompiledValue((int)(a.I32 + b.I32)),
             RuntimeType.F32 => new CompiledValue((float)(a.F32 + b.F32)),
-            _ => throw new RuntimeException($"Can't do + operation with type \"{a_}\" and \"{b_}\""),
+            _ => throw new RuntimeException($"Can't do + operation with type `{a_}` and `{b_}`"),
         };
     }
     /// <inheritdoc/>
@@ -35,7 +35,7 @@ public partial struct CompiledValue
             RuntimeType.U32 => new CompiledValue((uint)(a.U32 - b.U32)),
             RuntimeType.I32 => new CompiledValue((int)(a.I32 - b.I32)),
             RuntimeType.F32 => new CompiledValue((float)(a.F32 - b.F32)),
-            _ => throw new RuntimeException($"Can't do - operation with type \"{a_}\" and \"{b_}\""),
+            _ => throw new RuntimeException($"Can't do - operation with type `{a_}` and `{b_}`"),
         };
     }
 
@@ -316,7 +316,7 @@ public partial struct CompiledValue
     public static CompiledValue operator |(CompiledValue a, CompiledValue b)
     {
         if (a.Type != b.Type)
-        { throw new RuntimeException($"Can't do | operation with type {a.Type} and {b.Type}"); }
+        { throw new RuntimeException($"Can't do `|` operation with type `{a.Type}` and `{b.Type}`"); }
 
         Flags flags = default;
         int result = ALU.BitwiseOr(a.I32, b.I32, a.BitWidth, ref flags);
@@ -326,7 +326,7 @@ public partial struct CompiledValue
     public static CompiledValue operator &(CompiledValue a, CompiledValue b)
     {
         if (a.Type != b.Type)
-        { throw new RuntimeException($"Can't do & operation with type {a.Type} and {b.Type}"); }
+        { throw new RuntimeException($"Can't do `&` operation with type `{a.Type}` and `{b.Type}`"); }
 
         Flags flags = default;
         int result = ALU.BitwiseAnd(a.I32, b.I32, a.BitWidth, ref flags);
@@ -336,7 +336,7 @@ public partial struct CompiledValue
     public static CompiledValue operator ^(CompiledValue a, CompiledValue b)
     {
         if (a.Type != b.Type)
-        { throw new RuntimeException($"Can't do ^ operation with type {a.Type} and {b.Type}"); }
+        { throw new RuntimeException($"Can't do `^` operation with type `{a.Type}` and `{b.Type}`"); }
 
         Flags flags = default;
         int result = ALU.BitwiseXor(a.I32, b.I32, a.BitWidth, ref flags);

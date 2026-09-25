@@ -17,7 +17,7 @@ public class CompiledBuiltinTypeExpression : CompiledTypeExpression,
         BasicType.I32 => RuntimeType.I32,
         BasicType.F32 => RuntimeType.F32,
 
-        _ => throw new NotImplementedException($"Type conversion for \"{Type}\" is not implemented"),
+        _ => throw new NotImplementedException($"Type conversion for `{Type}` is not implemented"),
     };
 
     [SetsRequiredMembers]

@@ -46,7 +46,7 @@ public class AttributeUsage :
         else if (type == typeof(string))
         { literalType = LiteralType.String; }
         else
-        { throw new NotImplementedException($"Unknown attribute type requested: \"{type.FullName}\""); }
+        { throw new NotImplementedException($"Unknown attribute type requested: `{type.FullName}`"); }
 
         switch (literalType)
         {

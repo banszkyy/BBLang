@@ -179,7 +179,7 @@ public sealed partial class Parser
 
         if (!ExpectOperator("{", out Token? bracketStart))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Expected '{{' after enum identifier", identifier.Position.After(), File, false));
+            Diagnostics.Add(DiagnosticAt.Error($"Expected `{{` after enum identifier", identifier.Position.After(), File, false));
             return false;
         }
 

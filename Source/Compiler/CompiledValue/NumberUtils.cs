@@ -171,7 +171,7 @@ public partial struct CompiledValue :
         RuntimeType.I16 => (byte)v.I16,
         RuntimeType.I32 => (byte)v.I32,
         RuntimeType.F32 => (byte)v.F32,
-        _ => throw new InvalidCastException($"Can't cast \"{v.Type}\" to \"{"u8"}\""),
+        _ => throw new InvalidCastException($"Can't cast `{v.Type}` to `{TypeKeywords.U8}`"),
     };
     public static implicit operator CompiledValue(byte v) => new(v);
 
@@ -185,7 +185,7 @@ public partial struct CompiledValue :
         RuntimeType.U32 => (ushort)v.U32,
         RuntimeType.I32 => (ushort)v.I32,
         RuntimeType.F32 => (ushort)v.F32,
-        _ => throw new InvalidCastException($"Can't cast \"{v.Type}\" to \"{"u16"}\""),
+        _ => throw new InvalidCastException($"Can't cast `{v.Type}` to `{TypeKeywords.U16}`"),
     };
 
     /// <inheritdoc/>
@@ -198,7 +198,7 @@ public partial struct CompiledValue :
         RuntimeType.U32 => (int)v.U32,
         RuntimeType.I32 => (int)v.I32,
         RuntimeType.F32 => (int)v.F32,
-        _ => throw new InvalidCastException($"Can't cast \"{v.Type}\" to \"{"i32"}\""),
+        _ => throw new InvalidCastException($"Can't cast `{v.Type}` to `{TypeKeywords.I32}`"),
     };
     public static implicit operator CompiledValue(int v) => new(v);
 
@@ -212,7 +212,7 @@ public partial struct CompiledValue :
         RuntimeType.U32 => (float)v.U32,
         RuntimeType.I32 => (float)v.I32,
         RuntimeType.F32 => (float)v.F32,
-        _ => throw new InvalidCastException($"Can't cast \"{v.Type}\" to \"{"f32"}\""),
+        _ => throw new InvalidCastException($"Can't cast `{v.Type}` to `{TypeKeywords.F32}`"),
     };
     public static implicit operator CompiledValue(float v) => new(v);
 
@@ -226,7 +226,7 @@ public partial struct CompiledValue :
         RuntimeType.U32 => (char)v.U32,
         RuntimeType.I32 => (char)v.I32,
         RuntimeType.F32 => (char)v.F32,
-        _ => throw new InvalidCastException($"Can't cast \"{v.Type}\" to \"{"u16"}\""),
+        _ => throw new InvalidCastException($"Can't cast `{v.Type}` to `{TypeKeywords.U16}`"),
     };
     public static implicit operator CompiledValue(char v) => new(v);
 }

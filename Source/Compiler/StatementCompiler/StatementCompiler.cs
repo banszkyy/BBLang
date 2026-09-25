@@ -37,7 +37,7 @@ public partial class StatementCompiler
 
         if (!TryGetBuiltinFunction(BuiltinFunctions.Allocate, argumentExpressions, type.Location.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? error, AddCompilable))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")] not found", type)
+            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute `[{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")]` not found", type)
                 .WithSuberrors(error.ToError(type)));
             return false;
         }
@@ -54,13 +54,13 @@ public partial class StatementCompiler
         CompiledFunctionDefinition allocator = result.Function;
         if (!allocator.ReturnSomething)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")] should return something", allocator.Definition.Type));
+            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute `[{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")]` should return something", allocator.Definition.Type));
             return false;
         }
 
         if (!allocator.Definition.CanUse(type.Location.File))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function \"{allocator.ToReadable()}\" cannot be called due to its protection level", type));
+            Diagnostics.Add(DiagnosticAt.Error($"Function `{allocator.ToReadable()}` cannot be called due to its protection level", type));
             return false;
         }
 
@@ -92,7 +92,7 @@ public partial class StatementCompiler
         if (!GetLiteralType(LiteralType.Integer, out GeneralType? intType, out PossibleDiagnostic? typeError))
         {
             intType = SizeofStatementType;
-            Diagnostics.Add(DiagnosticAt.Warning($"No type defined for integer literals, using the default {intType}", sizeLocation, ignoreOnPartialSource: true).WithSuberrors(typeError.ToError(sizeLocation, false)));
+            Diagnostics.Add(DiagnosticAt.Warning($"No type defined for integer literals, using the default `{intType}`", sizeLocation, ignoreOnPartialSource: true).WithSuberrors(typeError.ToError(sizeLocation, false)));
         }
 
         ImmutableArray<CompiledExpression> argumentExpressions = ImmutableArray.Create<CompiledExpression>(new CompiledConstantValue()
@@ -105,7 +105,7 @@ public partial class StatementCompiler
 
         if (!TryGetBuiltinFunction(BuiltinFunctions.Allocate, argumentExpressions, sizeLocation.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? error, AddCompilable))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")] not found: {error}", sizeLocation));
+            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute `[{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")]` not found: {error}", sizeLocation));
             return false;
         }
 
@@ -121,13 +121,13 @@ public partial class StatementCompiler
         CompiledFunctionDefinition allocator = result.Function;
         if (!allocator.ReturnSomething)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")] should return something", allocator.Definition.Type));
+            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute `[{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Allocate}\")]` should return something", allocator.Definition.Type));
             return false;
         }
 
         if (!allocator.Definition.CanUse(sizeLocation.File))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function \"{allocator.ToReadable()}\" cannot be called due to its protection level", sizeLocation));
+            Diagnostics.Add(DiagnosticAt.Error($"Function `{allocator.ToReadable()}` cannot be called due to its protection level", sizeLocation));
             return false;
         }
 
@@ -166,7 +166,7 @@ public partial class StatementCompiler
 
         if (!TryGetBuiltinFunction(BuiltinFunctions.Free, argumentExpressions, location.File, out FunctionQueryResult<CompiledFunctionDefinition>? result, out PossibleDiagnostic? notFoundError, AddCompilable))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Free}\")] not found", location).WithSuberrors(notFoundError.ToError(location)));
+            Diagnostics.Add(DiagnosticAt.Error($"Function with attribute `[{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.Free}\")]` not found", location).WithSuberrors(notFoundError.ToError(location)));
             return false;
         }
 
@@ -178,7 +178,7 @@ public partial class StatementCompiler
 
         if (!deallocator.Definition.CanUse(location.File))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function \"{deallocator.ToReadable()}\" cannot be called due to its protection level", location));
+            Diagnostics.Add(DiagnosticAt.Error($"Function `{deallocator.ToReadable()}` cannot be called due to its protection level", location));
             return false;
         }
 
@@ -216,7 +216,7 @@ public partial class StatementCompiler
             {
                 //if (deallocateablePointerType.To.Is<StructType>())
                 //{
-                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type \"{deallocateablePointerType.To}\" not found", location).WithSuberrors(error.ToWarning(location)));
+                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type `{deallocateablePointerType.To}` not found", location).WithSuberrors(error.ToWarning(location)));
                 //}
             }
             else
@@ -230,7 +230,7 @@ public partial class StatementCompiler
             {
                 //if (deallocateableType.Is<StructType>())
                 //{
-                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type \"{deallocateableType}\" not found", location).WithSuberrors(error.ToWarning(location)));
+                //    Diagnostics.Add(DiagnosticAt.Warning($"Destructor for type `{deallocateableType}` not found", location).WithSuberrors(error.ToWarning(location)));
                 //}
             }
             else
@@ -242,7 +242,7 @@ public partial class StatementCompiler
         if (destructor is not null
             && !destructor.Function.Definition.CanUse(location.File))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Destructor for type \"{deallocateableType}\" cannot be called due to its protection level", location));
+            Diagnostics.Add(DiagnosticAt.Error($"Destructor for type `{deallocateableType}` cannot be called due to its protection level", location));
             return false;
         }
 
@@ -478,7 +478,7 @@ public partial class StatementCompiler
         }
 
         if (LanguageConstants.KeywordList.Contains(newVariable.Identifier.Content))
-        { Diagnostics.Add(DiagnosticAt.Error($"Illegal variable name \"{newVariable.Identifier.Content}\"", newVariable.Identifier, newVariable.File)); }
+        { Diagnostics.Add(DiagnosticAt.Error($"Illegal variable name `{newVariable.Identifier.Content}`", newVariable.Identifier, newVariable.File)); }
 
         GeneralType? type = null;
         if (newVariable.Type != StatementKeywords.Var)
@@ -545,7 +545,7 @@ public partial class StatementCompiler
 
         if (GetConstant(newVariable.Identifier.Content, newVariable.File, out _, out _))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Constant with name \"{newVariable.Identifier}\" already exists", newVariable.Identifier, newVariable.File));
+            Diagnostics.Add(DiagnosticAt.Error($"Constant with name `{newVariable.Identifier}` already exists", newVariable.Identifier, newVariable.File));
             return false;
         }
 
@@ -560,7 +560,7 @@ public partial class StatementCompiler
             {
                 if (type is null)
                 {
-                    Diagnostics.Add(DiagnosticAt.Warning($"External constant \"{newVariable.ExternalConstantName}\" not found", newVariable));
+                    Diagnostics.Add(DiagnosticAt.Warning($"External constant `{newVariable.ExternalConstantName}` not found", newVariable));
                 }
             }
             else
@@ -573,7 +573,7 @@ public partial class StatementCompiler
 
                 if (!externalConstant.Value.TryCast(type, out CompiledValue castedValue))
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast external constant value {externalConstant.Value} of type \"{externalConstant.Value.Type}\" to {type}", newVariable));
+                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast external constant value {externalConstant.Value} of type `{externalConstant.Value.Type}` to {type}", newVariable));
                     return false;
                 }
 
@@ -591,7 +591,7 @@ public partial class StatementCompiler
         {
             if (!InternalConstants.TryGetValue(newVariable.InternalConstantName, out GeneralType? internalConstantType))
             {
-                Diagnostics.Add(DiagnosticAt.Warning($"Internal constant \"{newVariable.InternalConstantName}\" not found", newVariable));
+                Diagnostics.Add(DiagnosticAt.Warning($"Internal constant `{newVariable.InternalConstantName}` not found", newVariable));
             }
             else
             {
@@ -647,7 +647,7 @@ public partial class StatementCompiler
 
         //if (!type.AllGenericsDefined())
         //{
-        //    Diagnostics.Add(Diagnostic.Internal($"Failed to qualify all generics in variable \"{newVariable.Identifier}\" type \"{type}\" (what edge case is this???)", newVariable.Type, newVariable.File));
+        //    Diagnostics.Add(Diagnostic.Internal($"Failed to qualify all generics in variable `{newVariable.Identifier}` type `{type}` (what edge case is this???)", newVariable.Type, newVariable.File));
         //}
 
         SetStatementType(newVariable.Type, type);
@@ -692,7 +692,7 @@ public partial class StatementCompiler
 
         if (!GetInstructionLabel(instructionLabel.Identifier.Content, out CompiledLabelDeclaration? compiledInstructionLabelDeclaration, out _))
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Instruction label \"{instructionLabel.Identifier.Content}\" not found. Possibly not compiled or some other internal errors (not your fault)", instructionLabel.Identifier, instructionLabel.File));
+            Diagnostics.Add(DiagnosticAt.Internal($"Instruction label `{instructionLabel.Identifier.Content}` not found. Possibly not compiled or some other internal errors (not your fault)", instructionLabel.Identifier, instructionLabel.File));
             return false;
         }
 
@@ -707,7 +707,7 @@ public partial class StatementCompiler
         {
             if (keywordCall.Arguments.Length > 1)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to \"{StatementKeywords.Return}\": required {0} or {1} passed {keywordCall.Arguments.Length}", keywordCall));
+                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to `{StatementKeywords.Return}`: required {0} or {1} passed {keywordCall.Arguments.Length}", keywordCall));
                 return false;
             }
 
@@ -738,7 +738,7 @@ public partial class StatementCompiler
         {
             if (keywordCall.Arguments.Length != 1)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to \"{StatementKeywords.Crash}\": required {1} passed {keywordCall.Arguments}", keywordCall));
+                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to `{StatementKeywords.Crash}`: required {1} passed {keywordCall.Arguments}", keywordCall));
                 return false;
             }
 
@@ -784,7 +784,7 @@ public partial class StatementCompiler
         {
             if (keywordCall.Arguments.Length != 1)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to \"{StatementKeywords.Goto}\": required {1} passed {keywordCall.Arguments.Length}", keywordCall));
+                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to `{StatementKeywords.Goto}`: required {1} passed {keywordCall.Arguments.Length}", keywordCall));
                 return false;
             }
 
@@ -806,7 +806,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Unknown keyword \"{keywordCall.Keyword}\"", keywordCall.Keyword, keywordCall.File));
+        Diagnostics.Add(DiagnosticAt.Error($"Unknown keyword `{keywordCall.Keyword}`", keywordCall.Keyword, keywordCall.File));
         return false;
     }
     bool CompileStatement(SimpleAssignmentStatement setter, [NotNullWhen(true)] out CompiledStatement? compiledStatement)
@@ -1119,7 +1119,7 @@ public partial class StatementCompiler
             case IndexCallExpression v: return CompileSetter(v, value, out compiledStatement);
             case DereferenceExpression v: return CompileSetter(v, value, out compiledStatement);
             default:
-                Diagnostics.Add(DiagnosticAt.Error($"The left side of the assignment operator should be a variable, field or memory address. Passed \"{target.GetType().Name}\"", target));
+                Diagnostics.Add(DiagnosticAt.Error($"The left side of the assignment operator should be a variable, field or memory address. Passed `{target.GetType().Name}`", target));
                 return false;
         }
     }
@@ -1209,7 +1209,7 @@ public partial class StatementCompiler
             if (!CompileExpression(value, out CompiledExpression? _value, variable.Type)) return false;
 
             if (variable.IsGlobal)
-            { Diagnostics.Add(DiagnosticAt.Internal($"Trying to set local variable \"{variable.Identifier}\" but it was compiled as a global variable.", target)); }
+            { Diagnostics.Add(DiagnosticAt.Internal($"Trying to set local variable `{variable.Identifier}` but it was compiled as a global variable.", target)); }
 
             if (variable.Definition.Modifiers.Contains(ModifierKeywords.Temp))
             {
@@ -1245,7 +1245,7 @@ public partial class StatementCompiler
             if (!CompileExpression(value, out CompiledExpression? _value, globalVariable.Type)) return false;
 
             if (!globalVariable.IsGlobal)
-            { Diagnostics.Add(DiagnosticAt.Internal($"Trying to set global variable \"{globalVariable.Identifier}\" but it was compiled as a local variable.", target)); }
+            { Diagnostics.Add(DiagnosticAt.Internal($"Trying to set global variable `{globalVariable.Identifier}` but it was compiled as a local variable.", target)); }
 
             if (globalVariable.Definition.Modifiers.Contains(ModifierKeywords.Temp))
             {
@@ -1271,7 +1271,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{target.Content}\" not found", target, ignoreOnPartialSource: true)
+        Diagnostics.Add(DiagnosticAt.Error($"Symbol `{target.Content}` not found", target, ignoreOnPartialSource: true)
             .WithSuberrors(
                 parameterNotFoundError.ToError(target),
                 variableNotFoundError.ToError(target),
@@ -1308,7 +1308,7 @@ public partial class StatementCompiler
 
             if (!prevType.Is(out StructType? structPointerType))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Could not get the field offsets of type \"{prevType}\"", target.Object));
+                Diagnostics.Add(DiagnosticAt.Error($"Could not get the field offsets of type `{prevType}`", target.Object));
                 return false;
             }
 
@@ -1508,7 +1508,7 @@ public partial class StatementCompiler
 
         if (!prev.Type.Is<PointerType>())
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Type \"{prev.Type}\" isn't a pointer", target.Expression));
+            Diagnostics.Add(DiagnosticAt.Error($"Type `{prev.Type}` isn't a pointer", target.Expression));
             return false;
         }
 
@@ -1593,7 +1593,7 @@ public partial class StatementCompiler
 
         if (LanguageConstants.KeywordList.Except(BuiltinFunctionIdentifiers.All).Contains(function.Definition.Identifier.Content))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"The identifier \"{function.Definition.Identifier}\" is reserved as a keyword. Do not use it as a function name", function.Definition.Identifier, function.File));
+            Diagnostics.Add(DiagnosticAt.Error($"The identifier `{function.Definition.Identifier}` is reserved as a keyword. Do not use it as a function name", function.Definition.Identifier, function.File));
             goto end;
         }
 
@@ -1607,7 +1607,7 @@ public partial class StatementCompiler
 
         if (function.Definition.Block is null)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function \"{function.ToReadable()}\" does not have a body", function.Definition));
+            Diagnostics.Add(DiagnosticAt.Error($"Function `{function.ToReadable()}` does not have a body", function.Definition));
             goto end;
         }
 
@@ -1681,8 +1681,8 @@ public partial class StatementCompiler
             {
                 Diagnostics.Add(DiagnosticAt.Error($"Closures are not supported in this context", function)
                     .WithRelatedInfo(closure.Select(v =>
-                        v.Parameter is not null ? new DiagnosticRelatedInformationAt($"Captured parameter \"{v.Parameter.Identifier}\"", v.Parameter.Location) :
-                        v.Variable is not null ? new DiagnosticRelatedInformationAt($"Captured variable \"{v.Variable.Identifier}\"", v.Variable.Location) :
+                        v.Parameter is not null ? new DiagnosticRelatedInformationAt($"Captured parameter `{v.Parameter.Identifier}`", v.Parameter.Location) :
+                        v.Variable is not null ? new DiagnosticRelatedInformationAt($"Captured variable `{v.Variable.Identifier}`", v.Variable.Location) :
                         new DiagnosticRelatedInformation("meow"))));
             }
 
@@ -1899,7 +1899,7 @@ public partial class StatementCompiler
                 Diagnostics.Add(
                     DiagnosticAt.Error($"Failed to generate heap initialization code", firstHeapUsageLocation.Value)
                     .WithSuberrors(
-                        DiagnosticAt.Error($"Function with attribute [{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.InitializeHeap}\")] not found", firstHeapUsageLocation.Value)
+                        DiagnosticAt.Error($"Function with attribute `[{AttributeConstants.BuiltinIdentifier}(\"{BuiltinFunctions.InitializeHeap}\")]` not found", firstHeapUsageLocation.Value)
                         .WithSuberrors(
                             notFoundError.ToError(firstHeapUsageLocation.Value)
                         )

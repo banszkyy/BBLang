@@ -638,7 +638,7 @@ public class BytecodeEmitter
             if (!Utils.ReferenceEquals(_label, label)) continue;
             return _label.Address;
         }
-        throw new KeyNotFoundException($"Label {label} not found");
+        throw new KeyNotFoundException($"Label `{label}` not found");
     }
 
     InstructionOperand Compile(PreparationInstructionOperand v, int i, Dictionary<string, int> variables)

@@ -524,7 +524,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 
         if (!CompiledValue.TryShrinkTo8bit(ref addressToSet))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Address value must be a byte (not \"{addressToSet.Type}\")", pointer.Address));
+            Diagnostics.Add(DiagnosticAt.Error($"Address value must be a byte (not `{addressToSet.Type}`)", pointer.Address));
             address = default;
             size = default;
             return default;
@@ -595,7 +595,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 
             if (perfectus >= StatementCompiler.GlobalVariablePerfectus.File)
             {
-                error_ = new PossibleDiagnostic($"Global variable \"{name}\" not found: multiple variables matched in the same file");
+                error_ = new PossibleDiagnostic($"Global variable `{name}` not found: multiple variables matched in the same file");
                 // Debugger.Break();
             }
 
@@ -628,7 +628,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
             return true;
         }
 
-        error = error_ ?? new PossibleDiagnostic($"Global variable \"{name}\" not found");
+        error = error_ ?? new PossibleDiagnostic($"Global variable `{name}` not found");
         result = null;
         return false;
     }
@@ -685,7 +685,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 
         if (!result.IsReference)
         {
-            error = new PossibleDiagnostic($"Variable \"{result.Identifier}\" isn't a reference", name);
+            error = new PossibleDiagnostic($"Variable `{result.Identifier}` isn't a reference", name);
             return false;
         }
 

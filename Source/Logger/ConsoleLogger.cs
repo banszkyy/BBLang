@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace LanguageCore;
 
 public class ConsoleLogger : ILogger
@@ -114,22 +116,94 @@ public class ConsoleLogger : ILogger
 
         Console.Write(new string(' ', depth * 2));
 
-        Console.ForegroundColor = level switch
+        static void WriteLocation(Location l)
         {
-            DiagnosticsLevel.Error => ErrorColor,
-            DiagnosticsLevel.Warning => WarningColor,
-            DiagnosticsLevel.Information => InfoColor,
-            DiagnosticsLevel.Hint => InfoColor,
-            DiagnosticsLevel.OptimizationNotice => DebugColor,
-            DiagnosticsLevel.FailedOptimization => WarningColor,
-            _ => DebugColor,
-        };
-
-        Console.WriteLine(diagnostic.ToString());
+            if (l.File.IsFile)
+            {
+                string v = Path.GetRelativePath(Environment.CurrentDirectory, l.File.LocalPath);
+                if (v.Contains(".."))
+                {
+                    v = l.File.LocalPath;
+                }
+                else if (v.StartsWith($".{Path.DirectorySeparatorChar}"))
+                {
+                    v = v[2..];
+                }
+                string? d = Path.GetDirectoryName(v);
+                if (d is not null)
+                {
+                    Console.Write(d);
+                    Console.Write(Path.DirectorySeparatorChar);
+                }
+                if (!Console.IsOutputRedirected) Console.Write("\x1b[1m");
+                Console.Write(Path.GetFileName(v));
+                if (!Console.IsOutputRedirected) Console.Write("\x1b[0m");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.Write(l.File);
+            }
+            Console.Write(':');
+            if (!Console.IsOutputRedirected) Console.Write("\x1b[1m");
+            Console.Write(l.Position.Range.Start.Line + 1);
+            if (!Console.IsOutputRedirected) Console.Write("\x1b[0m");
+            Console.Write(':');
+            if (!Console.IsOutputRedirected) Console.Write("\x1b[1m");
+            if (l.Position.Range.Start.Line == l.Position.Range.End.Line && l.Position.Range.Start.Character < l.Position.Range.End.Character)
+            {
+                Console.Write($"{l.Position.Range.Start.Character + 1}-{l.Position.Range.End.Character + 1}");
+            }
+            else
+            {
+                Console.Write($"{l.Position.Range.Start.Character + 1}");
+            }
+            if (!Console.IsOutputRedirected) Console.Write("\x1b[0m");
+        }
 
         if (diagnostic is DiagnosticAt diagnosticAt)
         {
-            (string SourceCode, string Arrows)? arrows = diagnosticAt.GetArrows(sourceProviders);
+            WriteLocation(diagnosticAt.Location);
+            Console.Write(": ");
+        }
+
+        if (!Console.IsOutputRedirected)
+        {
+            Console.ForegroundColor = level switch
+            {
+                DiagnosticsLevel.Error => ErrorColor,
+                DiagnosticsLevel.Warning => WarningColor,
+                DiagnosticsLevel.Information => InfoColor,
+                DiagnosticsLevel.Hint => InfoColor,
+                DiagnosticsLevel.OptimizationNotice => DebugColor,
+                DiagnosticsLevel.FailedOptimization => WarningColor,
+                _ => throw new UnreachableException(),
+            };
+            Console.Write("\x1b[1m");
+        }
+        Console.Write(level switch
+        {
+            DiagnosticsLevel.Error => "ERROR",
+            DiagnosticsLevel.Warning => "WARNING",
+            DiagnosticsLevel.Information => "INFO",
+            DiagnosticsLevel.Hint => "HINT",
+            DiagnosticsLevel.OptimizationNotice => "OPTNOTE",
+            DiagnosticsLevel.FailedOptimization => "OPTFAIL",
+            _ => throw new UnreachableException(),
+        });
+        if (!Console.IsOutputRedirected)
+        {
+            Console.Write("\x1b[0m");
+            Console.ResetColor();
+        }
+
+        Console.Write(": ");
+
+        Console.WriteLine(diagnostic.Message.ToString());
+
+        if (diagnostic is DiagnosticAt diagnosticAt1)
+        {
+            (string SourceCode, string Arrows)? arrows = diagnosticAt1.GetArrows(sourceProviders);
             if (arrows.HasValue)
             {
                 Console.Write(new string(' ', depth * 2));
@@ -139,13 +213,28 @@ public class ConsoleLogger : ILogger
             }
         }
 
+        if (diagnostic.RelatedInformation.Length > 0)
+        {
+            Console.Write(new string(' ', depth * 2));
+            Console.WriteLine("Related Info:");
+        }
+
+        foreach (DiagnosticRelatedInformation relatedInfo in diagnostic.RelatedInformation)
+        {
+            Console.Write(new string(' ', (depth + 1) * 2));
+            if (relatedInfo is DiagnosticRelatedInformationAt relatedInfoAt)
+            {
+                WriteLocation(relatedInfoAt.Location);
+                Console.Write(": ");
+            }
+            Console.WriteLine(relatedInfo.Message);
+        }
+
         if (diagnostic.SubErrors.Length > 0)
         {
             Console.Write(new string(' ', depth * 2));
             Console.WriteLine("Caused by:");
         }
-
-        Console.ResetColor();
 
         foreach (Diagnostic subdiagnostic in diagnostic.SubErrors)
         { LogDiagnostic(subdiagnostic, depth + 1, sourceProviders, diagnostic); }

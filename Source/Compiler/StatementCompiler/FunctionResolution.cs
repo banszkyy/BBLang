@@ -344,7 +344,7 @@ public partial class StatementCompiler
 
             if (best.Errors.Count > 0)
             {
-                error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found", best.Errors.ToImmutableArray());
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", best.Errors.ToImmutableArray());
                 return false;
             }
 
@@ -352,11 +352,11 @@ public partial class StatementCompiler
             {
                 if (best.IdentifierBadness == 1)
                 {
-                    error = new PossibleDiagnostic($"No {kindName} found with name \"{query.Identifier}\" (did you mean \"{best.Definition.Identifier}\"?)");
+                    error = new PossibleDiagnostic($"No {kindName} found with name `{query.Identifier}` (did you mean `{best.Definition.Identifier}`?)");
                 }
                 else
                 {
-                    error = new PossibleDiagnostic($"No {kindName} found with name \"{query.Identifier}\"");
+                    error = new PossibleDiagnostic($"No {kindName} found with name `{query.Identifier}`");
                 }
                 return false;
             }
@@ -365,8 +365,8 @@ public partial class StatementCompiler
             {
                 PossibleDiagnostic suberror = new($"Wrong number of arguments passed: expected {best.Definition.Parameters.Length} but got {query.ArgumentCount}");
                 if (best.Definition is FunctionThingDefinition ftd)
-                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{best.Definition.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
-                error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found", suberror);
+                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", suberror);
                 return false;
             }
 
@@ -376,8 +376,8 @@ public partial class StatementCompiler
                 PossibleDiagnostic suberror = new($"Wrong types of arguments passed (sorry I can't tell any more info)");
                 GetFunctionMatch<TFunction, TDefinedIdentifier, TPassedIdentifier, TArgument>(best.Definition, query);
                 if (best.Definition is FunctionThingDefinition ftd)
-                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{best.Definition.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
-                error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found", suberror);
+                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", suberror);
                 return false;
             }
 
@@ -385,8 +385,8 @@ public partial class StatementCompiler
             {
                 PossibleDiagnostic suberror = new($"Wrong return type (sorry I can't tell any more info)");
                 if (best.Definition is FunctionThingDefinition ftd)
-                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{best.Definition.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
-                error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found", suberror);
+                { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", suberror);
                 return false;
             }
 
@@ -394,16 +394,7 @@ public partial class StatementCompiler
             {
                 error = new PossibleDiagnostic($"Multiple functions matched ({string.Join(", ", functionMatches.Select(v => v.Definition.ToReadable()))})");
                 foreach (FunctionMatch<TFunction> functionMatch in functionMatches)
-                {
-                    if (functionMatch.Definition is FunctionThingDefinition f)
-                    {
-                        error = error.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{functionMatch.Definition.ToReadable()}\" defined here", new Location(f.Identifier.Position, f.File)));
-                    }
-                    else
-                    {
-                        error = error.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{functionMatch.Definition.ToReadable()}\" defined here", functionMatch.Definition.Location));
-                    }
-                }
+                { error = error.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{functionMatch.Definition.ToReadable()}` defined here", functionMatch.Definition.Location)); }
                 return false;
             }
 
@@ -413,8 +404,8 @@ public partial class StatementCompiler
                 {
                     PossibleDiagnostic suberror = new($"Failed to resolve the template types");
                     if (best.Definition is FunctionThingDefinition ftd)
-                    { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} \"{best.Definition.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
-                    error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found", suberror);
+                    { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"{kindNameCapital} `{best.Definition.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
+                    error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", suberror);
                     return false;
                 }
 
@@ -453,7 +444,7 @@ public partial class StatementCompiler
         else
         {
             result = default;
-            error = new PossibleDiagnostic($"{kindNameCapital} \"{readableName}\" not found");
+            error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found");
             return false;
         }
     }
@@ -516,14 +507,14 @@ public partial class StatementCompiler
 
             if (result.IdentifierBadness == 1)
             {
-                PossibleDiagnostic item = new($"Function \"{query.Identifier}\" does not match with \"{function.Identifier}\"");
+                PossibleDiagnostic item = new($"Function `{query.Identifier}` does not match with `{function.Identifier}`");
                 if (function is FunctionThingDefinition ftd)
-                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function \"{function.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
+                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function `{function.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 result.Errors.Add(item);
             }
             else
             {
-                result.Errors.Add(new($"No function found with name \"{query.Identifier}\""));
+                result.Errors.Add(new($"No function found with name `{query.Identifier}`"));
             }
             return result;
         }
@@ -534,7 +525,7 @@ public partial class StatementCompiler
             {
                 PossibleDiagnostic item = new($"Wrong number of arguments passed: expected {function.Parameters.Length} but passed {query.ArgumentCount.Value}");
                 if (function is FunctionThingDefinition ftd)
-                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function \"{function.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
+                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function `{function.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 result.Errors.Add(item);
                 return result;
             }
@@ -543,7 +534,7 @@ public partial class StatementCompiler
             {
                 PossibleDiagnostic item = new($"Wrong number of arguments passed: expected {function.Parameters.Length} but passed {query.ArgumentCount.Value}");
                 if (function is FunctionThingDefinition ftd)
-                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function \"{function.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
+                { item = item.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function `{function.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                 result.Errors.Add(item);
                 return result;
             }
@@ -568,7 +559,7 @@ public partial class StatementCompiler
         }
         else
         {
-            result.Errors.Add(new($"Cannot use function \"{query.Identifier}\" due it's protection level"));
+            result.Errors.Add(new($"Cannot use function `{query.Identifier}` due it's protection level"));
         }
 
         bool TryReplaceArgument2(ref CompiledExpression? argument, GeneralType passedType, GeneralType definedType, ParameterDefinition definition, TArgument passed, Dictionary<string, GeneralType> typeArguments, int argumentIndex)
@@ -741,7 +732,7 @@ public partial class StatementCompiler
                     {
                         PossibleDiagnostic suberror = new($"Argument {i + 1}: Invalid type passed: expected {GeneralType.TryInsertTypeParameters(defined, _typeArguments)} but passed {passed}");
                         if (function is FunctionThingDefinition ftd)
-                        { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function \"{function.ToReadable()}\" defined here", new Location(ftd.Identifier.Position, ftd.File))); }
+                        { suberror = suberror.WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function `{function.ToReadable()}` defined here", new Location(ftd.Identifier.Position, ftd.File))); }
                         result.Errors.Add(new PossibleDiagnostic($"Argument {i + 1}: Could not resolve the template types", suberror));
                         return result;
                     }

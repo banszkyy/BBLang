@@ -77,7 +77,7 @@ public static class HeapUtils
 
         if (getBlockCount.ReturnValueSize != sizeof(int))
         {
-            error = $"Exposed function \"{GetBlockCountIdentifier}\" must have a return type \"i32\"";
+            error = $"Exposed function \"{GetBlockCountIdentifier}\" must have a return type `{TypeKeywords.I32}`";
             return false;
         }
 
@@ -89,7 +89,7 @@ public static class HeapUtils
 
         if (getBlock.ArgumentsSize != sizeof(int))
         {
-            error = $"Exposed function \"{GetBlockIdentifier}\" must have 1 parameter of type \"i32\"";
+            error = $"Exposed function \"{GetBlockIdentifier}\" must have 1 parameter of type `{TypeKeywords.I32}`";
             return false;
         }
 
@@ -97,7 +97,7 @@ public static class HeapUtils
         {
             if (getBlock.ReturnValueSize != sizeof(GetHeapBlockResult))
             {
-                error = $"Exposed function \"{GetBlockIdentifier}\" must have a return type of a struct with fields \"u8\" and \"i32\" in order";
+                error = $"Exposed function \"{GetBlockIdentifier}\" must have a return type of a struct with fields `{TypeKeywords.U8}` and `{TypeKeywords.I32}` in order";
                 return false;
             }
         }

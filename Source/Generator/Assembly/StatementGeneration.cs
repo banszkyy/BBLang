@@ -559,7 +559,7 @@ public partial class CodeGeneratorForNative : CodeGenerator
         CompiledConstantValue v => EmitExpression(v, dest),
         CompiledVariableAccess v => EmitExpression(v, dest),
         CompiledBinaryOperatorCall v => EmitExpression(v, dest),
-        _ => throw new NotImplementedException($"Expression of type {statement.GetType().Name} is not implemented"),
+        _ => throw new NotImplementedException($"Expression of type `{statement.GetType().Name}` is not implemented"),
     };
 
     void EmitStatement(CompiledReturn statement)

@@ -79,7 +79,7 @@ public partial class StatementCompiler
                 {
                     if (perfectus < ConstantPerfectus.Name ||
                         notFoundError is null)
-                    { notFoundError = new PossibleDiagnostic($"Constant \"{_constant.Identifier}\" not found"); }
+                    { notFoundError = new PossibleDiagnostic($"Constant `{_constant.Identifier}` not found"); }
                     continue;
                 }
                 perfectus = ConstantPerfectus.Name;
@@ -88,7 +88,7 @@ public partial class StatementCompiler
                 {
                     if (perfectus < ConstantPerfectus.File ||
                         notFoundError is null)
-                    { notFoundError = new PossibleDiagnostic($"Constant \"{_constant.Identifier}\" cannot be used due to its protection level"); }
+                    { notFoundError = new PossibleDiagnostic($"Constant `{_constant.Identifier}` cannot be used due to its protection level"); }
                     continue;
                 }
                 perfectus = ConstantPerfectus.File;
@@ -98,11 +98,11 @@ public partial class StatementCompiler
                     if (perfectus <= ConstantPerfectus.File ||
                         notFoundError is null)
                     {
-                        notFoundError = new PossibleDiagnostic($"Constant \"{_constant.Identifier}\" not found: multiple constants found")
-                        .WithRelatedInfo(ImmutableArray.Create(
-                            new DiagnosticRelatedInformationAt("Constant defined here", constant.Location),
-                            new DiagnosticRelatedInformationAt("Constant defined here", _constant.Location)
-                        ));
+                        notFoundError = new PossibleDiagnostic($"Constant `{_constant.Identifier}` not found: multiple constants found")
+                            .WithRelatedInfo(ImmutableArray.Create(
+                                new DiagnosticRelatedInformationAt("Constant defined here", constant.Location),
+                                new DiagnosticRelatedInformationAt("Constant defined here", _constant.Location)
+                            ));
                     }
                     return false;
                 }
@@ -117,7 +117,7 @@ public partial class StatementCompiler
             {
                 if (perfectus < ConstantPerfectus.Name ||
                     notFoundError is null)
-                { notFoundError = new PossibleDiagnostic($"Constant \"{identifier}\" not found"); }
+                { notFoundError = new PossibleDiagnostic($"Constant `{identifier}` not found"); }
                 continue;
             }
             perfectus = ConstantPerfectus.Name;
@@ -126,7 +126,7 @@ public partial class StatementCompiler
             {
                 if (perfectus < ConstantPerfectus.File ||
                     notFoundError is null)
-                { notFoundError = new PossibleDiagnostic($"Constant \"{identifier}\" cannot be used due to its protection level"); }
+                { notFoundError = new PossibleDiagnostic($"Constant `{identifier}` cannot be used due to its protection level"); }
                 continue;
             }
             perfectus = ConstantPerfectus.File;
@@ -136,7 +136,7 @@ public partial class StatementCompiler
                 if (perfectus <= ConstantPerfectus.File ||
                     notFoundError is null)
                 {
-                    notFoundError = new PossibleDiagnostic($"Constant \"{identifier}\" not found: multiple constants found")
+                    notFoundError = new PossibleDiagnostic($"Constant `{identifier}` not found: multiple constants found")
                         .WithRelatedInfo(ImmutableArray.Create(
                             new DiagnosticRelatedInformationAt("Constant defined here", constant.Location),
                             new DiagnosticRelatedInformationAt("Constant defined here", _constant.Location)
@@ -158,7 +158,7 @@ public partial class StatementCompiler
 
         if (constant is null)
         {
-            notFoundError = new PossibleDiagnostic($"Constant \"{identifier}\" not found");
+            notFoundError = new PossibleDiagnostic($"Constant `{identifier}` not found");
             return false;
         }
 
@@ -174,7 +174,7 @@ public partial class StatementCompiler
                 BinaryOperatorCallExpression or
                 UnaryOperatorCallExpression)
             {
-                Diagnostics.Add(DiagnosticAt.Hint($"Unnecessary explicit temp modifier (\"{statement.Value.GetType().Name}\" statements are implicitly deallocated)", statement.Modifier, statement.File).WithTag(DiagnosticTag.Unnecessary));
+                Diagnostics.Add(DiagnosticAt.Hint($"Unnecessary explicit temp modifier (`{statement.Value.GetType().Name}` statements are implicitly deallocated)", statement.Modifier, statement.File).WithTag(DiagnosticTag.Unnecessary));
             }
 
             explicitly = true;
@@ -345,7 +345,7 @@ public partial class StatementCompiler
                 if (!pointerType.To.Is<StructType>(out structType))
                 {
                     result = null;
-                    error = new PossibleDiagnostic($"Invalid type \"{objectArg}\" used for constructor");
+                    error = new PossibleDiagnostic($"Invalid type `{objectArg}` used for constructor");
                     return false;
                 }
                 argumentsBuilder.Add(objectArg);
@@ -363,7 +363,7 @@ public partial class StatementCompiler
             else
             {
                 result = null;
-                error = new PossibleDiagnostic($"Invalid type \"{objectArg}\" used for constructor");
+                error = new PossibleDiagnostic($"Invalid type `{objectArg}` used for constructor");
                 return false;
             }
 
@@ -661,7 +661,7 @@ public partial class StatementCompiler
         }
 
         //if (GetConstant(variableDefinition.Identifier.Content, variableDefinition.File, out _, out _))
-        //{ Diagnostics.Add(DiagnosticAt.Error($"Constant \"{variableDefinition.Identifier}\" already defined", variableDefinition.Identifier, variableDefinition.File)); }
+        //{ Diagnostics.Add(DiagnosticAt.Error($"Constant `{variableDefinition.Identifier}` already defined", variableDefinition.Identifier, variableDefinition.File)); }
 
         CompileVariableAttributes(variableDefinition);
 
@@ -683,7 +683,7 @@ public partial class StatementCompiler
             }
             else if (variableDefinition.InitialValue is null)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"External constant \"{variableDefinition.ExternalConstantName}\" not found", variableDefinition));
+                Diagnostics.Add(DiagnosticAt.Error($"External constant `{variableDefinition.ExternalConstantName}` not found", variableDefinition));
                 constantValue = default;
             }
         }
@@ -692,7 +692,7 @@ public partial class StatementCompiler
         {
             if (!InternalConstants.TryGetValue(variableDefinition.InternalConstantName, out GeneralType? internalConstantType))
             {
-                Diagnostics.Add(DiagnosticAt.Warning($"Internal constant \"{variableDefinition.InternalConstantName}\" not found", variableDefinition));
+                Diagnostics.Add(DiagnosticAt.Warning($"Internal constant `{variableDefinition.InternalConstantName}` not found", variableDefinition));
             }
             else
             {
@@ -737,7 +737,7 @@ public partial class StatementCompiler
             {
                 if (!builtinType.TryGetRuntimeType(out RuntimeType runtimeType) || !constantValue.TryCast(runtimeType, out CompiledValue castedConstantValue))
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constantValue} of type \"{constantValue.Type}\" to {constantType}", variableDefinition.InitialValue?.Location ?? variableDefinition.Location));
+                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constantValue} of type `{constantValue.Type}` to {constantType}", variableDefinition.InitialValue?.Location ?? variableDefinition.Location));
                 }
                 else
                 {
@@ -832,8 +832,8 @@ public partial class StatementCompiler
 
                 if (match.IdentifierBadness == 1)
                 {
-                    match.Errors.Add(new PossibleDiagnostic($"Struct \"{structName}\" does not match with \"{@struct.Identifier}\"")
-                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct \"{@struct.Identifier}\" defined here", @struct.Location)));
+                    match.Errors.Add(new PossibleDiagnostic($"Struct `{structName}` does not match with `{@struct.Identifier}`")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct `{@struct.Identifier}` defined here", @struct.Location)));
                 }
                 else
                 {
@@ -852,8 +852,8 @@ public partial class StatementCompiler
             }
             else
             {
-                match.Errors.Add(new PossibleDiagnostic($"Cannot use struct \"{@struct.Identifier}\" due it's protection level")
-                    .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct \"{@struct.Identifier}\" defined here", @struct.Location)));
+                match.Errors.Add(new PossibleDiagnostic($"Cannot use struct `{@struct.Identifier}` due it's protection level")
+                    .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct `{@struct.Identifier}` defined here", @struct.Location)));
             }
 
             if (@struct.Template is null)
@@ -864,8 +864,8 @@ public partial class StatementCompiler
                 }
                 else
                 {
-                    match.Errors.Add(new PossibleDiagnostic($"Struct \"{@struct.Identifier}\" doesn't have generic parameters")
-                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct \"{@struct.Identifier}\" defined here", @struct.Location)));
+                    match.Errors.Add(new PossibleDiagnostic($"Struct `{@struct.Identifier}` doesn't have generic parameters")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct `{@struct.Identifier}` defined here", @struct.Location)));
                 }
             }
             else
@@ -876,8 +876,8 @@ public partial class StatementCompiler
                 }
                 else
                 {
-                    match.Errors.Add(new PossibleDiagnostic($"Wrong number of generic parameters used for struct \"{@struct.Identifier}\": expected {@struct.Template.Parameters.Length} used {genericParameterCount ?? 0}")
-                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct \"{@struct.Identifier}\" defined here", @struct.Location)));
+                    match.Errors.Add(new PossibleDiagnostic($"Wrong number of generic parameters used for struct `{@struct.Identifier}`: expected {@struct.Template.Parameters.Length} used {genericParameterCount ?? 0}")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Struct `{@struct.Identifier}` defined here", @struct.Location)));
                 }
             }
 
@@ -886,21 +886,22 @@ public partial class StatementCompiler
 
         if (candidates.Count == 0)
         {
-            error = new PossibleDiagnostic($"Struct \"{structName}\" not found");
+            error = new PossibleDiagnostic($"Struct `{structName}` not found");
             result = null;
             return false;
         }
 
         if (candidates.Count > 1)
         {
-            error = new PossibleDiagnostic($"Multiple structs matched").WithRelatedInfo(candidates.ToImmutableArray(v => new DiagnosticRelatedInformationAt($"Struct \"{v.Definition.Identifier}\" defined here", v.Definition.Location)));
+            error = new PossibleDiagnostic($"Multiple structs matched")
+                .WithRelatedInfo(candidates.ToImmutableArray(v => new DiagnosticRelatedInformationAt($"Struct `{v.Definition.Identifier}` defined here", v.Definition.Location)));
             result = null;
             return false;
         }
 
         if (candidates[0].Errors.Count > 0)
         {
-            error = new PossibleDiagnostic($"Struct \"{structName}\" not found", candidates[0].Errors.ToImmutableArray());
+            error = new PossibleDiagnostic($"Struct `{structName}` not found", candidates[0].Errors.ToImmutableArray());
             result = candidates[0].Definition;
             return false;
         }
@@ -970,8 +971,8 @@ public partial class StatementCompiler
 
                 if (match.IdentifierBadness == 1)
                 {
-                    match.Errors.Add(new PossibleDiagnostic($"Alias \"{aliasName}\" does not match with \"{alias.Identifier}\"")
-                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Alias \"{alias.Identifier}\" defined here", alias.Location)));
+                    match.Errors.Add(new PossibleDiagnostic($"Alias `{aliasName}` does not match with `{alias.Identifier}`")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Alias `{alias.Identifier}` defined here", alias.Location)));
                 }
                 else
                 {
@@ -990,8 +991,8 @@ public partial class StatementCompiler
             }
             else
             {
-                match.Errors.Add(new PossibleDiagnostic($"Cannot use alias \"{alias.Identifier}\" due it's protection level")
-                    .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Alias \"{alias.Identifier}\" defined here", alias.Location)));
+                match.Errors.Add(new PossibleDiagnostic($"Cannot use alias `{alias.Identifier}` due it's protection level")
+                    .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Alias `{alias.Identifier}` defined here", alias.Location)));
             }
 
             match.IsGenericParameterCountMatches = true;
@@ -1001,21 +1002,22 @@ public partial class StatementCompiler
 
         if (candidates.Count == 0)
         {
-            error = new PossibleDiagnostic($"Alias \"{aliasName}\" not found");
+            error = new PossibleDiagnostic($"Alias `{aliasName}` not found");
             result = null;
             return false;
         }
 
         if (candidates.Count > 1)
         {
-            error = new PossibleDiagnostic($"Multiple aliases matched").WithRelatedInfo(candidates.ToImmutableArray(v => new DiagnosticRelatedInformationAt($"Alias \"{v.Definition.Identifier}\" defined here", v.Definition.Location)));
+            error = new PossibleDiagnostic($"Multiple aliases matched")
+                .WithRelatedInfo(candidates.ToImmutableArray(v => new DiagnosticRelatedInformationAt($"Alias `{v.Definition.Identifier}` defined here", v.Definition.Location)));
             result = null;
             return false;
         }
 
         if (candidates[0].Errors.Count > 0)
         {
-            error = new PossibleDiagnostic($"Alias \"{aliasName}\" not found", candidates[0].Errors.ToImmutableArray());
+            error = new PossibleDiagnostic($"Alias `{aliasName}` not found", candidates[0].Errors.ToImmutableArray());
             result = candidates[0].Definition;
             return false;
         }
@@ -1107,8 +1109,8 @@ public partial class StatementCompiler
 
                 if (match.IdentifierBadness == 1)
                 {
-                    match.Errors.Add(new PossibleDiagnostic($"Enum \"{enumName}\" does not match with \"{@enum.Identifier}\"")
-                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Enum \"{@enum.Identifier}\" defined here", @enum.Location)));
+                    match.Errors.Add(new PossibleDiagnostic($"Enum `{enumName}` does not match with `{@enum.Identifier}`")
+                        .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Enum `{@enum.Identifier}` defined here", @enum.Location)));
                 }
                 else
                 {
@@ -1127,8 +1129,8 @@ public partial class StatementCompiler
             }
             else
             {
-                match.Errors.Add(new PossibleDiagnostic($"Cannot use enum \"{@enum.Identifier}\" due it's protection level")
-                    .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Enum \"{@enum.Identifier}\" defined here", @enum.Location)));
+                match.Errors.Add(new PossibleDiagnostic($"Cannot use enum `{@enum.Identifier}` due it's protection level")
+                    .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Enum `{@enum.Identifier}` defined here", @enum.Location)));
             }
 
             match.IsGenericParameterCountMatches = true;
@@ -1138,21 +1140,22 @@ public partial class StatementCompiler
 
         if (candidates.Count == 0)
         {
-            error = new PossibleDiagnostic($"Enum \"{enumName}\" not found");
+            error = new PossibleDiagnostic($"Enum `{enumName}` not found");
             result = null;
             return false;
         }
 
         if (candidates.Count > 1)
         {
-            error = new PossibleDiagnostic($"Multiple enums matched").WithRelatedInfo(candidates.ToImmutableArray(v => new DiagnosticRelatedInformationAt($"Enum \"{v.Definition.Identifier}\" defined here", v.Definition.Location)));
+            error = new PossibleDiagnostic($"Multiple enums matched")
+                .WithRelatedInfo(candidates.ToImmutableArray(v => new DiagnosticRelatedInformationAt($"Enum `{v.Definition.Identifier}` defined here", v.Definition.Location)));
             result = null;
             return false;
         }
 
         if (candidates[0].Errors.Count > 0)
         {
-            error = new PossibleDiagnostic($"Enum \"{enumName}\" not found", candidates[0].Errors.ToImmutableArray());
+            error = new PossibleDiagnostic($"Enum `{enumName}` not found", candidates[0].Errors.ToImmutableArray());
             result = candidates[0].Definition;
             return false;
         }
@@ -1203,7 +1206,7 @@ public partial class StatementCompiler
             }
         }
 
-        error = new PossibleDiagnostic($"Variable \"{variableName}\" not found");
+        error = new PossibleDiagnostic($"Variable `{variableName}` not found");
         compiledVariable = null;
         return false;
     }
@@ -1243,12 +1246,12 @@ public partial class StatementCompiler
 
             if (perfectus >= GlobalVariablePerfectus.File)
             {
-                error_ = new PossibleDiagnostic($"Global variable \"{variableName}\" not found: multiple variables matched in the same file");
+                error_ = new PossibleDiagnostic($"Global variable `{variableName}` not found: multiple variables matched in the same file");
                 if (result_ is not null)
                 {
                     error_ = error_.WithRelatedInfo(ImmutableArray.Create(
-                        new DiagnosticRelatedInformationAt("Constant defined here", variable.Location),
-                        new DiagnosticRelatedInformationAt("Constant defined here", result_.Location)
+                        new DiagnosticRelatedInformationAt("Global variable defined here", variable.Location),
+                        new DiagnosticRelatedInformationAt("Global variable defined here", result_.Location)
                     ));
                 }
                 // Debugger.Break();
@@ -1283,7 +1286,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        error = error_ ?? new PossibleDiagnostic($"Global variable \"{variableName}\" not found");
+        error = error_ ?? new PossibleDiagnostic($"Global variable `{variableName}` not found");
         result = null;
         return false;
     }
@@ -1302,7 +1305,7 @@ public partial class StatementCompiler
             }
         }
 
-        error = new PossibleDiagnostic($"Parameter \"{parameterName}\" not found");
+        error = new PossibleDiagnostic($"Parameter `{parameterName}` not found");
         parameter = null;
         return false;
     }
@@ -1325,7 +1328,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        error = new PossibleDiagnostic($"Instruction label \"{identifier}\" not found");
+        error = new PossibleDiagnostic($"Instruction label `{identifier}` not found");
         instructionLabel = null;
         return false;
     }
@@ -1441,7 +1444,7 @@ public partial class StatementCompiler
             }
         }
 
-        error = new($"Can't cast \"{source}\" to \"{destination}\" implicitly");
+        error = new($"Can't cast `{source}` to `{destination}` implicitly");
         return false;
     }
 
@@ -1457,19 +1460,19 @@ public partial class StatementCompiler
                 string literalValue = stringLiteral.Value;
                 if (destArrayType.Length is null)
                 {
-                    error = new($"Can't cast literal value \"{literalValue}\" (length of {literalValue.Length}) to stack array \"{destination}\" (without length)", stringLiteral);
+                    error = new($"Can't cast literal value `{literalValue}` (length of {literalValue.Length}) to stack array `{destination}` (without length)", stringLiteral);
                     return false;
                 }
 
                 if (!destArrayType.Length.HasValue)
                 {
-                    error = new($"Can't cast literal value \"{literalValue}\" (length of {literalValue.Length}) to stack array \"{destination}\" (length of <runtime value>)", stringLiteral);
+                    error = new($"Can't cast literal value `{literalValue}` (length of {literalValue.Length}) to stack array `{destination}` (length of <runtime value>)", stringLiteral);
                     return false;
                 }
 
                 if (literalValue.Length != destArrayType.Length.Value)
                 {
-                    error = new($"Can't cast literal value \"{literalValue}\" (length of {literalValue.Length}) to stack array \"{destination}\" (length of \"{destArrayType.Length.ToString() ?? "null"}\")", stringLiteral);
+                    error = new($"Can't cast literal value `{literalValue}` (length of {literalValue.Length}) to stack array `{destination}` (length of {destArrayType.Length.Value})", stringLiteral);
                     return false;
                 }
 
@@ -1485,13 +1488,13 @@ public partial class StatementCompiler
                 {
                     if (!arrayType.Length.HasValue)
                     {
-                        error = new($"Can't cast literal value \"{stringLiteral.Value}\" (length of {stringLiteral.Value.Length}) to array \"{destination}\" (length of <runtime value>)", stringLiteral);
+                        error = new($"Can't cast literal value `{stringLiteral.Value}` (length of {stringLiteral.Value.Length}) to array `{destination}` (length of <runtime value>)", stringLiteral);
                         return false;
                     }
 
                     if (stringLiteral.Value.Length != arrayType.Length.Value)
                     {
-                        error = new($"Can't cast literal value \"{stringLiteral.Value}\" (length of {stringLiteral.Value.Length}) to array \"{destination}\" (length of \"{arrayType.Length.ToString() ?? "null"}\")", stringLiteral);
+                        error = new($"Can't cast literal value `{stringLiteral.Value}` (length of {stringLiteral.Value.Length}) to array `{destination}` (length of {arrayType.Length.Value.ToString()})", stringLiteral);
                         return false;
                     }
                 }
@@ -1501,7 +1504,7 @@ public partial class StatementCompiler
             }
         }
 
-        error = new($"Can't cast \"{source}\" to \"{destination}\" implicitly", value);
+        error = new($"Can't cast `{source}` to `{destination}` implicitly", value);
         return false;
     }
 
@@ -1603,13 +1606,13 @@ public partial class StatementCompiler
                     {
                         if (!arrayType.Length.HasValue)
                         {
-                            error = new($"Can't cast literal value \"{stringInstance.Value}\" (length of {stringInstance.Value.Length}) to array \"{destination}\" (with a non-constant length)", stringInstance);
+                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of {stringInstance.Value.Length}) to array `{destination}` (with a non-constant length)", stringInstance);
                             return false;
                         }
 
                         if (stringInstance.Value.Length != arrayType.Length.Value)
                         {
-                            error = new($"Can't cast literal value \"{stringInstance.Value}\" (length of {stringInstance.Value.Length}) to array \"{destination}\" (length of {arrayType.Length.Value})", stringInstance);
+                            error = new($"Can't cast literal value `{stringInstance.Value}` (length of {stringInstance.Value.Length}) to array `{destination}` (length of {arrayType.Length.Value})", stringInstance);
                             return false;
                         }
                     }
@@ -1627,19 +1630,19 @@ public partial class StatementCompiler
                 {
                     if (destArrayType.Length is null)
                     {
-                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {stackStringInstance.Value.Length}) to stack array \"{destination}\" (without length)", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {stackStringInstance.Value.Length}) to stack array `{destination}` (without length)", stackStringInstance);
                         return false;
                     }
 
                     if (!destArrayType.Length.HasValue)
                     {
-                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {stackStringInstance.Value.Length}) to stack array \"{destination}\" (with a non-constant length)", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {stackStringInstance.Value.Length}) to stack array `{destination}` (with a non-constant length)", stackStringInstance);
                         return false;
                     }
 
                     if (stackStringInstance.Value.Length != destArrayType.Length.Value)
                     {
-                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {stackStringInstance.Value.Length}) to stack array \"{destination}\" (length of {destArrayType.Length.Value})", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {stackStringInstance.Value.Length}) to stack array `{destination}` (length of {destArrayType.Length.Value})", stackStringInstance);
                         return false;
                     }
 
@@ -1662,19 +1665,19 @@ public partial class StatementCompiler
 
                     if (destArrayType2.Length is null)
                     {
-                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (without length)", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {bytes.Length}) to stack array `{destination}` (without length)", stackStringInstance);
                         return false;
                     }
 
                     if (!destArrayType2.Length.HasValue)
                     {
-                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (with a non-constant length)", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {bytes.Length}) to stack array `{destination}` (with a non-constant length)", stackStringInstance);
                         return false;
                     }
 
                     if (bytes.Length != destArrayType2.Length.Value)
                     {
-                        error = new($"Can't cast literal value \"{stackStringInstance.Value}\" (length of {bytes.Length}) to stack array \"{destination}\" (length of {destArrayType2.Length.Value})", stackStringInstance);
+                        error = new($"Can't cast literal value `{stackStringInstance.Value}` (length of {bytes.Length}) to stack array `{destination}` (length of {destArrayType2.Length.Value})", stackStringInstance);
                         return false;
                     }
 
@@ -1764,7 +1767,7 @@ public partial class StatementCompiler
         BasicType.U32 => new CompiledValue(default(uint)),
         BasicType.I32 => new CompiledValue(default(int)),
         BasicType.F32 => new CompiledValue(default(float)),
-        _ => throw new NotImplementedException($"Type \"{type}\" can't have value"),
+        _ => throw new NotImplementedException($"Type `{type}` can't have value"),
     };
 
     static bool GetInitialValue(GeneralType type, out CompiledValue value)
@@ -1820,13 +1823,20 @@ public partial class StatementCompiler
         {
             if (!attribute.TryGetValue(out string? literalTypeName))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Attribute \"{attribute.Identifier}\" needs one string argument", attribute));
+                Diagnostics.Add(DiagnosticAt.Error($"Attribute `{attribute.Identifier}` needs one string argument", attribute));
                 return default;
             }
             return literalTypeName;
         }
 
         type = null;
+        static DiagnosticRelatedInformationAt GetTypeDefinitionRelatedInfo(GeneralType type) => type switch
+        {
+            AliasType v => new($"Alias `{v.Definition.Identifier}` defined here", v.Definition.Location),
+            EnumType v => new($"Enum `{v.Definition.Identifier}` defined here", v.Definition.Location),
+            StructType v => new($"Struct `{v.Struct.Identifier}` defined here", v.Struct.Location),
+            _ => throw new UnreachableException(),
+        };
 
         foreach (AliasDefinition aliasDefinition in AliasDefinitions)
         {
@@ -1836,7 +1846,11 @@ public partial class StatementCompiler
                 {
                     if (type is not null)
                     {
-                        error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute);
+                        error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute)
+                            .WithRelatedInfo(ImmutableArray.Create(
+                                new DiagnosticRelatedInformationAt($"Alias `{aliasDefinition.Identifier}` defined here", aliasDefinition.Location),
+                                GetTypeDefinitionRelatedInfo(type)
+                            ));
                         return false;
                     }
 
@@ -1860,7 +1874,11 @@ public partial class StatementCompiler
                 {
                     if (type is not null)
                     {
-                        error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute);
+                        error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute)
+                            .WithRelatedInfo(ImmutableArray.Create(
+                                new DiagnosticRelatedInformationAt($"Enum `{enumDefinition.Identifier}` defined here", enumDefinition.Location),
+                                GetTypeDefinitionRelatedInfo(type)
+                            ));
                         return false;
                     }
 
@@ -1879,7 +1897,11 @@ public partial class StatementCompiler
                 {
                     if (type is not null)
                     {
-                        error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute);
+                        error = new PossibleDiagnostic($"Multiple type definitions marked as an internal type `{by}`", attribute)
+                            .WithRelatedInfo(ImmutableArray.Create(
+                                new DiagnosticRelatedInformationAt($"Struct `{structDefinition.Identifier}` defined here", structDefinition.Location),
+                                GetTypeDefinitionRelatedInfo(type)
+                            ));
                         return false;
                     }
 
@@ -2827,7 +2849,7 @@ public partial class StatementCompiler
             UnaryOperatorCallExpression.UnaryPlus => +left,
             UnaryOperatorCallExpression.UnaryMinus => -left,
 
-            _ => throw new NotImplementedException($"Unknown unary operator \"{@operator}\""),
+            _ => throw new NotImplementedException($"Unknown unary operator `{@operator}`"),
         };
         return true;
     }
@@ -2862,7 +2884,7 @@ public partial class StatementCompiler
                 BinaryOperatorCallExpression.CompLEQ => new CompiledValue(left <= right),
                 BinaryOperatorCallExpression.CompGEQ => new CompiledValue(left >= right),
 
-                _ => throw new NotImplementedException($"Unknown binary operator \"{@operator}\""),
+                _ => throw new NotImplementedException($"Unknown binary operator `{@operator}`"),
             };
             return true;
         }
@@ -3215,13 +3237,13 @@ public partial class StatementCompiler
 
         if (!returnValue.HasValue)
         {
-            error = new PossibleDiagnostic($"Function \"{found}\" didn't return anything", functionCall);
+            error = new PossibleDiagnostic($"Function `{found}` didn't return anything", functionCall);
             return false;
         }
 
         if (runtimeStatements.Length > 0)
         {
-            error = new PossibleDiagnostic($"Function \"{found}\" contains runtime statements", functionCall);
+            error = new PossibleDiagnostic($"Function `{found}` contains runtime statements", functionCall);
             return false;
         }
 
@@ -3246,7 +3268,7 @@ public partial class StatementCompiler
         if (!context.TryGetVariable(identifier.Variable, out value))
         {
             value = CompiledValue.Null;
-            error = new PossibleDiagnostic($"Variable \"{identifier.Variable.Identifier}\" not found", identifier);
+            error = new PossibleDiagnostic($"Variable `{identifier.Variable.Identifier}` not found", identifier);
             return false;
         }
 
@@ -3258,7 +3280,7 @@ public partial class StatementCompiler
         if (!context.TryGetParameter(identifier.Parameter.Identifier, out value))
         {
             value = CompiledValue.Null;
-            error = new PossibleDiagnostic($"Parameter \"{identifier.Parameter.Identifier}\" not found", identifier);
+            error = new PossibleDiagnostic($"Parameter `{identifier.Parameter.Identifier}` not found", identifier);
             return false;
         }
 
@@ -3276,7 +3298,7 @@ public partial class StatementCompiler
         if (!typeCast.Type.Is(out BuiltinType? builtinType)
             || !builtinType.TryGetRuntimeType(out RuntimeType runtimeDstType))
         {
-            error = new PossibleDiagnostic($"Cannot compute value of type \"{typeCast.Type}\"", typeCast.TypeExpression);
+            error = new PossibleDiagnostic($"Cannot compute value of type `{typeCast.Type}`", typeCast.TypeExpression);
             return false;
         }
 
@@ -3294,7 +3316,7 @@ public partial class StatementCompiler
         if (!typeCast.Type.Is(out BuiltinType? builtinType)
             || !builtinType.TryGetRuntimeType(out RuntimeType runtimeType))
         {
-            error = new PossibleDiagnostic($"Cannot cast to type \"{typeCast.Type}\"", typeCast.TypeExpression);
+            error = new PossibleDiagnostic($"Cannot cast to type `{typeCast.Type}`", typeCast.TypeExpression);
             return false;
         }
 
@@ -3550,14 +3572,14 @@ public partial class StatementCompiler
                 if (!parameterValues[i].TryCast(function.Function.Parameters[i].Type, out CompiledValue castedValue))
                 {
                     // Debugger.Break();
-                    error = new PossibleDiagnostic($"Argument {i}: Can't cast value {parameterValues[i]} of type {parameterValues[i].Type} to {function.Function.Parameters[i].Type}");
+                    error = new PossibleDiagnostic($"Argument {i}: Can't cast value {parameterValues[i]} of type `{parameterValues[i].Type}` to `{function.Function.Parameters[i].Type}`");
                     return false;
                 }
 
                 if (!function.Function.Parameters[i].Type.SameAs(castedValue.Type))
                 {
                     // Debugger.Break();
-                    error = new PossibleDiagnostic($"Argument {i}: {function.Function.Parameters[i].Type} != {castedValue.Type}");
+                    error = new PossibleDiagnostic($"Argument {i}: Expected `{function.Function.Parameters[i].Type}` but passed `{castedValue.Type}`");
                     return false;
                 }
 
@@ -3598,7 +3620,7 @@ public partial class StatementCompiler
 
                 if (!context.Frames.LastOrDefault.ReturnValue.HasValue)
                 {
-                    error = new PossibleDiagnostic($"Function \"{function.ToReadable()}\" didn't return anything");
+                    error = new PossibleDiagnostic($"Function `{function.ToReadable()}` didn't return anything");
                     return false;
                 }
 
@@ -3611,7 +3633,7 @@ public partial class StatementCompiler
 
                 if (context.Frames.LastOrDefault.ReturnValue.HasValue)
                 {
-                    error = new PossibleDiagnostic($"Function \"{function.ToReadable()}\" did return something");
+                    error = new PossibleDiagnostic($"Function `{function.ToReadable()}` did return something");
                     return false;
                 }
 
@@ -3775,7 +3797,7 @@ public partial class StatementCompiler
 
         if (!context.Frames.LastOrDefault.Scopes.LastOrDefault.Variables.TryAdd(variableDefinition, value))
         {
-            error = new PossibleDiagnostic($"Variable \"{variableDefinition.Identifier}\" already exists", variableDefinition);
+            error = new PossibleDiagnostic($"Variable `{variableDefinition.Identifier}` already exists", variableDefinition);
             return false;
         }
 
@@ -3791,7 +3813,7 @@ public partial class StatementCompiler
         {
             if (!context.TrySetVariable(targetVariable.Variable, value))
             {
-                error = new PossibleDiagnostic($"Variable \"{targetVariable.Variable}\" not found", targetVariable);
+                error = new PossibleDiagnostic($"Variable `{targetVariable.Variable}` not found", targetVariable);
                 return false;
             }
         }
@@ -3799,7 +3821,7 @@ public partial class StatementCompiler
         {
             if (!context.TrySetParameter(targetParameter.Parameter.Identifier, value))
             {
-                error = new PossibleDiagnostic($"Variable \"{targetParameter.Parameter.Identifier}\" not found", targetParameter);
+                error = new PossibleDiagnostic($"Variable `{targetParameter.Parameter.Identifier}` not found", targetParameter);
                 return false;
             }
         }
@@ -3971,8 +3993,8 @@ public partial class StatementCompiler
         error = default;
         switch (type.Type)
         {
-            case BasicType.Void: error = new PossibleDiagnostic($"Can't get the size of type \"{type}\""); return false;
-            case BasicType.Any: error = new PossibleDiagnostic($"Can't get the size of type \"{type}\""); return false;
+            case BasicType.Void: error = new PossibleDiagnostic($"Can't get the size of type `{type}`"); return false;
+            case BasicType.Any: error = new PossibleDiagnostic($"Can't get the size of type `{type}`"); return false;
             case BasicType.U8: size = 1; return true;
             case BasicType.I8: size = 1; return true;
             case BasicType.U16: size = 2; return true;
@@ -4072,8 +4094,8 @@ public partial class StatementCompiler
         error = default;
         switch (type.Type)
         {
-            case BasicType.Void: error = new PossibleDiagnostic($"Can't get the size of type \"{type}\"", type); return false;
-            case BasicType.Any: error = new PossibleDiagnostic($"Can't get the size of type \"{type}\"", type); return false;
+            case BasicType.Void: error = new PossibleDiagnostic($"Can't get the size of type `{type}`", type); return false;
+            case BasicType.Any: error = new PossibleDiagnostic($"Can't get the size of type `{type}`", type); return false;
             case BasicType.U8: size = 1; return true;
             case BasicType.I8: size = 1; return true;
             case BasicType.U16: size = 2; return true;
@@ -4402,7 +4424,7 @@ public partial class StatementCompiler
             case null:
                 break;
             default:
-                throw new NotImplementedException($"Unimplemented statement \"{statement.GetType().Name}\"");
+                throw new NotImplementedException($"Unimplemented statement `{statement.GetType().Name}`");
         }
     }
 

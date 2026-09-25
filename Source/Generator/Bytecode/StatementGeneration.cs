@@ -33,7 +33,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Deallocator.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Deallocator.TypeArguments));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{cleanup.Deallocator.Template.ToReadable()}\" wasn't compiled", cleanup));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function `{cleanup.Deallocator.Template.ToReadable()}` wasn't compiled", cleanup));
             return;
         }
 
@@ -42,7 +42,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             throw new NotImplementedException();
         }
 
-        AddComment($"Call \"{cleanup.Deallocator.Template.ToReadable()}\" {{");
+        AddComment($"Call `{cleanup.Deallocator.Template.ToReadable()}` {{");
 
         if (cleanup.Deallocator.Template.ReturnSomething)
         { throw new NotImplementedException(); }
@@ -90,7 +90,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, cleanup.Destructor.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, cleanup.Destructor.TypeArguments));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{cleanup.Destructor.Template.ToReadable()}\" wasn't compiled", cleanup));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function `{cleanup.Destructor.Template.ToReadable()}` wasn't compiled", cleanup));
             return;
         }
 
@@ -231,13 +231,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
         GeneralType lengthType = type.Length.Type;
         if (!lengthType.Is<BuiltinType>())
         {
-            error = new PossibleDiagnostic($"Array length must be a builtin type and not \"{lengthType}\"", type.Length);
+            error = new PossibleDiagnostic($"Array length must be a builtin type and not `{lengthType}`", type.Length);
             return false;
         }
 
         if (FindBitWidth(lengthType, type.Length) != BitWidth._32)
         {
-            error = new PossibleDiagnostic($"Array length must be a 32 bit integer and not \"{lengthType}\"", type.Length);
+            error = new PossibleDiagnostic($"Array length must be a 32 bit integer and not `{lengthType}`", type.Length);
             return false;
         }
 
@@ -298,7 +298,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (newVariable.InitialValue is null) return;
 
-        AddComment($"New Variable \"{newVariable.Identifier}\" {{");
+        AddComment($"New Variable `{newVariable.Identifier}` {{");
 
         if (newVariable.InitialValue is CompiledList literalList)
         {
@@ -431,7 +431,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         if (BreakInstructions.Count == 0)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"The keyword \"{StatementKeywords.Break}\" does not available in the current context", keywordCall));
+            Diagnostics.Add(DiagnosticAt.Error($"The keyword `{StatementKeywords.Break}` does not available in the current context", keywordCall));
             return;
         }
 
@@ -469,7 +469,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             GeneralType parameterType = GeneralType.TryInsertTypeParameters(parameter.Type, typeArguments);
 
             if (FindSize(argumentType, argument) != FindSize(parameterType, parameter.Definition))
-            { Diagnostics.Add(DiagnosticAt.Internal($"Bad argument type passed: expected \"{parameterType}\" passed \"{argumentType}\"", argument.Value)); }
+            { Diagnostics.Add(DiagnosticAt.Internal($"Bad argument type passed: expected `{parameterType}` passed `{argumentType}`", argument.Value)); }
 
             AddComment($" Pass {parameter}:");
 
@@ -506,11 +506,11 @@ public partial class CodeGeneratorForMain : CodeGenerator
         CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, caller.Declaration) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, null));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{caller.Declaration.ToReadable()}\" wasn't compiled", caller));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function `{caller.Declaration.ToReadable()}` wasn't compiled", caller));
             return;
         }
 
-        AddComment($"Call \"{caller.Declaration.ToReadable()}\" {{");
+        AddComment($"Call `{caller.Declaration.ToReadable()}` {{");
 
         if (caller.Function.ReturnValueSize > 0 && caller.SaveValue)
         {
@@ -553,7 +553,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForFunctionCall_External(CompiledExternalFunctionCall caller)
     {
-        AddComment($"Call \"{caller.Declaration.ToReadable()}\" {{");
+        AddComment($"Call `{caller.Declaration.ToReadable()}` {{");
 
         if (caller.Function.ReturnValueSize > 0 && caller.SaveValue)
         {
@@ -582,7 +582,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, caller.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, caller.Function.TypeArguments));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{caller.Function.Template.ToReadable()}\" wasn't compiled", caller));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function `{caller.Function.Template.ToReadable()}` wasn't compiled", caller));
             return;
         }
 
@@ -668,10 +668,10 @@ public partial class CodeGeneratorForMain : CodeGenerator
 #if UNITY_BURST
                     IntPtr ptr = System.Runtime.InteropServices.Marshal.GetFunctionPointerForDelegate(method);
                     unsafe { externFunc = new((delegate* unmanaged[Cdecl]<nint, nint, nint, void>)ptr, id, parametersSize, returnValueSize, 0, ExternalFunctionScopedSyncFlags.MSILPointerMarshal); }
-                    //UnityEngine.Debug.LogWarning($"MSIL {f.ToReadable()} --> {raw ?? method.Method} ({externFunc})");
+                    //UnityEngine.Debug.LogWarning($"MSIL `{f.ToReadable()}` --> `{raw ?? method.Method}` ({externFunc})");
 #else
                     externFunc = new(method, id, parametersSize, returnValueSize, 0, ExternalFunctionScopedSyncFlags.MSILPointerMarshal);
-                    Debug.WriteLine($"MSIL {f.ToReadable()} --> {raw ?? method.Method} ({externFunc})");
+                    Debug.WriteLine($"MSIL `{f.ToReadable()}` --> `{raw ?? method.Method}` ({externFunc})");
 #endif
                     GeneratedUnmanagedFunctions.Add((externFunc, method));
                 }
@@ -691,7 +691,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                     Type = caller.Type,
                 }, isTailCall);
 
-                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function {f.Function.ToReadable()} compiled into MSIL", caller));
+                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function `{f.Function.ToReadable()}` compiled into MSIL", caller));
 
                 Diagnostics.AddRange(ILGenerator.Diagnostics);
 
@@ -703,13 +703,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
             //{
             //    ILGenerator.GenerateImplMarshaled(f, out _);
             //}
-            Diagnostics.Add(DiagnosticAt.FailedOptimization($"Failed to generate MSIL for function {f.Function}", caller).WithSuberrors(ILGenerator.Diagnostics.Diagnostics.Where(v => v.Level == DiagnosticsLevel.Error)));
+            Diagnostics.Add(DiagnosticAt.FailedOptimization($"Failed to generate MSIL for function `{f.Function}`", caller).WithSuberrors(ILGenerator.Diagnostics.Diagnostics.Where(v => v.Level == DiagnosticsLevel.Error)));
             ILGenerator.Diagnostics.Clear();
         }
 
         if (isTailCall)
         {
-            AddComment($"Tailcall {caller.Function.Template.ToReadable()} {{");
+            AddComment($"Tailcall `{caller.Function.Template.ToReadable()}` {{");
 
             AddComment("Cleanup function scopes {");
             for (int i = CleanupStack2.Count - 1; i >= 0; i--)
@@ -791,7 +791,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (anyCall.Arguments.Length != functionType.Parameters.Length)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function \"{functionType}\": required {functionType.Parameters.Length} passed {anyCall.Arguments.Length}", anyCall));
+            Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function `{functionType}`: required {functionType.Parameters.Length} passed {anyCall.Arguments.Length}", anyCall));
             return;
         }
 
@@ -809,11 +809,11 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return false;
         }))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Argument types of caller \"{anyCall}\" doesn't match with callee \"{functionType}\"", anyCall).WithSuberrors(argumentError?.ToError(anyCall)));
+            Diagnostics.Add(DiagnosticAt.Error($"Argument types of caller `{anyCall}` doesn't match with callee `{functionType}`", anyCall).WithSuberrors(argumentError?.ToError(anyCall)));
             return;
         }
 
-        AddComment($"Call (runtime) \"{functionType}\" {{");
+        AddComment($"Call (runtime) `{functionType}` {{");
 
         if (functionType.ReturnSomething)
         {
@@ -1139,7 +1139,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
             default:
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{@operator.Operator}\"", @operator));
+                Diagnostics.Add(DiagnosticAt.Error($"Unknown operator `{@operator.Operator}`", @operator));
                 return;
             }
         }
@@ -1501,7 +1501,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     }
     void GenerateCodeForStatement(CompiledStackAllocation newInstance)
     {
-        AddComment($"new \"{newInstance.Type}\" {{");
+        AddComment($"new `{newInstance.Type}` {{");
 
         StackAlloc(FindSize(newInstance.Type, newInstance), true);
 
@@ -1512,11 +1512,11 @@ public partial class CodeGeneratorForMain : CodeGenerator
         CompiledFunction? f = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, constructorCall.Function.Template) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, constructorCall.Function.TypeArguments));
         if (f is null)
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Function \"{constructorCall.Function.Template.ToReadable()}\" wasn't compiled", constructorCall));
+            Diagnostics.Add(DiagnosticAt.Internal($"Function `{constructorCall.Function.Template.ToReadable()}` wasn't compiled", constructorCall));
             return;
         }
 
-        AddComment($"Call \"{constructorCall.Function.Template.ToReadable()}\" {{");
+        AddComment($"Call `{constructorCall.Function.Template.ToReadable()}` {{");
 
         GenerateCodeForStatement(constructorCall.Object);
 
@@ -1548,7 +1548,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
         else
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Invalid type \"{constructorCall.Object.Type}\" used for constructor", constructorCall.Object));
+            Diagnostics.Add(DiagnosticAt.Internal($"Invalid type `{constructorCall.Object.Type}` used for constructor", constructorCall.Object));
             return;
         }
 
@@ -1592,7 +1592,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             if (!prevType.Is(out StructType? structPointerType))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Could not get the field offsets of type \"{prevType}\"", field.Object));
+                Diagnostics.Add(DiagnosticAt.Error($"Could not get the field offsets of type `{prevType}`", field.Object));
                 return;
             }
 
@@ -1653,7 +1653,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             if (!indexType.Is<BuiltinType>())
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Index must be a builtin type (i.e. int) and not \"{indexType}\"", index.Index));
+                Diagnostics.Add(DiagnosticAt.Error($"Index must be a builtin type (i.e. `{TypeKeywords.I32}`) and not `{indexType}`", index.Index));
                 return;
             }
 
@@ -1702,7 +1702,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             return;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type \"{prevType}\" not found", index));
+        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type `{prevType}` not found", index));
     }
     void GenerateAddressResolver(Address address)
     {
@@ -1743,7 +1743,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
                 if (!indexType.Is<BuiltinType>())
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Index type must be builtin (ie. \"int\") and not \"{indexType}\"", runtimeIndex.IndexValue));
+                    Diagnostics.Add(DiagnosticAt.Error($"Index type must be builtin (ie. `{TypeKeywords.I32}`) and not `{indexType}`", runtimeIndex.IndexValue));
                     return;
                 }
 
@@ -1932,7 +1932,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             {
                 if (statementSize < targetSize)
                 {
-                    AddComment($"Grow \"{statementBuiltinType}\" ({statementSize} bytes) to \"{targetbuiltinType}\" ({targetSize}) {{");
+                    AddComment($"Grow `{statementBuiltinType}` ({statementSize} bytes) to `{targetbuiltinType}` ({targetSize}) {{");
 
                     AddComment("Make space");
 
@@ -1953,7 +1953,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 }
                 else if (statementSize > targetSize)
                 {
-                    AddComment($"Shrink \"{statementBuiltinType}\" ({statementSize} bytes) to \"{targetbuiltinType}\" ({targetSize}) {{");
+                    AddComment($"Shrink `{statementBuiltinType}` ({statementSize} bytes) to `{targetbuiltinType}` ({targetSize}) {{");
 
                     AddComment("Make space");
 
@@ -1978,12 +1978,12 @@ public partial class CodeGeneratorForMain : CodeGenerator
                     return;
                 }
 
-                Diagnostics.Add(DiagnosticAt.Error($"Can't modify the size of the value. You tried to convert from \"{statementBuiltinType}\" (size of {statementSize}) to \"{targetbuiltinType}\" (size of {targetSize})", typeCast));
+                Diagnostics.Add(DiagnosticAt.Error($"Can't modify the size of the value. You tried to convert from `{statementBuiltinType}` (size of {statementSize}) to `{targetbuiltinType}` (size of {targetSize})", typeCast));
                 return;
             }
         }
 
-        Diagnostics.Add(DiagnosticAt.Warning($"Ignoring invalid type cast ({statementType} -> {targetType})", typeCast));
+        Diagnostics.Add(DiagnosticAt.Warning($"Ignoring invalid type cast from `{statementType}` to `{targetType}`", typeCast));
         GenerateCodeForStatement(typeCast.Value);
     }
     void GenerateCodeForStatement(CompiledCompilerVariableAccess statement)
@@ -2035,7 +2035,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case CompiledBlock v: GenerateCodeForStatement(v); break;
             case CompiledLabelDeclaration v: GenerateCodeForStatement(v); break;
             case CompiledEmptyStatement: break;
-            default: throw new NotImplementedException($"Unimplemented statement \"{statement.GetType().Name}\"");
+            default: throw new NotImplementedException($"Unimplemented statement `{statement.GetType().Name}`");
         }
 
         if (startInstruction != Code.Offset && statement is not CompiledExpression and not CompiledWhileLoop and not CompiledForLoop and not CompiledBranch and not CompiledBlock and not CompiledDummyExpression and not CompiledMeowExpression)
@@ -2082,7 +2082,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case CompiledLambda v: GenerateCodeForStatement(v); break;
             case CompiledEnumMemberAccess v: GenerateCodeForStatement(v); break;
             case CompiledCompilerVariableAccess v: GenerateCodeForStatement(v); break;
-            default: throw new NotImplementedException($"Unimplemented statement \"{statement.GetType().Name}\"");
+            default: throw new NotImplementedException($"Unimplemented statement `{statement.GetType().Name}`");
         }
 
         if (startInstruction != Code.Offset && statement is not CompiledDummyExpression and not CompiledMeowExpression)
@@ -2170,7 +2170,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             }
             default:
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{@operator.Operator}\"", @operator));
+                Diagnostics.Add(DiagnosticAt.Error($"Unknown operator `{@operator.Operator}`", @operator));
                 return;
             }
         }
@@ -2518,7 +2518,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         if (FindBitWidth(statementToSet.Address.Type, statementToSet.Address) != Settings.PointerBitWidth)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Type \"{statementToSet.Address.Type}\" cant be a pointer", statementToSet.Address));
+            Diagnostics.Add(DiagnosticAt.Error($"Type `{statementToSet.Address.Type}` cant be a pointer", statementToSet.Address));
             return;
         }
 
@@ -2740,7 +2740,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
         if (body is null)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function \"{function.ToReadable()}\" does not have a body", function));
+            Diagnostics.Add(DiagnosticAt.Error($"Function `{function.ToReadable()}` does not have a body", function));
             return;
         }
 
@@ -3219,14 +3219,14 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 InstructionLabel label = LabelForDefinition(TemplateInstance.New(f, null));
                 if (!label.IsMarked)
                 {
-                    Diagnostics.Add(DiagnosticAt.Internal($"Exposed function \"{f.ToReadable()}\" was not compiled", f.Definition.Identifier, f.File));
+                    Diagnostics.Add(DiagnosticAt.Internal($"Exposed function `{f.ToReadable()}` was not compiled", f.Definition.Identifier, f.File));
                     continue;
                 }
 
                 CompiledFunction? e = Functions.FirstOrDefault(v => Utils.ReferenceEquals(v.Function, f) && StatementCompiler.TypeArgumentsEquals(v.TypeArguments, null));
                 if (e is null)
                 {
-                    Diagnostics.Add(DiagnosticAt.Internal($"Function \"{f.ToReadable()}\" wasn't compiled", f));
+                    Diagnostics.Add(DiagnosticAt.Internal($"Function `{f.ToReadable()}` wasn't compiled", f));
                     continue;
                 }
 

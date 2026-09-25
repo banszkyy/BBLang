@@ -157,7 +157,7 @@ public sealed class ILReader : IEnumerable<ILInstruction>, IEnumerable
                 return new InlineSwitchInstruction(offset, opCode, deltas);
 
             default:
-                throw new BadImageFormatException($"Unexpected OperandType {opCode.OperandType}");
+                throw new BadImageFormatException($"Unexpected OperandType `{opCode.OperandType}`");
         }
     }
 

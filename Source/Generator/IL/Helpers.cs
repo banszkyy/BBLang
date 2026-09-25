@@ -49,7 +49,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 break;
         }
 
-        error = new PossibleDiagnostic($"Unimplemented dereference for type {type.FinalValue}");
+        error = new PossibleDiagnostic($"Unimplemented dereference for type `{type.FinalValue}`");
         return false;
     }
 
@@ -96,7 +96,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 break;
         }
 
-        error = new PossibleDiagnostic($"Unimplemented dereference for type {type.FinalValue}");
+        error = new PossibleDiagnostic($"Unimplemented dereference for type `{type.FinalValue}`");
         return false;
     }
 
@@ -119,7 +119,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         else if (!type.IsPrimitive && type.IsValueType && !type.IsEnum) { il.Emit(OpCodes.Ldobj, type); return true; }
         else
         {
-            error = new PossibleDiagnostic($"Unimplemented dereference for type {type}");
+            error = new PossibleDiagnostic($"Unimplemented dereference for type `{type}`");
             return false;
         }
     }
@@ -203,7 +203,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             case BasicType.F32: il.Emit(OpCodes.Ldc_R4, 0f); return true;
             case BasicType.Any:
             default:
-                error = new PossibleDiagnostic($"Type {type} doesn't have a value");
+                error = new PossibleDiagnostic($"Type `{type}` doesn't have a value");
                 return false;
         }
     }
@@ -249,7 +249,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             }
             default:
                 Debugger.Break();
-                error = new PossibleDiagnostic($"Unimplemented return type {type}");
+                error = new PossibleDiagnostic($"Unimplemented return type `{type}`");
                 return false;
         }
     }

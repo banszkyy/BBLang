@@ -42,7 +42,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (!EmitFunction(cleanup.Deallocator, out DynamicMethod? function))
         {
-            Diagnostics.Add(Diagnostic.Internal($"Failed to emit function \"{cleanup.Deallocator}\"", cleanup));
+            Diagnostics.Add(Diagnostic.Internal($"Failed to emit function `{cleanup.Deallocator}`", cleanup));
             successful = false;
             return;
         }
@@ -77,7 +77,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (!EmitFunction(cleanup.Destructor.Template, cleanup.Destructor.TypeArguments, out DynamicMethod? function))
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function \"{cleanup.Destructor}\"", cleanup));
+            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{cleanup.Destructor}`", cleanup));
             successful = false;
             return;
         }
@@ -383,7 +383,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             }
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Unimplemented binary operator {statement.Operator}", statement));
+        Diagnostics.Add(DiagnosticAt.Error($"Unimplemented binary operator `{statement.Operator}`", statement));
         successful = false;
         return;
     }
@@ -434,7 +434,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             }
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Unimplemented unary operator {statement.Operator}", statement));
+        Diagnostics.Add(DiagnosticAt.Error($"Unimplemented unary operator `{statement.Operator}`", statement));
         successful = false;
         return;
     }
@@ -447,7 +447,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
             if (!EmittedGlobalVariables.TryGetValue(statement, out FieldInfo? field))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Variable \"{statement.Identifier}\" wasn't emitted for some reason", statement, successful));
+                Diagnostics.Add(DiagnosticAt.Error($"Variable `{statement.Identifier}` wasn't emitted for some reason", statement, successful));
                 successful = false;
                 return;
             }
@@ -496,7 +496,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
             if (!EmittedGlobalVariables.TryGetValue(statement.Variable, out FieldInfo? field))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Variable \"{statement.Variable.Identifier}\" wasn't emitted for some reason", statement, successful));
+                Diagnostics.Add(DiagnosticAt.Error($"Variable `{statement.Variable.Identifier}` wasn't emitted for some reason", statement, successful));
                 successful = false;
                 return;
             }
@@ -507,7 +507,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (!LocalBuilders.TryGetValue(statement.Variable, out LocalBuilder? local))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Variable \"{statement.Variable.Identifier}\" wasn't emitted for some reason", statement, successful));
+            Diagnostics.Add(DiagnosticAt.Error($"Variable `{statement.Variable.Identifier}` wasn't emitted for some reason", statement, successful));
             successful = false;
             return;
         }
@@ -560,7 +560,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             FieldInfo? field = type.GetField(statement.Field.Identifier);
             if (field is null)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Field \"{statement.Field.Identifier}\" not found in type {type}", _object));
+                Diagnostics.Add(DiagnosticAt.Error($"Field `{statement.Field.Identifier}` not found in type `{type}`", _object));
                 successful = false;
                 return;
             }
@@ -583,7 +583,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (!EmitFunction(statement.Function.Template, statement.Function.TypeArguments, out DynamicMethod? function))
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function \"{statement.Function}\"", statement, false));
+            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{statement.Function}`", statement, false));
             successful = false;
             return;
         }
@@ -707,7 +707,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
             if (!EmittedGlobalVariables.TryGetValue(statement.Variable, out FieldInfo? field))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Variable \"{statement.Variable.Identifier}\" wasn't emitted for some reason", statement, successful));
+                Diagnostics.Add(DiagnosticAt.Error($"Variable `{statement.Variable.Identifier}` wasn't emitted for some reason", statement, successful));
                 successful = false;
                 return;
             }
@@ -719,7 +719,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (!LocalBuilders.TryGetValue(statement.Variable, out LocalBuilder? local))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Variable \"{statement.Variable.Identifier}\" wasn't emitted for some reason", statement, successful));
+            Diagnostics.Add(DiagnosticAt.Error($"Variable `{statement.Variable.Identifier}` wasn't emitted for some reason", statement, successful));
             successful = false;
             return;
         }
@@ -786,7 +786,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
             FieldInfo? field = type.GetField(statement.Field.Identifier);
             if (field is null)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Field \"{statement.Field.Identifier}\" not found in type {type}", _object));
+                Diagnostics.Add(DiagnosticAt.Error($"Field `{statement.Field.Identifier}` not found in type `{type}`", _object));
                 successful = false;
                 return;
             }
@@ -1054,7 +1054,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
                     if (!EmittedGlobalVariables.TryGetValue(v.Variable, out FieldInfo? field))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Variable \"{v.Variable.Identifier}\" wasn't emitted for some reason", statement, successful));
+                        Diagnostics.Add(DiagnosticAt.Error($"Variable `{v.Variable.Identifier}` wasn't emitted for some reason", statement, successful));
                         successful = false;
                         return;
                     }
@@ -1065,7 +1065,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
                 if (!LocalBuilders.TryGetValue(v.Variable, out LocalBuilder? local))
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Variable \"{v.Variable.Identifier}\" not compiled", statement, successful));
+                    Diagnostics.Add(DiagnosticAt.Error($"Variable `{v.Variable.Identifier}` not compiled", statement, successful));
                     successful = false;
                     return;
                 }
@@ -1118,7 +1118,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                     FieldInfo? field = type.GetField(v.Field.Identifier);
                     if (field is null)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Field \"{v.Field.Identifier}\" not found in type {type}", _object));
+                        Diagnostics.Add(DiagnosticAt.Error($"Field `{v.Field.Identifier}` not found in type `{type}`", _object));
                         successful = false;
                         return;
                     }
@@ -1168,7 +1168,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 break;
             default:
                 Debugger.Break();
-                Diagnostics.Add(DiagnosticAt.Error($"Can't get the address of \"{statement.Of}\" ({statement.Of.GetType().Name})", statement.Of));
+                Diagnostics.Add(DiagnosticAt.Error($"Can't get the address of `{statement.Of}` (`{statement.Of.GetType().Name}`)", statement.Of));
                 successful = false;
                 break;
         }
@@ -1227,7 +1227,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
                 if (constructor is null)
                 {
-                    Diagnostics.Add(DiagnosticAt.Internal($"Type \"{type}\" doesn't have a parameterless constructor", statement));
+                    Diagnostics.Add(DiagnosticAt.Internal($"Type `{type}` doesn't have a parameterless constructor", statement));
                     successful = false;
                     return;
                 }
@@ -1402,11 +1402,11 @@ public partial class CodeGeneratorForIL : CodeGenerator
                 {
                     if (Settings.AllowUnsafePointers)
                     {
-                        Diagnostics.Add(DiagnosticAt.Warning($"Type {fromTypePT} doesn't equal to {toTypePT} (reinterpreting {statement.Value.Type.FinalValue} as {statement.Type.FinalValue})", statement));
+                        Diagnostics.Add(DiagnosticAt.Warning($"Type `{fromTypePT}` doesn't equal to `{toTypePT}` (reinterpreting `{statement.Value.Type.FinalValue}` as `{statement.Type.FinalValue}`)", statement));
                     }
                     else
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Type {fromTypePT} doesn't equal to {toTypePT} (reinterpreting {statement.Value.Type.FinalValue} as {statement.Type.FinalValue})", statement));
+                        Diagnostics.Add(DiagnosticAt.Error($"Type `{fromTypePT}` doesn't equal to `{toTypePT}` (reinterpreting `{statement.Value.Type.FinalValue}` as `{statement.Type.FinalValue}`)", statement));
                         successful = false;
                     }
                 }
@@ -1454,7 +1454,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
         }
 
         EmitStatement(statement.Value, il, ref successful);
-        Diagnostics.Add(DiagnosticAt.Internal($"Reinterpretations are unsafe (tried to reinterpret {statement.Value.Type} as {statement.Type})", statement, false));
+        Diagnostics.Add(DiagnosticAt.Internal($"Reinterpretations are unsafe (tried to reinterpret `{statement.Value.Type}` as `{statement.Type}`)", statement, false));
         successful = false;
     }
     void EmitStatement(CompiledCast statement, ILProxy il, ref bool successful)
@@ -1476,13 +1476,13 @@ public partial class CodeGeneratorForIL : CodeGenerator
                     case BasicType.F32: il.Emit(OpCodes.Conv_R4); break;
                     default:
                         successful = false;
-                        Diagnostics.Add(DiagnosticAt.Error($"Invalid casting type {v.Type}", statement));
+                        Diagnostics.Add(DiagnosticAt.Error($"Invalid casting type `{v.Type}`", statement));
                         break;
                 }
                 return;
             default:
                 successful = false;
-                Diagnostics.Add(DiagnosticAt.Error($"Unimplemented casting type {statement.Type.FinalValue}", statement));
+                Diagnostics.Add(DiagnosticAt.Error($"Unimplemented casting type `{statement.Type.FinalValue}`", statement));
                 break;
         }
     }
@@ -1539,7 +1539,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
     {
         if (!EmitFunction(statement.Function.Template, statement.Function.TypeArguments, out DynamicMethod? function))
         {
-            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function {statement.Function}", statement));
+            Diagnostics.Add(DiagnosticAt.Internal($"Failed to emit function `{statement.Function}`", statement));
             successful = false;
             return;
         }
@@ -2158,7 +2158,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (managedSize != expectedSize)
         {
-            error = new PossibleDiagnostic($"Generated struct's ({result}) size ({managedSize}) doesn't match with the expected size ({expectedSize}).");
+            error = new PossibleDiagnostic($"Generated struct `{result}` size ({managedSize}) doesn't match with the expected size ({expectedSize}).");
             return false;
         }
 
@@ -2230,7 +2230,7 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
         if (size != expectedSize)
         {
-            error = new PossibleDiagnostic($"Generated struct's ({result}) size ({size}) doesn't match with the expected size ({expectedSize}).");
+            error = new PossibleDiagnostic($"Generated struct `{result}` size ({size}) doesn't match with the expected size ({expectedSize}).");
             return false;
         }
 
@@ -2469,13 +2469,13 @@ public partial class CodeGeneratorForIL : CodeGenerator
         if (function.Function is IHaveAttributes attributes &&
             attributes.Attributes.Any(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function {function.ToReadable()} marked as MSIL incompatible", attributes.Attributes.First(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier), false));
+            Diagnostics.Add(DiagnosticAt.Error($"Function `{function.ToReadable()}` marked as MSIL incompatible", attributes.Attributes.First(v => v.Identifier.Content == AttributeConstants.MSILIncompatibleIdentifier), false));
             return false;
         }
 
         if (!function.Function.IsMsilCompatible)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function {function.ToReadable()} is not MSIL incompatible", function.Function, false));
+            Diagnostics.Add(DiagnosticAt.Error($"Function `{function.ToReadable()}` is not MSIL incompatible", function.Function, false));
             return false;
         }
 

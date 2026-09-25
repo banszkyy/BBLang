@@ -32,7 +32,7 @@ public partial class StatementCompiler
                 if (StatementCanBeDeallocated(argument, out bool explicitDeallocate))
                 {
                     if (explicitDeallocate && !canDeallocate)
-                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a \"{ModifierKeywords.Temp}\" modifier", argument)); }
+                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a `{ModifierKeywords.Temp}` modifier", argument)); }
                 }
                 else
                 {
@@ -117,7 +117,7 @@ public partial class StatementCompiler
                 if (callerAllowsTemp)
                 {
                     if (explicitDeallocate && !calleeAllowsTemp)
-                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a \"{ModifierKeywords.Temp}\" modifier", argument)); }
+                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a `{ModifierKeywords.Temp}` modifier", argument)); }
                     if (explicitDeallocate && !typeAllowsTemp)
                     { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this type", argument)); }
                 }
@@ -180,7 +180,7 @@ public partial class StatementCompiler
                 else if (!FindSize(parameterType, out int parameterSize, out PossibleDiagnostic? parameterSizeError, Settings.RuntimeInfo))
                 { Diagnostics.Add(parameterSizeError.ToError(parameter.Definition)); }
                 else if (argumentSize != parameterSize)
-                { Diagnostics.Add(DiagnosticAt.Internal($"Bad argument type passed: expected \"{parameterType}\" ({parameterSize} bytes) passed \"{compiledArgument.Type}\" ({argumentSize} bytes)", argument)); }
+                { Diagnostics.Add(DiagnosticAt.Internal($"Bad argument type passed: expected `{parameterType}` ({parameterSize} bytes) passed `{compiledArgument.Type}` ({argumentSize} bytes)", argument)); }
 
                 bool typeAllowsTemp = AllowDeallocate(compiledArgument.Type);
 
@@ -191,7 +191,7 @@ public partial class StatementCompiler
                 if (callerAllowsTemp)
                 {
                     if (explicitDeallocate && !calleeAllowsTemp)
-                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a \"{ModifierKeywords.Temp}\" modifier", argument)); }
+                    { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this value: parameter definition does not have a `{ModifierKeywords.Temp}` modifier", argument)); }
                     if (explicitDeallocate && !typeAllowsTemp)
                     { Diagnostics.Add(DiagnosticAt.Warning($"Can not deallocate this type", argument)); }
                 }
@@ -263,8 +263,8 @@ public partial class StatementCompiler
 
         if (!callee.Definition.CanUse(caller.File))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Function \"{callee.ToReadable()}\" could not be called due to its protection level", caller)
-                .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function \"{callee.ToReadable()}\" defined here", callee.Location)));
+            Diagnostics.Add(DiagnosticAt.Error($"Function `{callee.ToReadable()}` could not be called due to its protection level", caller)
+                .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Function `{callee.ToReadable()}` defined here", callee.Location)));
             return false;
         }
 
@@ -277,7 +277,7 @@ public partial class StatementCompiler
 
         if (compiledArgumentExpressions.Length < partial)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function \"{callee.ToReadable()}\": required {callee.Definition.ParameterCount} passed {compiledArgumentExpressions.Length}", caller));
+            Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function `{callee.ToReadable()}`: required {callee.Definition.ParameterCount} passed {compiledArgumentExpressions.Length}", caller));
             return false;
         }
 
@@ -321,7 +321,7 @@ public partial class StatementCompiler
             }
             else
             {
-                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result \"{returnValue.Value}\"", caller));
+                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result `{returnValue.Value}`", caller));
                 if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
                 {
                     compiledStatement = new CompiledConstantValue()
@@ -368,7 +368,7 @@ public partial class StatementCompiler
                                 }
                             }
                             Debugger.Break();
-                            Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline \"{callee.ToReadable()}\" because the behavior might change", item));
+                            Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline `{callee.ToReadable()}` because the behavior might change", item));
                             goto bad;
                         ok:;
                         }
@@ -381,7 +381,7 @@ public partial class StatementCompiler
                         if (complexity.HasFlag(StatementComplexity.Bruh))
                         {
                             Debugger.Break();
-                            Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline \"{callee.ToReadable()}\" because of this argument", argument));
+                            Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline `{callee.ToReadable()}` because of this argument", argument));
                             goto bad;
                         }
 
@@ -390,7 +390,7 @@ public partial class StatementCompiler
                             if (inlineContext.InlinedArguments.Count(v => Utils.ReferenceEquals(v, argument)) > 1)
                             {
                                 //Debugger.Break();
-                                Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline \"{callee.ToReadable()}\" because this expression might be complex", argument));
+                                Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline `{callee.ToReadable()}` because this expression might be complex", argument));
                                 goto bad;
                             }
                         }
@@ -447,12 +447,12 @@ public partial class StatementCompiler
                     //        .Select((value, index) => (value.Identifier.Content, compiledArguments[index]))
                     //        .ToImmutableDictionary(v => v.Content, v => v.Item2),
                     //}, out inlined1);
-                    //Diagnostics.Add(DiagnosticAt.Warning($"Failed to inline \"{callee.ToReadable()}\"", caller).WithSuberrors(inlineError));
+                    //Diagnostics.Add(DiagnosticAt.Warning($"Failed to inline `{callee.ToReadable()}`", caller).WithSuberrors(inlineError));
                 }
             }
             else
             {
-                Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline \"{callee.ToReadable()}\" because of an internal error", caller));
+                Diagnostics.Add(DiagnosticAt.FailedOptimization($"Can't inline `{callee.ToReadable()}` because of an internal error", caller));
             }
         }
 
@@ -478,7 +478,7 @@ public partial class StatementCompiler
 
             if (anyCall.Arguments.Arguments.Length != 1)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to \"{StatementKeywords.Sizeof}\": required {1} passed {anyCall.Arguments.Arguments.Length}", anyCall));
+                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to `{StatementKeywords.Sizeof}`: required {1} passed {anyCall.Arguments.Arguments.Length}", anyCall));
                 return false;
             }
 
@@ -497,7 +497,7 @@ public partial class StatementCompiler
             }
             else
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Expression \"{argument}\" is not a type", argument));
+                Diagnostics.Add(DiagnosticAt.Error($"Expression `{argument}` is not a type", argument));
                 return false;
             }
 
@@ -626,7 +626,7 @@ public partial class StatementCompiler
 
         if (anyCall.Arguments.Arguments.Length != functionType.Parameters.Length)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function \"{functionType}\": required {functionType.Parameters.Length} passed {anyCall.Arguments.Arguments.Length}", new Position(anyCall.Arguments.Arguments.As<IPositioned>().DefaultIfEmpty(anyCall.Arguments.Brackets)), anyCall.File));
+            Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function `{functionType}`: required {functionType.Parameters.Length} passed {anyCall.Arguments.Arguments.Length}", new Position(anyCall.Arguments.Arguments.As<IPositioned>().DefaultIfEmpty(anyCall.Arguments.Brackets)), anyCall.File));
             Diagnostics.Add(notFound?.ToError(anyCall));
             return false;
         }
@@ -651,7 +651,7 @@ public partial class StatementCompiler
             return false;
         }))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Argument types of caller \"...({string.Join(", ", compiledArguments.Select(v => v.Type))})\" doesn't match with callee \"{functionType}\"", anyCall).WithSuberrors(argumentError?.ToError(anyCall)));
+            Diagnostics.Add(DiagnosticAt.Error($"Argument types of caller `...({string.Join(", ", compiledArguments.Select(v => v.Type))})` doesn't match with callee `{functionType}`", anyCall).WithSuberrors(argumentError?.ToError(anyCall)));
             Diagnostics.Add(notFound?.ToError(anyCall));
             return false;
         }
@@ -719,7 +719,7 @@ public partial class StatementCompiler
             if (!leftType.TryGetNumericType(out NumericType leftNType) ||
                 !rightType.TryGetNumericType(out NumericType rightNType))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{@operator.Operator.Content}\"", @operator.Operator, @operator.File, ignoreOnPartialSource: true).WithSuberrors(notFoundError.ToError(@operator.Operator, @operator.File)));
+                Diagnostics.Add(DiagnosticAt.Error($"Unknown operator `{@operator.Operator.Content}`", @operator.Operator, @operator.File, ignoreOnPartialSource: true).WithSuberrors(notFoundError.ToError(@operator.Operator, @operator.File)));
                 return false;
             }
 
@@ -812,7 +812,7 @@ public partial class StatementCompiler
                     if (!leftBType.TryGetNumericType(out NumericType leftNType1) ||
                         !rightBType.TryGetNumericType(out NumericType rightNType1))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{leftType}\" \"{@operator.Operator.Content}\" \"{rightType}\"", @operator.Operator, @operator.File));
+                        Diagnostics.Add(DiagnosticAt.Error($"Unknown operator `{leftType}` `{@operator.Operator.Content}` `{rightType}`", @operator.Operator, @operator.File));
                         return false;
                     }
                     NumericType numericType = leftNType1 > rightNType1 ? leftNType1 : rightNType1;
@@ -871,7 +871,7 @@ public partial class StatementCompiler
                             and not BinaryOperatorCallExpression.CompEQ
                             and not BinaryOperatorCallExpression.CompNEQ)
                     {
-                        //Diagnostics.Add(DiagnosticAt.Warning($"Failed to infer binary operator result type (\"{leftType}\" {@operator.Operator} \"{rightType}\"), using \"{resultType}\" instead", @operator));
+                        //Diagnostics.Add(DiagnosticAt.Warning($"Failed to infer binary operator result type (`{leftType}` {@operator.Operator} `{rightType}`), using `{resultType}` instead", @operator));
                     }
 
                     SetStatementType(@operator, resultType);
@@ -884,13 +884,13 @@ public partial class StatementCompiler
 
                     if (!leftType.TryGetNumericType(out leftNType))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Type \"{leftType}\" aint a numeric type", @operator.Left));
+                        Diagnostics.Add(DiagnosticAt.Error($"Type `{leftType}` aint a numeric type", @operator.Left));
                         ok = false;
                     }
 
                     if (!rightType.TryGetNumericType(out rightNType))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Type \"{rightType}\" aint a numeric type", @operator.Right));
+                        Diagnostics.Add(DiagnosticAt.Error($"Type `{rightType}` aint a numeric type", @operator.Right));
                         ok = false;
                     }
 
@@ -965,7 +965,7 @@ public partial class StatementCompiler
         }
         else
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{@operator.Operator.Content}\"", @operator.Operator, @operator.File));
+            Diagnostics.Add(DiagnosticAt.Error($"Unknown operator `{@operator.Operator.Content}`", @operator.Operator, @operator.File));
             return false;
         }
     }
@@ -990,13 +990,13 @@ public partial class StatementCompiler
 
             if (!operatorDefinition.Function.Definition.CanUse(@operator.File))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Operator \"{operatorDefinition.Function.ToReadable()}\" cannot be called due to its protection level", @operator.Operator, @operator.File));
+                Diagnostics.Add(DiagnosticAt.Error($"Operator `{operatorDefinition.Function.ToReadable()}` cannot be called due to its protection level", @operator.Operator, @operator.File));
                 return false;
             }
 
             if (UnaryOperatorCallExpression.ParameterCount != operatorDefinition.Function.Definition.ParameterCount)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to operator \"{operatorDefinition.Function.ToReadable()}\": required {operatorDefinition.Function.Definition.ParameterCount} passed {UnaryOperatorCallExpression.ParameterCount}", @operator));
+                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to operator `{operatorDefinition.Function.ToReadable()}`: required {operatorDefinition.Function.Definition.ParameterCount} passed {UnaryOperatorCallExpression.ParameterCount}", @operator));
                 return false;
             }
 
@@ -1051,7 +1051,7 @@ public partial class StatementCompiler
                     if (!GetUsedBy(InternalTypes.Boolean, out GeneralType? resultType, out PossibleDiagnostic? booleanTypeError))
                     {
                         resultType = BuiltinType.U8;
-                        Diagnostics.Add(DiagnosticAt.Warning($"Type for booleans not found, using {resultType} instead", @operator)
+                        Diagnostics.Add(DiagnosticAt.Warning($"Type for booleans not found, using `{resultType}` instead", @operator)
                             .WithSuberrors(booleanTypeError.ToError(@operator)));
                     }
 
@@ -1163,7 +1163,7 @@ public partial class StatementCompiler
             }
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Unknown operator \"{@operator.Operator.Content}\"", @operator.Operator, @operator.File).WithSuberrors(operatorNotFoundError.ToError(@operator)));
+        Diagnostics.Add(DiagnosticAt.Error($"Unknown operator `{@operator.Operator.Content}`", @operator.Operator, @operator.File).WithSuberrors(operatorNotFoundError.ToError(@operator)));
         return false;
     }
     bool CompileExpression(LambdaExpression lambdaStatement, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)
@@ -1877,7 +1877,7 @@ public partial class StatementCompiler
             val.AddReference(variable);
 
             if (val.IsGlobal)
-            { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get local variable \"{val.Identifier}\" but it was compiled as a global variable.", variable)); }
+            { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get local variable `{val.Identifier}` but it was compiled as a global variable.", variable)); }
 
             compiledStatement = new CompiledVariableAccess()
             {
@@ -1918,7 +1918,7 @@ public partial class StatementCompiler
             Frames.Last.CapturesGlobalVariables = true;
 
             if (!globalVariable.IsGlobal)
-            { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get global variable \"{globalVariable.Identifier}\" but it was compiled as a local variable.", variable)); }
+            { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get global variable `{globalVariable.Identifier}` but it was compiled as a local variable.", variable)); }
 
             compiledStatement = new CompiledVariableAccess()
             {
@@ -2002,7 +2002,7 @@ public partial class StatementCompiler
                 outerLocal.AddReference(variable);
 
                 if (outerLocal.IsGlobal)
-                { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get local variable \"{outerLocal.Identifier}\" but it was compiled as a global variable.", variable)); }
+                { Diagnostics.Add(DiagnosticAt.Internal($"Trying to get local variable `{outerLocal.Identifier}` but it was compiled as a global variable.", variable)); }
 
                 compiledStatement = new CompiledVariableAccess()
                 {
@@ -2019,7 +2019,7 @@ public partial class StatementCompiler
             }
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{variable.Content}\" not found", variable, ignoreOnPartialSource: true)
+        Diagnostics.Add(DiagnosticAt.Error($"Symbol `{variable.Content}` not found", variable, ignoreOnPartialSource: true)
             .WithSuberrors(
                 constantNotFoundError.ToError(variable),
                 parameterNotFoundError.ToError(variable),
@@ -2147,7 +2147,7 @@ public partial class StatementCompiler
 
             default:
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Unknown type \"{instanceType}\"", newInstance.Type, newInstance.File));
+                Diagnostics.Add(DiagnosticAt.Error($"Unknown type `{instanceType}`", newInstance.Type, newInstance.File));
                 return false;
             }
         }
@@ -2190,8 +2190,8 @@ public partial class StatementCompiler
 
         if (!compiledFunction.Function.Definition.CanUse(constructorCall.File))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Constructor \"{compiledFunction.Function.ToReadable()}\" could not be called due to its protection level", constructorCall.Type, constructorCall.File)
-                .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Constructor \"{compiledFunction.Function.ToReadable()}\" defined here", compiledFunction.Function.Location)));
+            Diagnostics.Add(DiagnosticAt.Error($"Constructor `{compiledFunction.Function.ToReadable()}` could not be called due to its protection level", constructorCall.Type, constructorCall.File)
+                .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Constructor `{compiledFunction.Function.ToReadable()}` defined here", compiledFunction.Function.Location)));
             return false;
         }
 
@@ -2246,8 +2246,8 @@ public partial class StatementCompiler
                 }
             }
 
-            Diagnostics.Add(DiagnosticAt.Error($"Enum member \"{field.Identifier}\" doesn't exists in enum \"{@enum.Identifier}\"", field.Identifier, field.File)
-                .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Enum \"{@enum.Identifier}\" defined here", @enum.Location)));
+            Diagnostics.Add(DiagnosticAt.Error($"Enum member `{field.Identifier}` doesn't exists in enum `{@enum.Identifier}`", field.Identifier, field.File)
+                .WithRelatedInfo(new DiagnosticRelatedInformationAt($"Enum `{@enum.Identifier}` defined here", @enum.Location)));
             return false;
         }
 
@@ -2296,7 +2296,7 @@ public partial class StatementCompiler
 
             if (!prevType.Is(out StructType? structPointerType))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Could not get the field offsets of type \"{prevType}\"", field.Object));
+                Diagnostics.Add(DiagnosticAt.Error($"Could not get the field offsets of type `{prevType}`", field.Object));
                 return false;
             }
 
@@ -2398,7 +2398,7 @@ public partial class StatementCompiler
             return true;
         }
 
-        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type \"{baseStatement.Type}\" not found", index, ignoreOnPartialSource: true).WithSuberrors(notFoundError.ToError(index)));
+        Diagnostics.Add(DiagnosticAt.Error($"Index getter for type `{baseStatement.Type}` not found", index, ignoreOnPartialSource: true).WithSuberrors(notFoundError.ToError(index)));
         return false;
     }
     bool CompileExpression(ArgumentExpression modifiedStatement, [NotNullWhen(true)] out CompiledExpression? compiledStatement, GeneralType? expectedType = null)

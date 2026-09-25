@@ -205,8 +205,8 @@ public abstract class CodeGenerator
         error = default;
         switch (type.Type)
         {
-            case BasicType.Void: error = new PossibleDiagnostic($"Can't get the size of type \"{type}\""); return false;
-            case BasicType.Any: error = new PossibleDiagnostic($"Can't get the size of type \"{type}\""); return false;
+            case BasicType.Void: error = new PossibleDiagnostic($"Can't get the size of type `{type}`"); return false;
+            case BasicType.Any: error = new PossibleDiagnostic($"Can't get the size of type `{type}`"); return false;
             case BasicType.U8: size = 1; return true;
             case BasicType.I8: size = 1; return true;
             case BasicType.U16: size = 2; return true;
@@ -277,7 +277,7 @@ public abstract class CodeGenerator
             offset += fieldSize;
         }
 
-        error = new PossibleDiagnostic($"Field \"{name}\" not found in struct \"{type.Struct}\"");
+        error = new PossibleDiagnostic($"Field `{name}` not found in struct `{type.Struct}`");
         return false;
     }
 
@@ -298,7 +298,7 @@ public abstract class CodeGenerator
             return true;
         }
 
-        error = new PossibleDiagnostic($"Parameter {parameter.Identifier} not found", parameter);
+        error = new PossibleDiagnostic($"Parameter `{parameter.Identifier}` not found", parameter);
         return false;
     }
 }

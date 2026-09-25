@@ -15,7 +15,7 @@ public partial class StatementCompiler
 
         if (IsSymbolDefined(structDefinition))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{structDefinition.Identifier}\" already exists", structDefinition.Identifier, structDefinition.File));
+            Diagnostics.Add(DiagnosticAt.Error($"Symbol `{structDefinition.Identifier}` already exists", structDefinition.Identifier, structDefinition.File));
         }
 
         CompiledStruct result;
@@ -29,7 +29,7 @@ public partial class StatementCompiler
         }
 
         if (LanguageConstants.KeywordList.Contains(structDefinition.Identifier.Content))
-        { Diagnostics.Add(DiagnosticAt.Error($"Illegal struct name \"{structDefinition.Identifier.Content}\"", structDefinition.Identifier, structDefinition.File)); }
+        { Diagnostics.Add(DiagnosticAt.Error($"Illegal struct name `{structDefinition.Identifier.Content}`", structDefinition.Identifier, structDefinition.File)); }
 
         structDefinition.Identifier.AnalyzedType = TokenAnalyzedType.Struct;
 
@@ -85,7 +85,7 @@ public partial class StatementCompiler
 
         if (IsSymbolDefined(aliasDefinition))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{aliasDefinition.Identifier}\" already exists", aliasDefinition.Identifier, aliasDefinition.File));
+            Diagnostics.Add(DiagnosticAt.Error($"Symbol `{aliasDefinition.Identifier}` already exists", aliasDefinition.Identifier, aliasDefinition.File));
         }
 
         if (!CompilingDefinitionStack.Add(aliasDefinition))
@@ -125,7 +125,7 @@ public partial class StatementCompiler
 
         if (IsSymbolDefined(enumDefinition))
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Symbol \"{enumDefinition.Identifier}\" already exists", enumDefinition.Identifier, enumDefinition.File));
+            Diagnostics.Add(DiagnosticAt.Error($"Symbol `{enumDefinition.Identifier}` already exists", enumDefinition.Identifier, enumDefinition.File));
         }
 
         if (!CompilingDefinitionStack.Add(enumDefinition))
@@ -151,13 +151,13 @@ public partial class StatementCompiler
                 if (otherMember.Value is not CompiledConstantValue otherConstantValue)
                 {
                     warning = new PossibleDiagnostic($"Cannot check if the enum member is unique, because not all members has a numeric value",
-                        new PossibleDiagnostic($"Enum member \"{otherMember.Identifier}\" doesn't have a numeric value", otherMember));
+                        new PossibleDiagnostic($"Enum member `{otherMember.Identifier}` doesn't have a numeric value", otherMember));
                     return null;
                 }
 
                 if (otherConstantValue.Value == constantValue)
                 {
-                    warning = new PossibleDiagnostic($"Enum member conflicts with \"{otherMember.Identifier}\"");
+                    warning = new PossibleDiagnostic($"Enum member conflicts with `{otherMember.Identifier}`");
                     return false;
                 }
             }
@@ -221,7 +221,7 @@ public partial class StatementCompiler
 
                 if (!constLastValue.TryCast(constLastType, out CompiledValue castedConstLastValue))
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constLastValue} of type {constLastValue.Type} to {constLastType}", member));
+                    Diagnostics.Add(DiagnosticAt.Error($"Can't cast constant value {constLastValue} of type `{constLastValue.Type}` to `{constLastType}`", member));
                 }
                 else
                 {
@@ -342,13 +342,13 @@ public partial class StatementCompiler
                 {
                     if (attribute.Parameters.Length != 1)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute \"{attribute.Identifier}\": required {1}, passed {attribute.Parameters.Length}", attribute));
+                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute `{attribute.Identifier}`: required {1}, passed {attribute.Parameters.Length}", attribute));
                         break;
                     }
 
                     if (attribute.Parameters[0] is not StringLiteralExpression stringLiteral)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type for attribute \"{attribute.Identifier}\" at {0}: expected string", attribute));
+                        Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type for attribute `{attribute.Identifier}` at {0}: expected string", attribute));
                         break;
                     }
 
@@ -366,30 +366,30 @@ public partial class StatementCompiler
                 {
                     if (attribute.Parameters.Length != 1)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute \"{attribute.Identifier}\": required {1}, passed {attribute.Parameters.Length}", attribute));
+                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute `{attribute.Identifier}`: required {1}, passed {attribute.Parameters.Length}", attribute));
                         break;
                     }
 
                     if (attribute.Parameters[0] is not StringLiteralExpression stringLiteral)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type for attribute \"{attribute.Identifier}\" at {0}: expected string", attribute));
+                        Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type for attribute `{attribute.Identifier}` at {0}: expected string", attribute));
                         break;
                     }
 
                     if (!BuiltinFunctions.Prototypes.TryGetValue(stringLiteral.Value, out BuiltinFunction? builtinFunction))
                     {
-                        Diagnostics.Add(DiagnosticAt.Warning($"{AttributeConstants.BuiltinIdentifier} function \"{stringLiteral.Value}\" not found", attribute, function.File));
+                        Diagnostics.Add(DiagnosticAt.Warning($"{AttributeConstants.BuiltinIdentifier} function `{stringLiteral.Value}` not found", attribute, function.File));
                         break;
                     }
 
                     if (builtinFunction.Parameters.Length != (function as ICompiledFunctionDefinition).Parameters.Length)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function \"{stringLiteral.Value}\"", function.Definition.Identifier, function.File));
+                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to function `{stringLiteral.Value}`", function.Definition.Identifier, function.File));
                     }
 
                     if (!builtinFunction.Type.Invoke(type))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Wrong type defined for function \"{stringLiteral.Value}\"", (function as IHaveType)?.Type.Location ?? new Location(function.Definition.Identifier.Position, function.File)));
+                        Diagnostics.Add(DiagnosticAt.Error($"Wrong type defined for function `{stringLiteral.Value}`", (function as IHaveType)?.Type.Location ?? new Location(function.Definition.Identifier.Position, function.File)));
                     }
 
                     for (int i = 0; i < builtinFunction.Parameters.Length; i++)
@@ -402,7 +402,7 @@ public partial class StatementCompiler
                         if (definedParameterType.Invoke(passedParameterType))
                         { continue; }
 
-                        Diagnostics.Add(DiagnosticAt.Error($"Wrong type of parameter passed to function \"{stringLiteral.Value}\" at index {i}.", function.Definition.Parameters[i].Type, ignoreOnPartialSource: passedParameterType.Equals(BuiltinType.Any)));
+                        Diagnostics.Add(DiagnosticAt.Error($"Wrong type of parameter passed to built-in function \"{stringLiteral.Value}\" at index {i}.", function.Definition.Parameters[i].Type, ignoreOnPartialSource: passedParameterType.Equals(BuiltinType.Any)));
                     }
                     break;
                 }
@@ -415,13 +415,13 @@ public partial class StatementCompiler
 
                     if (attribute.Parameters.Length != 1)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute \"{attribute.Identifier}\": required {1}, passed {attribute.Parameters.Length}", attribute));
+                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute `{attribute.Identifier}`: required {1}, passed {attribute.Parameters.Length}", attribute));
                         break;
                     }
 
                     if (attribute.Parameters[0] is not StringLiteralExpression)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type for attribute \"{attribute.Identifier}\" at {0}: expected string", attribute));
+                        Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type for attribute `{attribute.Identifier}` at {0}: expected string", attribute));
                         break;
                     }
 
@@ -450,13 +450,13 @@ public partial class StatementCompiler
                 {
                     if (attribute.Parameters.Length != 1)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute \"{attribute.Identifier}\": required {1}, passed {attribute.Parameters.Length}", attribute));
+                        Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute `{attribute.Identifier}`: required {1}, passed {attribute.Parameters.Length}", attribute));
                         break;
                     }
 
                     if (attribute.Parameters[0] is not StringLiteralExpression)
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type for attribute \"{attribute.Identifier}\" at {0}: expected string", attribute));
+                        Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type for attribute `{attribute.Identifier}` at {0}: expected string", attribute));
                         break;
                     }
 
@@ -483,11 +483,11 @@ public partial class StatementCompiler
             if (userDefinedAttribute.Name != attribute.Identifier.Content) continue;
 
             if (!userDefinedAttribute.CanUseOn.HasFlag(context.AttributeUsageKind))
-            { Diagnostics.Add(DiagnosticAt.Error($"Can't use attribute \"{attribute.Identifier}\" on \"{context.GetType().Name}\". Valid usages: {userDefinedAttribute.CanUseOn}", attribute)); }
+            { Diagnostics.Add(DiagnosticAt.Error($"Can't use attribute `{attribute.Identifier}` on `{context.GetType().Name}`. Valid usages: {userDefinedAttribute.CanUseOn}", attribute)); }
 
             if (attribute.Parameters.Length != userDefinedAttribute.Parameters.Length)
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute \"{attribute.Identifier}\": required {userDefinedAttribute.Parameters.Length}, passed {attribute.Parameters.Length}", attribute));
+                Diagnostics.Add(DiagnosticAt.Error($"Wrong number of arguments passed to attribute `{attribute.Identifier}`: required {userDefinedAttribute.Parameters.Length}, passed {attribute.Parameters.Length}", attribute));
                 break;
             }
 
@@ -495,7 +495,7 @@ public partial class StatementCompiler
             {
                 if (attribute.Parameters[i].Type != userDefinedAttribute.Parameters[i])
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type \"{attribute.Parameters[i].Type}\" for attribute \"{attribute.Identifier}\" at {i}: expected \"{userDefinedAttribute.Parameters[i]}\"", attribute));
+                    Diagnostics.Add(DiagnosticAt.Error($"Invalid parameter type `{attribute.Parameters[i].Type}` for attribute `{attribute.Identifier}` at {i}: expected `{userDefinedAttribute.Parameters[i]}`", attribute));
                 }
             }
 
@@ -544,13 +544,13 @@ public partial class StatementCompiler
 
         if (externalFunction.ParametersSize != passedParametersSize)
         {
-            diagnostics?.Add(DiagnosticAt.Error($"Wrong size of parameters defined ({passedParametersSize}) for external function \"{externalFunction.ToReadable()}\" {definition.ToReadable()}", definition.Identifier, definition.File));
+            diagnostics?.Add(DiagnosticAt.Error($"Wrong size of parameters defined ({passedParametersSize}) for external function `{externalFunction.ToReadable()}` {definition.ToReadable()}", definition.Identifier, definition.File));
             return;
         }
 
         if (externalFunction.ReturnValueSize != passedReturnType)
         {
-            diagnostics?.Add(DiagnosticAt.Error($"Wrong size of return type defined ({passedReturnType}) for external function \"{externalFunction.ToReadable()}\" {definition.ToReadable()}", definition.Identifier, definition.File));
+            diagnostics?.Add(DiagnosticAt.Error($"Wrong size of return type defined ({passedReturnType}) for external function `{externalFunction.ToReadable()}` {definition.ToReadable()}", definition.Identifier, definition.File));
             return;
         }
     }
@@ -795,7 +795,7 @@ public partial class StatementCompiler
 
             if (CompiledOperators.Any(other => FunctionEquality(compiled, other)))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Operator \"{compiled.ToReadable()}\" already defined", @operator.Identifier, @operator.File));
+                Diagnostics.Add(DiagnosticAt.Error($"Operator `{compiled.ToReadable()}` already defined", @operator.Identifier, @operator.File));
                 continue;
             }
 
@@ -808,7 +808,7 @@ public partial class StatementCompiler
 
             if (CompiledFunctions.Any(other => FunctionEquality(compiled, other)))
             {
-                Diagnostics.Add(DiagnosticAt.Error($"Function \"{compiled.ToReadable()}\" already defined", function.Identifier, function.File));
+                Diagnostics.Add(DiagnosticAt.Error($"Function `{compiled.ToReadable()}` already defined", function.Identifier, function.File));
                 continue;
             }
 
@@ -830,7 +830,7 @@ public partial class StatementCompiler
                 {
                     if (parameter.Modifiers.Contains(ModifierKeywords.This))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Keyword \"{ModifierKeywords.This}\" is not valid in the current context", parameter.Identifier, compiledStruct.Definition.File));
+                        Diagnostics.Add(DiagnosticAt.Error($"Keyword `{ModifierKeywords.This}` is not valid in the current context", parameter.Identifier, compiledStruct.Definition.File));
                         continue;
                     }
                 }
@@ -889,13 +889,13 @@ public partial class StatementCompiler
 
                     if (CompiledGeneralFunctions.Any(methodWithRef.IsSame))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Function with name \"{methodWithRef.ToReadable()}\" already defined", method.Identifier, compiledStruct.Definition.File));
+                        Diagnostics.Add(DiagnosticAt.Error($"Function with name `{methodWithRef.ToReadable()}` already defined", method.Identifier, compiledStruct.Definition.File));
                         continue;
                     }
 
                     if (CompiledGeneralFunctions.Any(methodWithPointer.IsSame))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Function with name \"{methodWithPointer.ToReadable()}\" already defined", method.Identifier, compiledStruct.Definition.File));
+                        Diagnostics.Add(DiagnosticAt.Error($"Function with name `{methodWithPointer.ToReadable()}` already defined", method.Identifier, compiledStruct.Definition.File));
                         continue;
                     }
 
@@ -911,7 +911,7 @@ public partial class StatementCompiler
 
                     if (CompiledGeneralFunctions.Any(methodWithRef.IsSame))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Function with name \"{methodWithRef.ToReadable()}\" already defined", method.Identifier, compiledStruct.Definition.File));
+                        Diagnostics.Add(DiagnosticAt.Error($"Function with name `{methodWithRef.ToReadable()}` already defined", method.Identifier, compiledStruct.Definition.File));
                         continue;
                     }
 
@@ -924,7 +924,7 @@ public partial class StatementCompiler
                 foreach (ParameterDefinition parameter in method.Parameters.Parameters)
                 {
                     if (parameter.Modifiers.Contains(ModifierKeywords.This))
-                    { Diagnostics.Add(DiagnosticAt.Error($"Keyword \"{ModifierKeywords.This}\" is not valid in the current context", parameter.Identifier, compiledStruct.Definition.File)); }
+                    { Diagnostics.Add(DiagnosticAt.Error($"Keyword `{ModifierKeywords.This}` is not valid in the current context", parameter.Identifier, compiledStruct.Definition.File)); }
                 }
 
                 ImmutableArray<ParameterDefinition> parameters = method.Parameters.Parameters.Insert(0, new ParameterDefinition(
@@ -952,7 +952,7 @@ public partial class StatementCompiler
 
                 if (CompiledFunctions.Any(methodWithPointer.IsSame))
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Function with name \"{methodWithPointer.ToReadable()}\" already defined", method.Identifier, compiledStruct.Definition.File));
+                    Diagnostics.Add(DiagnosticAt.Error($"Function with name `{methodWithPointer.ToReadable()}` already defined", method.Identifier, compiledStruct.Definition.File));
                     continue;
                 }
 
@@ -965,7 +965,7 @@ public partial class StatementCompiler
                 {
                     if (parameter.Modifiers.Contains(ModifierKeywords.This))
                     {
-                        Diagnostics.Add(DiagnosticAt.Error($"Keyword \"{ModifierKeywords.This}\" is not valid in the current context", parameter.Identifier, compiledStruct.Definition.File));
+                        Diagnostics.Add(DiagnosticAt.Error($"Keyword `{ModifierKeywords.This}` is not valid in the current context", parameter.Identifier, compiledStruct.Definition.File));
                         continue;
                     }
                 }
@@ -996,7 +996,7 @@ public partial class StatementCompiler
 
                 if (CompiledConstructors.Any(compiledConstructor.IsSame))
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Constructor \"{compiledConstructor.ToReadable()}\" already defined", constructor.Type, compiledStruct.Definition.File));
+                    Diagnostics.Add(DiagnosticAt.Error($"Constructor `{compiledConstructor.ToReadable()}` already defined", constructor.Type, compiledStruct.Definition.File));
                     continue;
                 }
 
@@ -1012,7 +1012,7 @@ public partial class StatementCompiler
 
                 if (CompiledOperators.Any(other => FunctionEquality(compiled, other)))
                 {
-                    Diagnostics.Add(DiagnosticAt.Error($"Operator \"{compiled.ToReadable()}\" already defined", @operator.Identifier, @operator.File));
+                    Diagnostics.Add(DiagnosticAt.Error($"Operator `{compiled.ToReadable()}` already defined", @operator.Identifier, @operator.File));
                     continue;
                 }
 

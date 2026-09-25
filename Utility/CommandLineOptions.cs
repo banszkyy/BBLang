@@ -52,7 +52,7 @@ public class CommandLineOptions
 
     [Option("basepath",
         Required = false,
-        HelpText = $"Sets the path where source files will be searched for \"{DeclarationKeywords.Using}\"")]
+        HelpText = $"Sets the path where source files will be searched for `{DeclarationKeywords.Using}`")]
     public string? BasePath { get; set; }
 
     [Option("dont-optimize",

@@ -714,7 +714,7 @@ public ref partial struct ProcessorState
         Crash = functionId;
         Signal = Signal.UndefinedExternalFunction;
 #if !UNITY_BURST
-        throw new RuntimeException($"Undefined external function \"{functionId}\"");
+        throw new RuntimeException($"Undefined external function `{functionId}`");
 #endif
     }
 
@@ -792,7 +792,7 @@ public ref partial struct ProcessorState
         Crash = functionId;
         Signal = Signal.UndefinedExternalFunction;
 #if !UNITY_BURST
-        throw new RuntimeException($"Undefined MSIL function \"{functionId}\"");
+        throw new RuntimeException($"Undefined MSIL function `{functionId}`");
 #endif
     }
 

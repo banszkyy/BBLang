@@ -77,7 +77,7 @@ public class StructType : GeneralType,
         }
 
         field = null;
-        error = new PossibleDiagnostic($"Field \"{name}\" not found in struct \"{Struct}\"");
+        error = new PossibleDiagnostic($"Field `{name}` not found in struct `{Struct}`");
         return false;
     }
 
@@ -105,7 +105,7 @@ public class StructType : GeneralType,
 
         if (!TypeArguments.TryGetValue(genericType.Identifier, out GeneralType? result))
         {
-            error = new PossibleDiagnostic($"Type argument \"{genericType.Identifier}\" not found");
+            error = new PossibleDiagnostic($"Type argument `{genericType.Identifier}` not found");
             return type;
         }
 

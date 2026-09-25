@@ -82,7 +82,7 @@ class DynamicScopeTokenResolver : ITokenResolver
             return FieldInfo.GetFieldFromHandle(v1, v2);
         }
 
-        Debug.Assert(false, $"Unexpected type: {t.GetType()}");
+        Debug.Assert(false, $"Unexpected type: `{t.GetType()}`");
         return null;
     }
 
@@ -133,7 +133,7 @@ class DynamicScopeTokenResolver : ITokenResolver
             return _varargFi1?.GetValue<MethodInfo>(t);
         }
 
-        Debug.Assert(false, $"Unexpected type: {t.GetType()}");
+        Debug.Assert(false, $"Unexpected type: `{t.GetType()}`");
         return null;
     }
 
@@ -143,7 +143,7 @@ class DynamicScopeTokenResolver : ITokenResolver
         if ((token & 0x06000000) == 0x06000000) return AsMethod(token);
         if ((token & 0x04000000) == 0x04000000) return AsField(token);
 
-        Debug.Assert(false, $"Unexpected token type: {token:x8}");
+        Debug.Assert(false, $"Unexpected token type: `{token:x8}`");
         return null;
     }
 

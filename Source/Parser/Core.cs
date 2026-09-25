@@ -28,7 +28,7 @@ public interface IReferenceableTo<TReference> : IInFile,
     object? IReferenceableTo.Reference
     {
         get => Reference;
-        set => Reference = (value as TReference) ?? throw new InvalidOperationException($"Cannot assign '{value?.GetType().ToString() ?? "null"}' to '{typeof(TReference)}'");
+        set => Reference = (value as TReference) ?? throw new InvalidOperationException($"Cannot assign `{value?.GetType().ToString() ?? "null"}` to `{typeof(TReference)}`");
     }
 }
 

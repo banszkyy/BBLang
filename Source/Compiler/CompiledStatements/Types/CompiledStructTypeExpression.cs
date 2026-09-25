@@ -77,7 +77,7 @@ public class CompiledStructTypeExpression : CompiledTypeExpression,
 
         if (!TypeArguments.TryGetValue(genericType.Identifier, out CompiledTypeExpression? result))
         {
-            error = new PossibleDiagnostic($"Type argument \"{genericType.Identifier}\" not found", genericType);
+            error = new PossibleDiagnostic($"Type argument `{genericType.Identifier}` not found", genericType);
             return type;
         }
 

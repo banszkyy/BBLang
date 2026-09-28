@@ -5,7 +5,7 @@ namespace LanguageCore.Assembly;
 [ExcludeFromCodeCoverage]
 public static class Assembler
 {
-    public static void Assemble(string asmSourceCode, string outputFile, ILogger? logger = null)
+    public static void Assemble(string asmSourceCode, string outputFile, ITraceLogger? logger = null)
     {
         string fileAsmTemp = outputFile + ".asm";
         string fileObjTemp = outputFile + ".obj";
@@ -24,7 +24,7 @@ public static class Assembler
         GnuLinker.Link(fileObjTemp, fileExeFinal);
     }
 
-    public static void AssembleRaw(string asmSourceCode, string outputFile, ILogger? logger = null, bool saveAsmFile = false, IEnumerable<emu8086.Symbols.Symbol>? symbols = null)
+    public static void AssembleRaw(string asmSourceCode, string outputFile, ITraceLogger? logger = null, bool saveAsmFile = false, IEnumerable<emu8086.Symbols.Symbol>? symbols = null)
     {
         string outputFilename = Path.GetFileName(outputFile);
 

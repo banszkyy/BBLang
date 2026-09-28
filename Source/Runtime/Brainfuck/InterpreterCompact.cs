@@ -5,7 +5,7 @@ public class InterpreterCompact : InterpreterBase<CompactCodeSegment>
     public InterpreterCompact(OutputCallback? onOutput = null, InputCallback? onInput = null)
         : base(onOutput, onInput) { }
 
-    protected override ImmutableArray<CompactCodeSegment> ParseCode(string code, Runtime.DebugInformation? debugInformation, ILogger? logger = null)
+    protected override ImmutableArray<CompactCodeSegment> ParseCode(string code, Runtime.DebugInformation? debugInformation, ITraceLogger? logger = null)
     {
         IDisposableProgress<float>? progress = logger?.Progress(LogType.Debug);
         code = BrainfuckCode.RemoveNoncodes(code, debugInformation, progress);

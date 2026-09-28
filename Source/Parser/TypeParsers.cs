@@ -63,8 +63,8 @@ public sealed partial class Parser
         {
             possibleType.AnalyzedType = TokenAnalyzedType.Keyword;
 
-            if (ExpectOperator(TheseCharactersIndicateThatTheIdentifierWillBeFollowedByAComplexType, out Token? illegalT))
-            { Diagnostics.Add(DiagnosticAt.Error($"This is not allowed", illegalT, File, false)); }
+            //if (ExpectOperator(TheseCharactersIndicateThatTheIdentifierWillBeFollowedByAComplexType, out Token? illegalT))
+            //{ Diagnostics.Add(DiagnosticAt.Error($"This is not allowed", illegalT, File, false)); }
 
             if (ExpectOperator("*", out Token? pointerOperator))
             {
@@ -85,7 +85,7 @@ public sealed partial class Parser
                 }
             }
 
-            goto end;
+            //goto end;
         }
 
         if (TypeKeywords.List.Contains(possibleType.Content))

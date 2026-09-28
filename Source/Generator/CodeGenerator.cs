@@ -158,6 +158,7 @@ public abstract class CodeGenerator
     protected virtual bool FindSize(ArrayType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)
     {
         size = default;
+        error = null;
 
         if (type.Length is null)
         {
@@ -165,10 +166,15 @@ public abstract class CodeGenerator
             return false;
         }
 
+        if (type.Length == 0)
+        {
+            size = 0;
+            return true;
+        }
+
         if (!FindSize(type.Of, out int elementSize, out error)) return false;
 
         size = elementSize * type.Length.Value;
-        error = null;
         return true;
     }
     protected virtual bool FindSize(FunctionType type, out int size, [NotNullWhen(false)] out PossibleDiagnostic? error)

@@ -12,6 +12,7 @@ public class ParameterDefinition :
     ILocated
 {
     public Token Identifier { get; }
+    public Token? SpreadOperator { get; }
     public TypeInstance Type { get; }
     public ImmutableArray<Token> Modifiers { get; }
     public Expression? DefaultValue { get; }
@@ -29,15 +30,17 @@ public class ParameterDefinition :
         Modifiers = other.Modifiers;
         Type = other.Type;
         Identifier = other.Identifier;
+        SpreadOperator = other.SpreadOperator;
         DefaultValue = other.DefaultValue;
         File = other.File;
     }
 
-    public ParameterDefinition(ImmutableArray<Token> modifiers, TypeInstance type, Token identifier, Expression? defaultValue, Uri file)
+    public ParameterDefinition(ImmutableArray<Token> modifiers, TypeInstance type, Token identifier, Token? spreadOperator, Expression? defaultValue, Uri file)
     {
         Modifiers = modifiers;
         Type = type;
         Identifier = identifier;
+        SpreadOperator = spreadOperator;
         DefaultValue = defaultValue;
         File = file;
     }

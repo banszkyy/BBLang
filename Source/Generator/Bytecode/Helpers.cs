@@ -327,13 +327,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
         return true;
     }
 
-    int ParametersSizeBefore(int beforeThis)
+    int GetParameterOffset(int index)
     {
         int sum = 0;
 
         for (int i = 0; i < CompiledParameters.Count; i++)
         {
-            if (i <= beforeThis) continue;
+            if (i >= index) continue;
             CompiledParameter parameter = CompiledParameters[i];
             sum += FindSize(GeneralType.TryInsertTypeParameters(parameter.Type, TypeArguments), parameter.Definition);
         }
@@ -347,7 +347,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
             Register.BasePointer,
             0 // We start at the saved base pointer
             - ((
-                ParametersSizeBefore(index) // ???
+                GetParameterOffset(index) // ???
                 + StackFrameTags // Offset by the stack frame stuff
             ) * ProcessorState.StackDirection)
             + offset

@@ -31,7 +31,7 @@ public partial class StatementCompiler
         { "DL", (Register.DL, BuiltinType.I8) },
     }.ToImmutableDictionary();
 
-    public StatementCompiler(CompilerSettings settings, DiagnosticsCollection diagnostics, ILogger? logger)
+    public StatementCompiler(CompilerSettings settings, DiagnosticsCollection diagnostics, ITraceLogger? logger)
     {
         Frames = new();
 

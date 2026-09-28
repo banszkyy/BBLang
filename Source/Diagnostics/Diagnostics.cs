@@ -143,7 +143,7 @@ public class DiagnosticsCollection : IReadOnlyDiagnosticsCollection
 
 public static class DiagnosticsCollectionExtensions
 {
-    public static void Print(this IReadOnlyDiagnosticsCollection diagnosticsCollection, ILogger logger, IEnumerable<ISourceProvider>? sourceProviders = null)
+    public static void Print(this IReadOnlyDiagnosticsCollection diagnosticsCollection, IDiagnosticsLogger logger, IEnumerable<ISourceProvider>? sourceProviders = null)
     {
         foreach (Diagnostic diagnostic in diagnosticsCollection.DiagnosticsWithoutContext)
         {

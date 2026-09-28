@@ -299,15 +299,28 @@ public partial class StatementCompiler
 
         CompileFunction(callee, typeArguments);
 
-        if ((Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating) || Settings.OptimizationDiagnostics) &&
-            TryEvaluate(callee, compiledArguments, new EvaluationContext(), out CompiledValue? returnValue, out ImmutableArray<RuntimeStatement2> runtimeStatements, out PossibleDiagnostic? evaluateError) &&
-            returnValue.HasValue &&
-            runtimeStatements.Length == 0)
+        if ((Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating) || Settings.OptimizationDiagnostics)
+            && TryEvaluate(callee, compiledArguments, new EvaluationContext(), out CompiledValue? returnValue, out ImmutableArray<RuntimeStatement2> runtimeStatements, out PossibleDiagnostic? evaluateError))
         {
-            SetPredictedValue(caller, returnValue.Value);
-            if (returnValue.Value.IsNull)
+            //List<CompiledStatement> runtimeStatements2 = new();
+            //foreach (var item in runtimeStatements)
+            //{
+            //    if (!TryExpressionize(item, item, null, out var item2))
+            //    {
+            //        Diagnostics.Add(DiagnosticAt.FailedOptimization($"Cannot expressionize the value `{item}`", caller));
+            //        goto bad;
+            //    }
+            //    runtimeStatements2.Add(item2);
+            //}
+
+            if (runtimeStatements.Length == 0)
             {
-                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result \"void\"", caller));
+                Diagnostics.Add(DiagnosticAt.FailedOptimization($"Meow", caller));
+            }
+            else if (!returnValue.HasValue)
+            {
+                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result {TypeKeywords.Void}", caller));
+                SetPredictedValue(caller, CompiledValue.Null);
                 if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
                 {
                     compiledStatement = new CompiledMeowExpression()
@@ -321,7 +334,8 @@ public partial class StatementCompiler
             }
             else
             {
-                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result `{returnValue.Value}`", caller));
+                Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Function evaluated with result {returnValue.Value.ToStringValue()}", caller));
+                SetPredictedValue(caller, returnValue.Value);
                 if (Settings.Optimizations.HasFlag(OptimizationSettings.FunctionEvaluating))
                 {
                     compiledStatement = new CompiledConstantValue()
@@ -447,7 +461,7 @@ public partial class StatementCompiler
                     //        .Select((value, index) => (value.Identifier.Content, compiledArguments[index]))
                     //        .ToImmutableDictionary(v => v.Content, v => v.Item2),
                     //}, out inlined1);
-                    //Diagnostics.Add(DiagnosticAt.Warning($"Failed to inline `{callee.ToReadable()}`", caller).WithSuberrors(inlineError));
+                    Diagnostics.Add(DiagnosticAt.Warning($"Failed to inline `{callee.ToReadable()}`", caller).WithSuberrors(inlineError));
                 }
             }
             else
@@ -1069,9 +1083,9 @@ public partial class StatementCompiler
                         Type = resultType,
                     };
 
-                    if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics) &&
-                        TryCompute(compiledStatement, out CompiledValue evaluated, out _) &&
-                        evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
+                    if ((Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating) || Settings.OptimizationDiagnostics)
+                        && TryCompute(compiledStatement, out CompiledValue evaluated, out _)
+                        && evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result {casted}", @operator));
                         SetPredictedValue(@operator, casted);
@@ -1124,7 +1138,7 @@ public partial class StatementCompiler
                         evaluated.TryCast(compiledStatement.Type, out CompiledValue casted))
                     {
                         Diagnostics.Add(DiagnosticAt.OptimizationNotice($"Operator call evaluated with result {casted}", @operator));
-                        SetPredictedValue(@operator, casted);
+                        SetPredictedValue(@operator, evaluated);
                         if (Settings.Optimizations.HasFlag(OptimizationSettings.StatementEvaluating))
                         {
                             compiledStatement = CompiledConstantValue.Create(casted, compiledStatement);
@@ -1301,6 +1315,7 @@ public partial class StatementCompiler
                     ImmutableArray<Token>.Empty,
                     null!,
                     Token.CreateAnonymous("closure"),
+                    null,
                     null,
                     lambdaStatement.File
                 )));
@@ -1554,7 +1569,7 @@ public partial class StatementCompiler
                         IsUTF8 = true,
                         Location = literal.Location,
                         SaveValue = true,
-                        Type = expectedType,
+                        Type = !arrayType3.Length.HasValue && expectedType is ArrayType ? new ArrayType(arrayType3.Of, Encoding.UTF8.GetByteCount(stringLiteral.Value) + 1) : expectedType,
                         IsNullTerminated = !arrayType3.Length.HasValue || arrayType3.Length.Value > Encoding.UTF8.GetByteCount(stringLiteral.Value),
                     };
                     return true;
@@ -1571,7 +1586,7 @@ public partial class StatementCompiler
                         IsUTF8 = false,
                         Location = literal.Location,
                         SaveValue = true,
-                        Type = expectedType,
+                        Type = !arrayType4.Length.HasValue && expectedType is ArrayType ? new ArrayType(arrayType4.Of, stringLiteral.Value.Length + 1) : expectedType,
                         IsNullTerminated = !arrayType4.Length.HasValue || arrayType4.Length.Value > stringLiteral.Value.Length,
                     };
                     return true;
@@ -2435,7 +2450,7 @@ public partial class StatementCompiler
 
         if (itemType is null)
         {
-            Diagnostics.Add(DiagnosticAt.Error($"Could not infer the list element type", listValue));
+            Diagnostics.Add(DiagnosticAt.Warning($"Could not infer the list element type", listValue));
             itemType = BuiltinType.Any;
         }
 
@@ -2459,17 +2474,7 @@ public partial class StatementCompiler
             return false;
         }
 
-        if (!CompileExpression(reinterpret.PrevStatement, out CompiledExpression? value)) return false;
-
-        if (value.Type.Equals(targetType))
-        {
-            Diagnostics.Add(DiagnosticAt.Hint($"Redundant type conversion", reinterpret.Keyword, reinterpret.File));
-            compiledStatement = value;
-            SetStatementType(reinterpret, targetType);
-            return true;
-        }
-
-        if (!CompileExpression(reinterpret.PrevStatement, out value, targetType)) return false;
+        if (!CompileExpression(reinterpret.PrevStatement, out CompiledExpression? value, targetType)) return false;
 
         if (value.Type is PointerType statementPointerType
             && targetType is PointerType targetPointerType
@@ -2480,6 +2485,14 @@ public partial class StatementCompiler
             && size1 % size2 == 0)
         {
             targetType = new PointerType(new ArrayType(targetArrayPointerType.Of, size1 / size2));
+        }
+
+        if (value.Type is ArrayType statementArrayType
+            && targetType is ArrayType targetArrayType
+            && statementArrayType.Length.HasValue
+            && !targetArrayType.Length.HasValue)
+        {
+            targetType = statementArrayType;
         }
 
         SetStatementType(reinterpret, targetType);

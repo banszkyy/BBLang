@@ -1402,10 +1402,6 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
     }
     void GenerateCodeForStatement(CompiledForLoop @for)
     {
-        GenerateCodeForStatement(@for, false);
-    }
-    bool GenerateCodeForStatement(CompiledForLoop @for, bool shouldUnroll)
-    {
         using (Code.Block(this, $"For"))
         {
             VariableCleanupStack.Push(@for.Initialization is null ? 0 : PrecompileVariables(@for.Initialization, false));
@@ -1493,8 +1489,6 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator
             // ContinueReturnStatements();
             // ContinueBreakStatements();
         }
-
-        return false;
     }
     void GenerateCodeForStatement(CompiledReturn statement)
     {

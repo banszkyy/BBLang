@@ -395,20 +395,20 @@ public class BytecodeProcessor
     public byte[] CallSync<T0, T1>(in ExposedFunction function, T0 arg0, T1 arg1)
         where T0 : unmanaged
         where T1 : unmanaged
-        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg1, arg0)));
+        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg0, arg1)));
 
     public byte[] CallSync<T0, T1, T2>(in ExposedFunction function, T0 arg0, T1 arg1, T2 arg2)
         where T0 : unmanaged
         where T1 : unmanaged
         where T2 : unmanaged
-        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg2, arg1, arg0)));
+        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg0, arg1, arg2)));
 
     public byte[] CallSync<T0, T1, T2, T3>(in ExposedFunction function, T0 arg0, T1 arg1, T2 arg2, T3 arg3)
         where T0 : unmanaged
         where T1 : unmanaged
         where T2 : unmanaged
         where T3 : unmanaged
-        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg3, arg2, arg1, arg0)));
+        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg0, arg1, arg2, arg3)));
 
     public byte[] CallSync<T0, T1, T2, T3, T4>(in ExposedFunction function, T0 arg0, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
         where T0 : unmanaged
@@ -416,7 +416,7 @@ public class BytecodeProcessor
         where T2 : unmanaged
         where T3 : unmanaged
         where T4 : unmanaged
-        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg4, arg3, arg2, arg1, arg0)));
+        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg0, arg1, arg2, arg3, arg4)));
 
     public byte[] CallSync<T0, T1, T2, T3, T4, T5>(in ExposedFunction function, T0 arg0, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5)
         where T0 : unmanaged
@@ -425,7 +425,7 @@ public class BytecodeProcessor
         where T3 : unmanaged
         where T4 : unmanaged
         where T5 : unmanaged
-        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg5, arg4, arg3, arg2, arg1, arg0)));
+        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg0, arg1, arg2, arg3, arg4, arg5)));
 
     public byte[] CallSync<T0, T1, T2, T3, T4, T5, T6>(in ExposedFunction function, T0 arg0, T1 arg1, T2 arg2, T3 arg3, T4 arg4, T5 arg5, T6 arg6)
         where T0 : unmanaged
@@ -435,7 +435,7 @@ public class BytecodeProcessor
         where T4 : unmanaged
         where T5 : unmanaged
         where T6 : unmanaged
-        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg6, arg5, arg4, arg3, arg2, arg1, arg0)));
+        => CallUnsafeSync(function, MemoryUtils.ToBytes(PackedValues.Create(arg0, arg1, arg2, arg3, arg4, arg5, arg6)));
 
     #endregion
 

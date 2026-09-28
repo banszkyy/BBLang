@@ -270,6 +270,10 @@ public class InterpreterRenderer
             {
                 t.Write("<lambda>", AnsiColor.Yellow);
             }
+            else if (function is CompiledConstructorDefinition c)
+            {
+                t.Write(c.Identifier.ToString(), AnsiColor.Green);
+            }
             else
             {
                 t.Write("<unknown function>", AnsiColor.Yellow);
@@ -968,6 +972,14 @@ public class InterpreterRenderer
 
         ReadOnlySpan<CallTraceItem> callTrace = DebugUtils.TraceStack(processor.Memory, processor.Registers.BasePointer, processor.DebugInformation.IsEmpty ? null : processor.DebugInformation.StackOffsets);
 
+        if (processor.DebugInformation.TryGetFunctionInformation(processor.Registers.CodePointer, out var meow)
+            && meow.FrameInstructions.Contains(processor.Registers.CodePointer))
+        {
+            List<CallTraceItem> _callTrace = new(callTrace.ToArray());
+            _callTrace.Add(new(processor.Registers.BasePointer, processor.Registers.CodePointer));
+            callTrace = _callTrace.ToArray();
+        }
+
         int position = callTrace.Length - 1;
         int begin = Math.Max(0, position - (buffer.Height / 2));
         int end = Math.Min(callTrace.Length, Math.Max(position + (buffer.Height / 2), begin + buffer.Height));
@@ -979,6 +991,11 @@ public class InterpreterRenderer
             if (!function.IsValid)
             {
                 t.Write(frame.InstructionPointer.ToString());
+                continue;
+            }
+            else if (function.IsTopLevelStub)
+            {
+                t.Write("<top level statements>");
                 continue;
             }
 

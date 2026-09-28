@@ -364,8 +364,12 @@ public sealed partial class Parser
     }
     bool ExpectOperator(string name, [NotNullWhen(true)] out Token? result)
     {
-        result = null;
         SkipCrapTokens();
+        return ExpectImmediateOperator(name, out result);
+    }
+    bool ExpectImmediateOperator(string name, [NotNullWhen(true)] out Token? result)
+    {
+        result = null;
         if (CurrentToken is null) return false;
         if (CurrentToken.TokenType != TokenType.Operator) return false;
         if (name.Length > 0 && CurrentToken.Content != name) return false;

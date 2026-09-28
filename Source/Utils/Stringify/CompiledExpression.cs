@@ -77,14 +77,41 @@ public static partial class Stringifier
         }
         else
         {
-            builder.Append(expression.Function.Template switch
+            switch (expression.Function.Template)
             {
-                CompiledFunctionDefinition v => v.Identifier,
-                _ => throw new NotImplementedException(expression.Function.Template.GetType().Name),
-            });
-            builder.Append('(');
-            builder.AppendJoin(expression.Arguments, Stringify);
-            builder.Append(')');
+                case CompiledFunctionDefinition v:
+                {
+                    builder.Append(v.Identifier);
+                    builder.Append('(');
+                    builder.AppendJoin(expression.Arguments, Stringify);
+                    builder.Append(')');
+                    break;
+                }
+                case CompiledOperatorDefinition v:
+                {
+                    switch (expression.Arguments.Length)
+                    {
+                        case 1:
+                        {
+                            builder.Append(v.Identifier);
+                            Stringify(expression.Arguments[0], builder, context);
+                            break;
+                        }
+                        case 2:
+                        {
+                            Stringify(expression.Arguments[0], builder, context);
+                            builder.Append(' ');
+                            builder.Append(v.Identifier);
+                            builder.Append(' ');
+                            Stringify(expression.Arguments[1], builder, context);
+                            break;
+                        }
+                        default: throw new UnreachableException();
+                    }
+                    break;
+                }
+                default: throw new UnreachableException();
+            }
         }
     }
     public static void Stringify(CompiledExternalFunctionCall expression, BuilderBase builder, StringifyContext context = default)
@@ -232,6 +259,19 @@ public static partial class Stringifier
         builder.Append('.');
         builder.Append(expression.EnumMember.Identifier);
     }
+
+    public static void Stringify(CompiledMeowExpression expression, BuilderBase builder, StringifyContext context = default)
+    {
+        foreach (CompiledStatement item in expression.Statements)
+        {
+            builder.NewLine();
+            Stringify(item, builder);
+            if (NeedsSemicolon(item))
+            {
+                builder.Append(';');
+            }
+        }
+    }
     public static void Stringify(CompiledExpression? expression, BuilderBase builder, StringifyContext context = default)
     {
         switch (expression)
@@ -264,6 +304,7 @@ public static partial class Stringifier
             case CompiledLambda v: Stringify(v, builder, context); break;
             case CompiledCompilerVariableAccess v: Stringify(v, builder, context); break;
             case CompiledEnumMemberAccess v: Stringify(v, builder, context); break;
+            case CompiledMeowExpression v: Stringify(v, builder, context); break;
             default: throw new NotImplementedException(expression.GetType().Name);
         }
     }

@@ -72,9 +72,9 @@ public class SourceCodeManager
     readonly SourceManagerSettings Settings;
     readonly List<PendingFile> PendingFiles;
     readonly List<ParsedFile> ParsedFiles;
-    readonly ILogger? Logger;
+    readonly ITraceLogger? Logger;
 
-    public SourceCodeManager(DiagnosticsCollection diagnostics, SourceManagerSettings settings, ILogger? logger)
+    public SourceCodeManager(DiagnosticsCollection diagnostics, SourceManagerSettings settings, ITraceLogger? logger)
     {
         settings.TokenizerSettings ??= TokenizerSettings.Default;
         settings.Cache ??= new ConcurrentDictionary<Uri, CacheItem>();
@@ -496,7 +496,7 @@ public class SourceCodeManager
         string? file,
         DiagnosticsCollection diagnostics,
         SourceManagerSettings settings,
-        ILogger? logger = null)
+        ITraceLogger? logger = null)
     {
         SourceCodeManager sourceCodeManager = new(diagnostics, settings, logger);
         return sourceCodeManager.Entry(file is null ? ReadOnlySpan<string>.Empty : new string[] { file }, settings.AdditionalImports);
@@ -506,7 +506,7 @@ public class SourceCodeManager
         ReadOnlySpan<string> files,
         DiagnosticsCollection diagnostics,
         SourceManagerSettings settings,
-        ILogger? logger = null)
+        ITraceLogger? logger = null)
     {
         SourceCodeManager sourceCodeManager = new(diagnostics, settings, logger);
         return sourceCodeManager.Entry(files, settings.AdditionalImports);

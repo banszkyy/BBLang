@@ -213,11 +213,11 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
-        ptr += sizeof(T1);
-
         p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
         ptr += sizeof(T0);
+
+        p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
+        ptr += sizeof(T1);
 
         return (p0, p1);
     }
@@ -233,14 +233,14 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
-        ptr += sizeof(T2);
+        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
+        ptr += sizeof(T0);
 
         p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
         ptr += sizeof(T1);
 
-        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
-        ptr += sizeof(T0);
+        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
+        ptr += sizeof(T2);
 
         return (p0, p1, p2);
     }
@@ -258,17 +258,17 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
-        ptr += sizeof(T3);
-
-        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
-        ptr += sizeof(T2);
+        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
+        ptr += sizeof(T0);
 
         p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
         ptr += sizeof(T1);
 
-        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
-        ptr += sizeof(T0);
+        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
+        ptr += sizeof(T2);
+
+        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
+        ptr += sizeof(T3);
 
         return (p0, p1, p2, p3);
     }
@@ -288,20 +288,20 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p4 = data.Slice(ptr, sizeof(T4)).To<T4>();
-        ptr += sizeof(T4);
-
-        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
-        ptr += sizeof(T3);
-
-        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
-        ptr += sizeof(T2);
+        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
+        ptr += sizeof(T0);
 
         p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
         ptr += sizeof(T1);
 
-        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
-        ptr += sizeof(T0);
+        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
+        ptr += sizeof(T2);
+
+        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
+        ptr += sizeof(T3);
+
+        p4 = data.Slice(ptr, sizeof(T4)).To<T4>();
+        ptr += sizeof(T4);
 
         return (p0, p1, p2, p3, p4);
     }
@@ -323,23 +323,23 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p5 = data.Slice(ptr, sizeof(T5)).To<T5>();
-        ptr += sizeof(T5);
-
-        p4 = data.Slice(ptr, sizeof(T4)).To<T4>();
-        ptr += sizeof(T4);
-
-        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
-        ptr += sizeof(T3);
-
-        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
-        ptr += sizeof(T2);
+        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
+        ptr += sizeof(T0);
 
         p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
         ptr += sizeof(T1);
 
-        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
-        ptr += sizeof(T0);
+        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
+        ptr += sizeof(T2);
+
+        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
+        ptr += sizeof(T3);
+
+        p4 = data.Slice(ptr, sizeof(T4)).To<T4>();
+        ptr += sizeof(T4);
+
+        p5 = data.Slice(ptr, sizeof(T5)).To<T5>();
+        ptr += sizeof(T5);
 
         return (p0, p1, p2, p3, p4, p5);
     }
@@ -370,11 +370,11 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
-        ptr += sizeof(T1);
-
         p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
         ptr += sizeof(T0);
+
+        p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
+        ptr += sizeof(T1);
 
         return (p0, p1);
     }
@@ -390,14 +390,14 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
-        ptr += sizeof(T2);
+        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
+        ptr += sizeof(T0);
 
         p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
         ptr += sizeof(T1);
 
-        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
-        ptr += sizeof(T0);
+        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
+        ptr += sizeof(T2);
 
         return (p0, p1, p2);
     }
@@ -415,17 +415,17 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
-        ptr += sizeof(T3);
-
-        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
-        ptr += sizeof(T2);
+        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
+        ptr += sizeof(T0);
 
         p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
         ptr += sizeof(T1);
 
-        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
-        ptr += sizeof(T0);
+        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
+        ptr += sizeof(T2);
+
+        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
+        ptr += sizeof(T3);
 
         return (p0, p1, p2, p3);
     }
@@ -445,20 +445,20 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p4 = data.Slice(ptr, sizeof(T4)).To<T4>();
-        ptr += sizeof(T4);
-
-        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
-        ptr += sizeof(T3);
-
-        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
-        ptr += sizeof(T2);
+        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
+        ptr += sizeof(T0);
 
         p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
         ptr += sizeof(T1);
 
-        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
-        ptr += sizeof(T0);
+        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
+        ptr += sizeof(T2);
+
+        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
+        ptr += sizeof(T3);
+
+        p4 = data.Slice(ptr, sizeof(T4)).To<T4>();
+        ptr += sizeof(T4);
 
         return (p0, p1, p2, p3, p4);
     }
@@ -480,23 +480,23 @@ public static unsafe class ExternalFunctionGenerator
 
         int ptr = 0;
 
-        p5 = data.Slice(ptr, sizeof(T5)).To<T5>();
-        ptr += sizeof(T5);
-
-        p4 = data.Slice(ptr, sizeof(T4)).To<T4>();
-        ptr += sizeof(T4);
-
-        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
-        ptr += sizeof(T3);
-
-        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
-        ptr += sizeof(T2);
+        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
+        ptr += sizeof(T0);
 
         p1 = data.Slice(ptr, sizeof(T1)).To<T1>();
         ptr += sizeof(T1);
 
-        p0 = data.Slice(ptr, sizeof(T0)).To<T0>();
-        ptr += sizeof(T0);
+        p2 = data.Slice(ptr, sizeof(T2)).To<T2>();
+        ptr += sizeof(T2);
+
+        p3 = data.Slice(ptr, sizeof(T3)).To<T3>();
+        ptr += sizeof(T3);
+
+        p4 = data.Slice(ptr, sizeof(T4)).To<T4>();
+        ptr += sizeof(T4);
+
+        p5 = data.Slice(ptr, sizeof(T5)).To<T5>();
+        ptr += sizeof(T5);
 
         return (p0, p1, p2, p3, p4, p5);
     }

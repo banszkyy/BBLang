@@ -598,7 +598,7 @@ public sealed partial class Parser
                 { Diagnostics.Add(DiagnosticAt.Error($"Modifier `{modifier}` only valid on the first parameter", modifier, File, false)); }
             }
 
-            if (!ExpectType(AllowedType.FunctionPointer, out TypeInstance? parameterType))
+            if (!ExpectType(AllowedType.FunctionPointer | AllowedType.Any | AllowedType.StackArrayWithoutLength, out TypeInstance? parameterType))
             {
                 parameterType = new MissingTypeInstance(lastPosition.After(), File);
                 diagnostic.Add(1, DiagnosticAt.Error("Expected parameter type", parameterType, false));
@@ -612,6 +612,21 @@ public sealed partial class Parser
                 diagnostic.Add(1, DiagnosticAt.Error("Expected a parameter name", parameterIdentifier, File, false));
                 savepoint.Restore();
                 return false;
+            }
+
+            Token? spreadOperator = null;
+            int k = CurrentTokenIndex;
+            if (ExpectOperator(".", out Token? d0)
+                && ExpectImmediateOperator(".", out Token? d1)
+                && ExpectImmediateOperator(".", out Token? d2))
+            {
+                Tokens.RemoveAt(--CurrentTokenIndex);
+                Tokens.RemoveAt(--CurrentTokenIndex);
+                spreadOperator = Tokens[CurrentTokenIndex - 1] = d0 + d1 + d2;
+            }
+            else
+            {
+                CurrentTokenIndex = k;
             }
 
             parameterIdentifier.AnalyzedType = TokenAnalyzedType.ParameterName;
@@ -637,7 +652,7 @@ public sealed partial class Parser
                 Diagnostics.Add(DiagnosticAt.Error("Parameters without default value after a parameter that has one is not supported", parameterIdentifier.Position.After(), File, false));
             }
 
-            ParameterDefinition parameter = new(parameterModifiers, parameterType, parameterIdentifier, defaultValue, File);
+            ParameterDefinition parameter = new(parameterModifiers, parameterType, parameterIdentifier, spreadOperator, defaultValue, File);
             parameters.Add(parameter);
 
             if (ExpectOperator(")", out bracketEnd))

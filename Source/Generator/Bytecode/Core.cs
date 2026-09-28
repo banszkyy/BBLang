@@ -283,7 +283,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
     public static BBLangGeneratorResult Generate(
         CompilerResult compilerResult,
         MainGeneratorSettings settings,
-        ILogger? logger,
+        ITraceLogger? logger,
         DiagnosticsCollection diagnostics)
         => new CodeGeneratorForMain(compilerResult, settings, diagnostics)
         .GenerateCode(compilerResult, settings);

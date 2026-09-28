@@ -120,8 +120,14 @@ public static partial class StatementWalker
             CompiledCompilerVariableAccess v => Visit(v, callback),
             CompiledLambda v => Visit(v, callback),
             CompiledEnumMemberAccess v => Visit(v, callback),
+            CompiledMeowExpression v => Visit(v, callback),
             _ => throw new UnreachableException(),
         };
+    }
+    static bool Visit(CompiledMeowExpression statement, Func<CompiledStatement, bool> callback)
+    {
+        if (!callback(statement)) return false;
+        return true;
     }
     static bool Visit(CompiledLambda statement, Func<CompiledStatement, bool> callback)
     {

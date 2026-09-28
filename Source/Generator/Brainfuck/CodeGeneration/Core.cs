@@ -281,11 +281,11 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
 
     readonly ImmutableArray<CompiledFunction> FunctionBodies;
 
-    readonly ILogger? Logger;
+    readonly ITraceLogger? Logger;
 
     #endregion
 
-    public CodeGeneratorForBrainfuck(CompilerResult compilerResult, BrainfuckGeneratorSettings brainfuckSettings, DiagnosticsCollection diagnostics, ILogger? logger) : base(compilerResult, diagnostics)
+    public CodeGeneratorForBrainfuck(CompilerResult compilerResult, BrainfuckGeneratorSettings brainfuckSettings, DiagnosticsCollection diagnostics, ITraceLogger? logger) : base(compilerResult, diagnostics)
     {
         CompiledVariables = new Stack<BrainfuckVariable>();
         Code = new CodeHelper()
@@ -815,7 +815,7 @@ public partial class CodeGeneratorForBrainfuck : CodeGenerator, IBrainfuckGenera
     public static BrainfuckGeneratorResult Generate(
         CompilerResult compilerResult,
         BrainfuckGeneratorSettings brainfuckSettings,
-        ILogger? logger,
+        ITraceLogger? logger,
         DiagnosticsCollection diagnostics)
         => new CodeGeneratorForBrainfuck(compilerResult, brainfuckSettings, diagnostics, logger)
         .GenerateCode(compilerResult);

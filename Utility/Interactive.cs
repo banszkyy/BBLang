@@ -58,7 +58,7 @@ public static class Interactive
         }
         finally
         {
-            diagnostics.Print(ConsoleLogger.Default, sourceProviders);
+            diagnostics.Print(PrettyConsoleLogger.Default, sourceProviders);
         }
 
         if (diagnostics.HasErrors) return;

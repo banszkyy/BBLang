@@ -70,7 +70,7 @@ public abstract class InterpreterBase<TCode> : InterpreterBase
         Code = ImmutableArray<TCode>.Empty;
     }
 
-    public InterpreterBase<TCode> LoadCode(string code, DebugInformation? debugInfo, ILogger? logger = null)
+    public InterpreterBase<TCode> LoadCode(string code, DebugInformation? debugInfo, ITraceLogger? logger = null)
         => LoadCode(ParseCode(code, debugInfo, logger));
     public InterpreterBase<TCode> LoadCode(TCode[] code)
         => LoadCode(ImmutableArray.Create(code));
@@ -81,7 +81,7 @@ public abstract class InterpreterBase<TCode> : InterpreterBase
         return this;
     }
 
-    protected abstract ImmutableArray<TCode> ParseCode(string code, DebugInformation? debugInfo, ILogger? logger = null);
+    protected abstract ImmutableArray<TCode> ParseCode(string code, DebugInformation? debugInfo, ITraceLogger? logger = null);
 
     public override bool Step()
     {

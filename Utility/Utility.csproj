@@ -24,6 +24,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../../Logger/Logger.csproj" />
     <ProjectReference Include="../Debugger/Debugger.csproj" />
     <ProjectReference Include="../Source/Core.csproj" />
   </ItemGroup>

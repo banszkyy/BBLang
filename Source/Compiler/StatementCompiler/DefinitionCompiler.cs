@@ -844,6 +844,7 @@ public partial class StatementCompiler
                         TypeInstanceSimple.CreateAnonymous(compiledStruct.Identifier, method.File, compiledStruct.Definition.Template?.Parameters),
                         Token.CreateAnonymous(StatementKeywords.This),
                         null,
+                        null,
                         method.File
                     ));
 
@@ -868,6 +869,7 @@ public partial class StatementCompiler
                         ImmutableArray.Create(Token.CreateAnonymous(ModifierKeywords.This)),
                         TypeInstancePointer.CreateAnonymous(TypeInstanceSimple.CreateAnonymous(compiledStruct.Identifier, method.File, compiledStruct.Definition.Template?.Parameters), method.File),
                         Token.CreateAnonymous(StatementKeywords.This),
+                        null,
                         null,
                         method.File
                     ));
@@ -932,6 +934,7 @@ public partial class StatementCompiler
                     TypeInstancePointer.CreateAnonymous(TypeInstanceSimple.CreateAnonymous(compiledStruct.Identifier, method.File, compiledStruct.Definition.Template?.Parameters), method.File),
                     Token.CreateAnonymous(StatementKeywords.This),
                     null,
+                    null,
                     method.File
                 ));
 
@@ -974,6 +977,7 @@ public partial class StatementCompiler
                     ImmutableArray.Create(Token.CreateAnonymous(ModifierKeywords.This)),
                     TypeInstancePointer.CreateAnonymous(TypeInstanceSimple.CreateAnonymous(compiledStruct.Identifier, constructor.File, compiledStruct.Definition.Template?.Parameters), constructor.File),
                     Token.CreateAnonymous(StatementKeywords.This),
+                    null,
                     null,
                     constructor.File
                 ));
@@ -1166,7 +1170,7 @@ public partial class StatementCompiler
         ReadOnlySpan<string> files,
         CompilerSettings settings,
         DiagnosticsCollection diagnostics,
-        ILogger? logger = null)
+        ITraceLogger? logger = null)
     {
         StatementCompiler compiler = new(settings, diagnostics, logger);
         return compiler.CompileFiles(files);
@@ -1176,7 +1180,7 @@ public partial class StatementCompiler
         string file,
         CompilerSettings settings,
         DiagnosticsCollection diagnostics,
-        ILogger? logger = null)
+        ITraceLogger? logger = null)
     {
         StatementCompiler compiler = new(settings, diagnostics, logger);
         return compiler.CompileMainFile(file);
@@ -1187,7 +1191,7 @@ public partial class StatementCompiler
         CompilerSettings settings,
         DiagnosticsCollection diagnostics,
         CompilerResult previous,
-        ILogger? logger = null)
+        ITraceLogger? logger = null)
     {
         StatementCompiler compiler = new(settings, diagnostics, logger);
         return compiler.CompileExpressionInternal(expression, previous);

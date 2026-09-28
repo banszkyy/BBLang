@@ -1,6 +1,5 @@
 ﻿using System.Reflection.Emit;
 using LanguageCore.Compiler;
-using LanguageCore.IR;
 using LanguageCore.Runtime;
 
 namespace LanguageCore.BBLang.Generator;
@@ -457,36 +456,13 @@ public partial class CodeGeneratorForMain : CodeGenerator
             Code.Emit(Opcode.Jump, reg.Register);
         }
     }
-    Stack<CompiledCleanup> GenerateCodeForArguments(IReadOnlyList<CompiledArgument> arguments, ICompiledFunctionDefinition compiledFunction, ImmutableDictionary<string, GeneralType>? typeArguments, int alreadyPassed = 0)
+    void GenerateCodeForArguments(IReadOnlyList<CompiledArgument> arguments, Stack<CompiledCleanup> argumentCleanup, bool reverseOrder)
     {
-        Stack<CompiledCleanup> argumentCleanup = new();
-
-        for (int i = 0; i < arguments.Count; i++)
-        {
-            CompiledArgument argument = arguments[i];
-            GeneralType argumentType = argument.Value.Type;
-            CompiledParameter parameter = compiledFunction.Parameters[i + alreadyPassed];
-            GeneralType parameterType = GeneralType.TryInsertTypeParameters(parameter.Type, typeArguments);
-
-            if (FindSize(argumentType, argument) != FindSize(parameterType, parameter.Definition))
-            { Diagnostics.Add(DiagnosticAt.Internal($"Bad argument type passed: expected `{parameterType}` passed `{argumentType}`", argument.Value)); }
-
-            AddComment($" Pass {parameter}:");
-
-            GenerateCodeForStatement(argument.Value);
-
-            argumentCleanup.Push(argument.Cleanup);
-        }
-
-        return argumentCleanup;
-    }
-    void GenerateCodeForParameterPassing(IReadOnlyList<CompiledArgument> parameters, FunctionType function, Stack<CompiledCleanup> parameterCleanup)
-    {
-        for (int i = 0; i < parameters.Count; i++)
+        for (int i = arguments.Count - 1; i >= 0; i--)
         {
             AddComment($" Param {i}:");
-            GenerateCodeForStatement(parameters[i].Value);
-            parameterCleanup.Push(parameters[i].Cleanup);
+            GenerateCodeForStatement(arguments[i].Value);
+            argumentCleanup.Push(arguments[i].Cleanup);
         }
     }
     void GenerateCodeForParameterCleanup(Stack<CompiledCleanup> parameterCleanup)
@@ -519,7 +495,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
             AddComment($"}}");
         }
 
-        Stack<CompiledCleanup> parameterCleanup = GenerateCodeForArguments(caller.Arguments, caller.Declaration, null);
+        Stack<CompiledCleanup> parameterCleanup = new();
+        GenerateCodeForArguments(caller.Arguments, parameterCleanup, false);
 
         AddComment(" .:");
 
@@ -562,7 +539,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
             AddComment($"}}");
         }
 
-        Stack<CompiledCleanup> parameterCleanup = GenerateCodeForArguments(caller.Arguments, caller.Declaration, null);
+        Stack<CompiledCleanup> parameterCleanup = new();
+        GenerateCodeForArguments(caller.Arguments, parameterCleanup, true);
 
         AddComment(" .:");
         Code.Emit(Opcode.CallExternal, InstructionOperand.Immediate(caller.Function.Id));
@@ -744,7 +722,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 AddComment($"}}");
             }
 
-            Stack<CompiledCleanup> parameterCleanup = GenerateCodeForArguments(caller.Arguments, caller.Function.Template, caller.Function.TypeArguments);
+            Stack<CompiledCleanup> parameterCleanup = new();
+            GenerateCodeForArguments(caller.Arguments, parameterCleanup, true);
 
             AddComment(" .:");
 
@@ -823,6 +802,7 @@ public partial class CodeGeneratorForMain : CodeGenerator
         }
 
         Stack<CompiledCleanup> parameterCleanup = new();
+        GenerateCodeForArguments(anyCall.Arguments, parameterCleanup, true);
         if (functionType.HasClosure)
         {
             GenerateCodeForStatement(anyCall.Function);
@@ -832,7 +812,6 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 TrashType = anyCall.Function.Type,
             });
         }
-        GenerateCodeForParameterPassing(anyCall.Arguments, functionType, parameterCleanup);
 
         AddComment(" .:");
 
@@ -1532,19 +1511,32 @@ public partial class CodeGeneratorForMain : CodeGenerator
                 return;
             }
 
-            Code.Emit(Opcode.Push, Register.StackPointer);
+            GenerateCodeForArguments(constructorCall.Arguments, parameterCleanup, true);
 
+            using (RegisterUsage.Auto reg = Registers.GetFree(Settings.PointerBitWidth))
+            {
+                int argsSize = parameterCleanup.Sum(v => FindSize(v.TrashType));
+                Code.Emit(Opcode.Move, reg.Register, Register.StackPointer);
+                Code.Emit(Opcode.MathAdd, reg.Register, InstructionOperand.Immediate(argsSize));
+                Code.Emit(Opcode.Push, reg.Register);
+                parameterCleanup.Add(new CompiledCleanup()
+                {
+                    Location = constructorCall.Object.Location,
+                    TrashType = new PointerType(constructorCall.Object.Type),
+                });
+            }
+        }
+        else if (constructorCall.Object.Type.Is<PointerType>())
+        {
+            GenerateCodeForArguments(constructorCall.Arguments, parameterCleanup, true);
+
+            int argsSize = parameterCleanup.Sum(v => FindSize(v.TrashType));
+            Code.Emit(Opcode.Push, new InstructionOperand(argsSize, Register.StackPointer.ToPtr(Settings.PointerBitWidth)));
             parameterCleanup.Add(new CompiledCleanup()
             {
                 Location = constructorCall.Object.Location,
                 TrashType = new PointerType(constructorCall.Object.Type),
             });
-
-            parameterCleanup.AddRange(GenerateCodeForArguments(constructorCall.Arguments, constructorCall.Function.Template, constructorCall.Function.TypeArguments, 1));
-        }
-        else if (constructorCall.Object.Type.Is<PointerType>())
-        {
-            parameterCleanup.AddRange(GenerateCodeForArguments(constructorCall.Arguments, constructorCall.Function.Template, constructorCall.Function.TypeArguments, 1));
         }
         else
         {
@@ -1990,6 +1982,26 @@ public partial class CodeGeneratorForMain : CodeGenerator
     {
         Code.Emit(Opcode.Push, new PreparationInstructionOperand(new VariableInstructionOperand(statement.Identifier)));
     }
+    void GenerateCodeForStatement(CompiledList statement)
+    {
+        int size = FindSize(statement.Type, statement);
+        StackAlloc(size, false);
+        int i = 0;
+        foreach (CompiledExpression item in statement.Values)
+        {
+            GenerateCodeForStatement(item);
+            int elementSize = FindSize(item.Type, item);
+            PopTo(new AddressRegisterPointer(Register.StackPointer), elementSize, i);
+            i += elementSize;
+        }
+    }
+    void GenerateCodeForStatement(CompiledMeowExpression statement)
+    {
+        foreach (CompiledStatement item in statement.Statements)
+        {
+            GenerateCodeForStatement(item);
+        }
+    }
     void GenerateCodeForStatement(CompiledBlock block, bool ignoreScope = false)
     {
         if (block.Statements.Length == 0) return;
@@ -2082,6 +2094,8 @@ public partial class CodeGeneratorForMain : CodeGenerator
             case CompiledLambda v: GenerateCodeForStatement(v); break;
             case CompiledEnumMemberAccess v: GenerateCodeForStatement(v); break;
             case CompiledCompilerVariableAccess v: GenerateCodeForStatement(v); break;
+            case CompiledList v: GenerateCodeForStatement(v); break;
+            case CompiledMeowExpression v: GenerateCodeForStatement(v); break;
             default: throw new NotImplementedException($"Unimplemented statement `{statement.GetType().Name}`");
         }
 
@@ -2810,12 +2824,14 @@ public partial class CodeGeneratorForMain : CodeGenerator
 
             if (address is not AddressOffset addressOffset) continue;
 
+            if (!FindSize(pType, out int pSize, out _)) continue;
+
             CurrentScopeDebug.Last.Stack.Add(new StackElementInformation()
             {
                 Address = addressOffset.Offset,
                 Kind = StackElementKind.Parameter,
                 BasePointerRelative = true,
-                Size = FindSize(pType, p.Definition),
+                Size = pSize,
                 Identifier = p.Identifier,
                 Type = pType,
             });

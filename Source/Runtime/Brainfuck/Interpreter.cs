@@ -5,7 +5,7 @@ public class Interpreter : InterpreterBase<OpCodes>
     public Interpreter(OutputCallback? onOutput = null, InputCallback? onInput = null)
         : base(onOutput, onInput) { }
 
-    protected override ImmutableArray<OpCodes> ParseCode(string code, Runtime.DebugInformation? debugInformation, ILogger? label = null)
+    protected override ImmutableArray<OpCodes> ParseCode(string code, Runtime.DebugInformation? debugInformation, ITraceLogger? label = null)
     {
         IDisposableProgress<float>? progress = label?.Progress(LogType.Debug);
         code = BrainfuckCode.RemoveNoncodes(code, debugInformation, progress);

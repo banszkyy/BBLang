@@ -54,7 +54,7 @@ public partial class StatementCompiler
     readonly ImmutableHashSet<string> PreprocessorVariables;
     readonly ImmutableArray<CompiledStatement>.Builder CompiledTopLevelStatements = ImmutableArray.CreateBuilder<CompiledStatement>();
     readonly Stack<CompiledFrame> Frames;
-    readonly ILogger? Logger;
+    readonly ITraceLogger? Logger;
 
     #endregion
 
@@ -1444,6 +1444,18 @@ public partial class StatementCompiler
             }
         }
 
+        {
+            if (destination.Is(out ArrayType? destArrayType)
+                && source.Is(out ArrayType? srcArrayType))
+            {
+                if (srcArrayType.Length.HasValue && !destArrayType.Length.HasValue)
+                {
+                    castLevel = CastLevel.Same;
+                    return true;
+                }
+            }
+        }
+
         error = new($"Can't cast `{source}` to `{destination}` implicitly");
         return false;
     }
@@ -1494,7 +1506,7 @@ public partial class StatementCompiler
 
                     if (stringLiteral.Value.Length != arrayType.Length.Value)
                     {
-                        error = new($"Can't cast literal value `{stringLiteral.Value}` (length of {stringLiteral.Value.Length}) to array `{destination}` (length of {arrayType.Length.Value.ToString()})", stringLiteral);
+                        error = new($"Can't cast literal value `{stringLiteral.Value}` (length of {stringLiteral.Value.Length}) to array `{destination}` (length of {arrayType.Length.Value})", stringLiteral);
                         return false;
                     }
                 }
@@ -4061,7 +4073,7 @@ public partial class StatementCompiler
 
         if (type.Length is not CompiledConstantValue evaluatedStatement)
         {
-            error = new PossibleDiagnostic($"Can't compute the array type's length", type.Length);
+            error = new PossibleDiagnostic($"Can't compute the array type's length", type.Length, new PossibleDiagnostic($"Can't compute `{type.Length}`", type.Length));
             return false;
         }
 

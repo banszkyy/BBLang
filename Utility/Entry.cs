@@ -39,7 +39,7 @@ public static class Entry
                 }
                 catch (Exception exception)
                 {
-                    ConsoleLogger.Default.LogError($"Unhandled exception: {exception}");
+                    PrettyConsoleLogger.Default.LogError(exception);
                     return 1;
                 }
             }
@@ -182,7 +182,7 @@ public static class Entry
             return RunIpc(arguments);
         }
 
-        ConsoleLogger logger = new()
+        PrettyConsoleLogger logger = new()
         {
             LogDebugs = arguments.Verbose,
             LogInfos = true,
@@ -383,6 +383,7 @@ public static class Entry
                 }
                 catch (LanguageExceptionAt ex)
                 {
+                    diagnostics.Add(ex.ToDiagnostic());
                     diagnostics.Print(logger);
                     logger.LogError(ex);
                     return 1;
@@ -816,8 +817,8 @@ public static class Entry
                 }
                 catch (LanguageExceptionAt exception)
                 {
+                    diagnostics.Add(exception.ToDiagnostic());
                     diagnostics.Print(logger);
-                    logger.LogError(exception);
                     return 1;
                 }
                 catch (Exception exception)
@@ -1114,8 +1115,8 @@ public static class Entry
                 }
                 catch (LanguageExceptionAt ex)
                 {
+                    diagnostics.Add(ex.ToDiagnostic());
                     diagnostics.Print(logger);
-                    logger.LogError(ex);
                     return 1;
                 }
                 catch (Exception ex)

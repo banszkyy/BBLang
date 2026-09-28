@@ -29,6 +29,10 @@
 		},
 		{
 			"path": "../DebugServer"
+		},
+		{
+			"name": "Logger",
+			"path": "../../Logger"
 		}
 	],
 	"settings": {

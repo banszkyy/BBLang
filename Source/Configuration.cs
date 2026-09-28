@@ -169,7 +169,7 @@ public sealed class Configuration
         }
     }
 
-    static void Parse(Uri uri, Parser parser, DiagnosticsCollection diagnostics, ILogger? logger)
+    static void Parse(Uri uri, Parser parser, DiagnosticsCollection diagnostics, ITraceLogger? logger)
     {
         logger?.LogDebug(uri.ToString());
         if (!parser.alreadyParsed.Add(uri)) return;
@@ -220,7 +220,7 @@ public sealed class Configuration
         }
     }
 
-    static void Parse(IEnumerable<(Uri Uri, string Content)> configurations, Parser parser, DiagnosticsCollection diagnostics, ILogger? logger)
+    static void Parse(IEnumerable<(Uri Uri, string Content)> configurations, Parser parser, DiagnosticsCollection diagnostics, ITraceLogger? logger)
     {
         foreach ((Uri uri, _) in configurations)
         {
@@ -228,14 +228,14 @@ public sealed class Configuration
         }
     }
 
-    public static Configuration Parse(IEnumerable<(Uri Uri, string Content)> configurations, DiagnosticsCollection diagnostics, ILogger? logger = null)
+    public static Configuration Parse(IEnumerable<(Uri Uri, string Content)> configurations, DiagnosticsCollection diagnostics, ITraceLogger? logger = null)
     {
         Parser parser = new(diagnostics);
         Parse(configurations, parser, diagnostics, logger);
         return parser.Compile();
     }
 
-    public static Configuration Parse(Uri uri, DiagnosticsCollection diagnostics, ILogger? logger = null)
+    public static Configuration Parse(Uri uri, DiagnosticsCollection diagnostics, ITraceLogger? logger = null)
     {
         Parser parser = new(diagnostics);
         Parse(uri, parser, diagnostics, logger);

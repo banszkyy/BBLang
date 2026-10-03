@@ -2,18 +2,15 @@
 
 [![.Net 11.0](https://img.shields.io/badge/.NET-11.0-5C2D91?style=flat-square)](#)
 
-- [VSCode Extension](https://github.com/banszkyy/InterpreterVSCodeExtension)
-- [Language Server](https://github.com/banszkyy/BBLang-LanguageServer)
-- [Debugger Host](https://github.com/banszkyy/BBLang-DebugHost)
-
 ## About
 
-An **interpreted, statically-typed embedded** language for mostly scripting purposes or simulations. I use this project in my game to implement in-game programming. It can also generate Brainfuck code, because why not, and can also optimize functions into MSIL, or compile the whole script into a `DynamicMethod`.
-
-> [!NOTE]
-> Currently it doesn't support serializing, so you can only execute the script. However, you can save the generated Brainfuck code.
+A **bytecode interpreted, statically-typed, embedded** language for mostly scripting purposes or simulations. It can also generate Brainfuck, and optimize functions into MSIL, or compile the whole script into a [DynamicMethod](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.emit.dynamicmethod).
 
 [Read more in the wiki](https://github.com/banszkyy/BBLang/wiki)
+
+- [VSCode Extension](https://github.com/banszkyy/InterpreterVSCodeExtension) 
+- [Language Server](https://github.com/banszkyy/BBLang-LanguageServer)
+- [Debugger Host](https://github.com/banszkyy/BBLang-DebugHost)
 
 ## Hello World
 
@@ -78,32 +75,28 @@ dotnet publish Utility/Utility.csproj --configuration Release --output ./out/lin
 
 ### Unity
 
-- Import the `/Unity/package.json` using the Unity Package Manager. [read more](https://docs.unity3d.com/6000.0/Documentation/Manual/upm-ui-local.html)
-- Create a symlink at `/Unity/Source` pointing at `/Source`
-
-<details>
-    <summary>help</summary>
-    Run this inside the `/Unity` directory:
-
+1. Import the `/Unity/package.json` using the Unity Package Manager. [read more](https://docs.unity3d.com/6000.0/Documentation/Manual/upm-ui-local.html)
+2. Create a symlink at `/Unity/Source` pointing at `/Source`. To do so, run this inside the `/Unity` directory:
     Linux:
     ```sh
     ln -s ../Source Runtime
     ```
-
     Windows:
     ```sh
     mklink /J "Runtime" "..\Source"
     ```
-</details>
-
-- In Unity, naviage to `Edit > Project Settings... > Player > Other Settings > Scripting Define Symbols` and add the `UNITY` variable. [read more](https://docs.unity3d.com/2022.3/Documentation//Manual/CustomScriptingSymbols.html)
-- If you are using the [Burst compiler](https://docs.unity3d.com/Packages/com.unity.burst@latest), add `UNITY_BURST` too.
-- If you are not using the Burst compiler, remove the `Unity.Burst` reference from `/Unity/BBLang.asmdef`.
-- If you want some [profiler analytics](https://docs.unity3d.com/6000.3/Documentation/Manual/profiler-introduction.html), add `UNITY_PROFILER` too.
-- You can install the necessary NuGet packages with this tool: [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity) or import the dll-s manually. You only need to install these:
+3. In Unity, navigate to `Edit > Project Settings... > Player > Other Settings > Scripting Define Symbols` and add the `UNITY` variable. [read more](https://docs.unity3d.com/2022.3/Documentation//Manual/CustomScriptingSymbols.html)
+    - If you are using the [Burst compiler](https://docs.unity3d.com/Packages/com.unity.burst@latest), add `UNITY_BURST` too. You must also add a reference to `Unity.Burst` in `/Unity/BBLang.asmdef`:
+    ```json
+    {
+      ...
+      "references": [ "Unity.Burst" ],
+      ...
+    }
+    ```
+    - If you want [profiler analytics](https://docs.unity3d.com/6000.3/Documentation/Manual/profiler-introduction.html), add `UNITY_PROFILER` too.
+4. Install the necessary NuGet packages with this tool: [NuGetForUnity](https://github.com/GlitchEnzo/NuGetForUnity) or import the dll-s manually. You only need to install these:
     - [System.Collections.Immutable](https://www.nuget.org/packages/System.Collections.Immutable)
-
-## [Tests](https://github.com/banszkyy/BBLang/blob/master/Tests.md)
 
 ## Troubleshooting
 
@@ -114,8 +107,10 @@ install [this](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc
 ## Project Structure
 
 - `/Examples` Examples for using the project as a library.
-- `/StandardLibrary` Preimplemented functions and structures and some "external function" declarations.
+- `/StandardLibrary` Pre-implemented functions and structures and some "external function" declarations.
 - `/TestFiles` Test files for testing.
 - `/Source` The core functionality.
 - `/Utility` The command line interface.
 - `/Debugger` A terminal based debugger.
+
+## [Tests](https://github.com/banszkyy/BBLang/blob/master/Tests.md)

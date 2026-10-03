@@ -1,9 +1,7 @@
 {
     "name": "BBLang",
     "rootNamespace": "LanguageCore",
-    "references": [
-        "Unity.Burst"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": true,

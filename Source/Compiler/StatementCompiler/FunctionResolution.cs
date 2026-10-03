@@ -344,7 +344,7 @@ public partial class StatementCompiler
 
             if (best.Errors.Count > 0)
             {
-                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", best.Errors.ToImmutableArray());
+                error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", best.Errors.ToImmutableArray(), ignoreOnPartialSource: best.Errors.All(v => v.IgnoreOnPartialSource));
                 return false;
             }
 
@@ -444,7 +444,7 @@ public partial class StatementCompiler
         else
         {
             result = default;
-            error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found");
+            error = new PossibleDiagnostic($"{kindNameCapital} `{readableName}` not found", ignoreOnPartialSource: true);
             return false;
         }
     }
@@ -514,7 +514,7 @@ public partial class StatementCompiler
             }
             else
             {
-                result.Errors.Add(new($"No function found with name `{query.Identifier}`"));
+                result.Errors.Add(new($"No function found with name `{query.Identifier}`", ignoreOnPartialSource: true));
             }
             return result;
         }

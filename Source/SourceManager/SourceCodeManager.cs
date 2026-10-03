@@ -120,9 +120,9 @@ public class SourceCodeManager
             if (content is null)
             {
                 if (finishedFile.Initiator is null)
-                { Diagnostics.Add(Diagnostic.Error($"File \"{finishedFile.Uri}\" not found")); }
+                { Diagnostics.Add(Diagnostic.Error($"File \"{finishedFile.Uri}\" not found").WithSuberrors(Diagnostic.Error($"{nameof(FileNotFoundException)} exception"))); }
                 else
-                { Diagnostics.Add(DiagnosticAt.Error($"File \"{finishedFile.Uri}\" not found ow", finishedFile.Initiator)); }
+                { Diagnostics.Add(DiagnosticAt.Error($"File \"{finishedFile.Uri}\" not found", finishedFile.Initiator).WithSuberrors(Diagnostic.Error($"{nameof(FileNotFoundException)} exception"))); }
                 break;
             }
 
@@ -146,11 +146,11 @@ public class SourceCodeManager
             if (Settings.Cache is not null)
             {
                 Settings.Cache[finishedFile.Uri] = new CacheItem(
-                finishedFile.Version,
-                text,
-                tokens,
-                ast
-            );
+                    finishedFile.Version,
+                    text,
+                    tokens,
+                    ast
+                );
             }
 
             foreach (UsingDefinition @using in ast.Usings)
@@ -232,9 +232,9 @@ public class SourceCodeManager
                         if (res.Stream is null)
                         {
                             if (initiator is null)
-                            { Diagnostics.Add(Diagnostic.Error($"Invalid handler for \"{resolvedUri}\": resulted in success but not provided a data stream")); }
+                            { Diagnostics.Add(Diagnostic.Internal($"Invalid handler for \"{resolvedUri}\": resulted in success but not provided a data stream")); }
                             else
-                            { Diagnostics.Add(DiagnosticAt.Error($"Invalid handler for \"{resolvedUri}\": resulted in success but not provided a data stream", initiator.Position, initiator.File)); }
+                            { Diagnostics.Add(DiagnosticAt.Internal($"Invalid handler for \"{resolvedUri}\": resulted in success but not provided a data stream", initiator.Position, initiator.File)); }
                             return false;
                         }
 #if UNITY

@@ -87,8 +87,8 @@ public class PrettyConsoleLogger : IDiagnosticsLogger, ITraceLogger
             DiagnosticsLevel.Warning => LogWarnings,
             DiagnosticsLevel.Information => LogInfos,
             DiagnosticsLevel.Hint => LogInfos,
-            DiagnosticsLevel.OptimizationNotice => LogInfos,
-            DiagnosticsLevel.FailedOptimization => LogInfos,
+            DiagnosticsLevel.OptimizationNotice => false,
+            DiagnosticsLevel.FailedOptimization => false,
             _ => false,
         }))
         { return; }

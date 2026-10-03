@@ -366,7 +366,7 @@ public static class Entry
 
                         f.WriteLine();
 
-                        if (!generatedCode.ILGeneratorBuilders.IsDefault)
+                        if (!generatedCode.ILGeneratorBuilders.IsDefaultOrEmpty)
                         {
                             f.WriteLine();
                             f.WriteLine("/* MSIL */");
@@ -385,7 +385,6 @@ public static class Entry
                 {
                     diagnostics.Add(ex.ToDiagnostic());
                     diagnostics.Print(logger);
-                    logger.LogError(ex);
                     return 1;
                 }
                 catch (Exception ex)

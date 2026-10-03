@@ -9,7 +9,7 @@ public class PossibleDiagnostic
     readonly Position Position;
     readonly Uri? File;
     readonly bool ShouldBreak;
-    readonly bool IgnoreOnPartialSource;
+    public readonly bool IgnoreOnPartialSource;
 
     [MemberNotNullWhen(true, nameof(File))]
     bool IsPopulated => File is not null && Position != default;

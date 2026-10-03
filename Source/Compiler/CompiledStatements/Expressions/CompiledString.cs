@@ -18,5 +18,5 @@ public class CompiledString : CompiledExpression
         }
     }
 
-    public override string ToString() => $"\"{Value}\"";
+    public override string ToString() => $"\"{Value.Escape()}\"";
 }

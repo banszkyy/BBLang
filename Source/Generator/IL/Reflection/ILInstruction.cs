@@ -299,7 +299,7 @@ public class InlineTypeInstruction : ILInstruction
         }
         catch (Exception ex)
         {
-            type = "!" + ex.Message + "!";
+            type = $"!{ex.Message}!";
         }
         return ToString(type);
     }

@@ -1571,14 +1571,21 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
             il.Emit(OpCodes.Call, function);
 
-            if (!statement.SaveValue &&
-                function.ReturnType != typeof(void))
+            if (function.ReturnType != typeof(void))
             {
                 il.Emit(OpCodes.Pop);
             }
         }
         else
         {
+            if (destination is null)
+            {
+                destination = il.DeclareLocal(typeof(nint));
+                EmitStatement(statement, il, ref successful, destination);
+                LoadLocal(il, destination.LocalIndex);
+                return;
+            }
+
             if (!statement.Object.Type.Is<PointerType>())
             {
                 Diagnostics.Add(DiagnosticAt.Internal($"This should be a pointer", statement.Object));
@@ -1588,7 +1595,6 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
             EmitStatement(statement.Object, il, ref successful);
 
-            destination ??= il.DeclareLocal(typeof(nint));
             StoreLocal(il, destination.LocalIndex);
 
             LoadLocal(il, destination.LocalIndex);
@@ -1601,10 +1607,8 @@ public partial class CodeGeneratorForIL : CodeGenerator
 
             if (function.ReturnType != typeof(void))
             {
-                il.Emit(OpCodes.Pop); // What???
+                il.Emit(OpCodes.Pop);
             }
-
-            LoadLocal(il, destination.LocalIndex);
         }
     }
     void EmitStatement(CompiledStackAllocation statement, ILProxy il, ref bool successful, LocalBuilder? destination = null)

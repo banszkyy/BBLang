@@ -132,16 +132,16 @@ readonly struct ExpectedResult
                         switch (type)
                         {
                             case "i8":
-                                args.Insert(0, (byte)int.Parse(value));
+                                args.Add((byte)int.Parse(value));
                                 break;
                             case "i16":
-                                args.InsertRange(0, ((short)int.Parse(value)).ToBytes());
+                                args.AddRange(short.Parse(value).ToBytes());
                                 break;
                             case "i32":
-                                args.InsertRange(0, int.Parse(value).ToBytes());
+                                args.AddRange(int.Parse(value).ToBytes());
                                 break;
                             case "f32":
-                                args.InsertRange(0, float.Parse(value).ToBytes());
+                                args.AddRange(float.Parse(value).ToBytes());
                                 break;
                             default:
                                 throw new FormatException($"Invalid result syntax in {resultFile}");

@@ -9,8 +9,6 @@
   <PropertyGroup>
     <AssemblyName>bblang</AssemblyName>
     <OutputType>Exe</OutputType>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
   </PropertyGroup>
 
   <PropertyGroup>

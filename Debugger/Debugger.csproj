@@ -6,8 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsTrimmable>true</IsTrimmable>
-    <VerifyReferenceTrimCompatibility>true</VerifyReferenceTrimCompatibility>
-    <PublishTrimmed>true</PublishTrimmed>
   </PropertyGroup>
 
   <ItemGroup>
